@@ -103,4 +103,30 @@ return [
         'lock_seconds' => env('MARKETPLACE_LISTING_LOCK_SECONDS', 21600),
     ],
 
+    'api_key_providers' => [
+        'defaults' => [
+            'image_min_interval_ms' => (int) env('API_IMAGE_MIN_INTERVAL_MS', 2500),
+            'text_min_interval_ms' => (int) env('API_TEXT_MIN_INTERVAL_MS', 700),
+        ],
+        'v98store' => [
+            'image_generation_endpoint' => env('V98STORE_IMAGE_GENERATION_ENDPOINT', 'https://v98store.com/v1/images/generations'),
+            'image_edit_endpoint' => env('V98STORE_IMAGE_EDIT_ENDPOINT', env('V98STORE_IMAGE_ENDPOINT', 'https://v98store.com/v1/images/edits')),
+            'text_endpoint' => env('V98STORE_TEXT_ENDPOINT', 'https://v98store.com/v1/chat/completions'),
+            'balance_endpoint' => env('V98STORE_BALANCE_ENDPOINT', 'https://v98store.com/check-balance'),
+            'model' => env('V98STORE_IMAGE_MODEL', 'gpt-image-2'),
+            'text_model' => env('V98STORE_TEXT_MODEL', 'gpt-5.4'),
+            'image_min_interval_ms' => (int) env('V98STORE_IMAGE_MIN_INTERVAL_MS', 0),
+            'text_min_interval_ms' => (int) env('V98STORE_TEXT_MIN_INTERVAL_MS', 0),
+        ],
+        'chatgpt' => [
+            'image_generation_endpoint' => env('OPENAI_IMAGE_GENERATION_ENDPOINT', 'https://api.openai.com/v1/images/generations'),
+            'image_edit_endpoint' => env('OPENAI_IMAGE_EDIT_ENDPOINT', env('OPENAI_IMAGE_ENDPOINT', 'https://api.openai.com/v1/images/edits')),
+            'text_endpoint' => env('OPENAI_TEXT_ENDPOINT', 'https://api.openai.com/v1/chat/completions'),
+            'model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-2'),
+            'text_model' => env('OPENAI_TEXT_MODEL', 'gpt-4.1-mini'),
+            'image_min_interval_ms' => (int) env('OPENAI_IMAGE_MIN_INTERVAL_MS', env('API_IMAGE_MIN_INTERVAL_MS', 2500)),
+            'text_min_interval_ms' => (int) env('OPENAI_TEXT_MIN_INTERVAL_MS', env('API_TEXT_MIN_INTERVAL_MS', 700)),
+        ],
+    ],
+
 ];

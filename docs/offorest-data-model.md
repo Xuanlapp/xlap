@@ -11,6 +11,7 @@ users
 products
 product_user
 vertex_api_credentials
+user_ai_providers
 prompts
 product_design_assets
 psd_mockup_templates
@@ -51,10 +52,11 @@ The table has a unique key on `user_id + product_id`.
 
 ## vertex_api_credentials
 
-Stores one Vertex API credential per user.
+Stores active Vertex API credentials for image generation and shared marketplace listing generation.
 
 - `id`: primary key.
-- `user_id`: owner. This is unique, so one user has one credential.
+- `user_id`: owner. User image-generation credentials have a user; shared marketplace credentials can have `null`.
+- `function_key`: feature key, for example `image_generation` or `marketplace_listing`.
 - `project_id`: Google Cloud project ID.
 - `location`: Vertex AI location, for example `global`.
 - `client_email`: service account email.
@@ -62,6 +64,19 @@ Stores one Vertex API credential per user.
 - `credentials_json`: encrypted full service account JSON.
 - `is_active`: whether this credential should be used.
 - `created_at`, `updated_at`: timestamps.
+
+## user_ai_providers
+
+Stores which AI provider names a user can choose from. The actual model name remains fixed in code/config per provider.
+
+- `id`: primary key.
+- `user_id`: user receiving provider access.
+- `provider_key`: stable provider key, for example `vertex`, `chatgpt`, or `outsourced`.
+- `is_enabled`: whether the user can choose this provider.
+- `is_default`: currently selected provider for the user. Exactly one enabled provider should be default.
+- `created_at`, `updated_at`: timestamps.
+
+Current provider names are configured in `config/ai_providers.php`.
 
 ## prompts
 
@@ -255,6 +270,7 @@ Image preview supports direct image/CDN URLs and normalizes common shared links 
 
 ```text
 User hasOne VertexApiCredential
+User hasMany UserAiProvider
 User belongsToMany Product
 User hasMany Prompt
 User hasMany ProductDesignAsset
@@ -271,6 +287,7 @@ Product hasMany PsdMockupTemplate
 ```text
 app/Models/Product.php
 app/Models/VertexApiCredential.php
+app/Models/UserAiProvider.php
 app/Models/Prompt.php
 app/Models/ProductDesignAsset.php
 app/Models/PsdMockupTemplate.php

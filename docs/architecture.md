@@ -215,6 +215,7 @@ app/Models/Product.php
 app/Models/Prompt.php
 app/Models/ProductDesignAsset.php
 app/Models/PsdMockupTemplate.php
+app/Models/UserAiProvider.php
 app/Models/VertexApiCredential.php
 app/Repositories/Product/ProductRepository.php
 app/Repositories/Product/ProductDesignAssetRepository.php

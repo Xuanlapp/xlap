@@ -1,0 +1,93 @@
+<?php
+
+namespace App\Livewire\Pages\OrnamentAmazonTwo;
+
+use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
+use App\Services\OrnamentAmazonTwo\PsdMockupTemplateService;
+use Illuminate\Contracts\View\View;
+use Livewire\Attributes\On;
+use Livewire\Component;
+use Livewire\WithPagination;
+
+class OrnamentAmazonTwoStatusPanel extends Component
+{
+    use WithPagination;
+
+    private const STATUS_OPTIONS = ['all', 'unapproved', 'approved'];
+
+    public string $status;
+
+    public int $perPage;
+
+    public ?string $activePsdTemplateName = null;
+
+    public ?string $providerKey = null;
+
+    public ?string $imageModel = null;
+
+    public ?string $textModel = null;
+
+    /**
+     * @var array{all?: int, unapproved?: int, approved?: int}
+     */
+    public array $statusCounts = [];
+
+    /**
+     * @param array{all?: int, unapproved?: int, approved?: int} $statusCounts
+     */
+    public function mount(
+        string $status,
+        int $perPage,
+        ?string $activePsdTemplateName = null,
+        ?string $providerKey = null,
+        ?string $imageModel = null,
+        ?string $textModel = null,
+        array $statusCounts = [],
+    ): void {
+        $this->status = in_array($status, self::STATUS_OPTIONS, true) ? $status : 'all';
+        $this->perPage = $perPage;
+        $this->activePsdTemplateName = $activePsdTemplateName;
+        $this->providerKey = $providerKey;
+        $this->imageModel = $imageModel;
+        $this->textModel = $textModel;
+        $this->statusCounts = $statusCounts;
+    }
+
+    #[On('product-design-created')]
+    #[On('ornament-amazon-two-product-design-approval-updated')]
+    #[On('ornament-amazon-two-product-design-workflow-updated')]
+    public function refreshAssets(): void
+    {
+        //
+    }
+
+    #[On('psd-mockup-template-updated')]
+    public function refreshPsdTemplate(): void
+    {
+        $this->activePsdTemplateName = app(PsdMockupTemplateService::class)
+            ->activeOrnamentTemplateForUser(auth()->user())?->name;
+    }
+
+    public function placeholder(): View
+    {
+        return view('livewire.pages.ornament-amazon-two.ornament-amazon-two-status-panel-placeholder');
+    }
+
+    public function render(): View
+    {
+        return view('livewire.pages.ornament-amazon-two.ornament-amazon-two-status-panel', [
+            'assets' => app(OrnamentAmazonTwoService::class)->paginatedAssetsForUser(
+                auth()->user(),
+                $this->perPage,
+                $this->status,
+                $this->pageName(),
+            ),
+            'pageName' => $this->pageName(),
+        ]);
+    }
+
+    private function pageName(): string
+    {
+        return "ornament_amazon_2_{$this->status}_page";
+    }
+}

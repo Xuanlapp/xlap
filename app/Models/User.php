@@ -68,6 +68,47 @@ class User extends Authenticatable
     }
 
     /**
+     * AI providers this user can choose from.
+     */
+    public function aiProviders(): HasMany
+    {
+        return $this->hasMany(UserAiProvider::class);
+    }
+
+    /**
+     * Enabled AI providers this user can choose from.
+     */
+    public function enabledAiProviders(): HasMany
+    {
+        return $this->aiProviders()->where('is_enabled', true);
+    }
+
+    /**
+     * Determine whether the user can choose an AI provider.
+     */
+    public function canUseAiProvider(string $providerKey): bool
+    {
+        return $this->enabledAiProviders()
+            ->where('provider_key', $providerKey)
+            ->exists();
+    }
+
+    /**
+     * Return the selected AI provider key, falling back to the first enabled provider.
+     */
+    public function activeAiProviderKey(): ?string
+    {
+        $providers = $this->relationLoaded('aiProviders')
+            ? $this->aiProviders
+            : $this->aiProviders()->get();
+
+        $enabledProviders = $providers->where('is_enabled', true);
+
+        return $enabledProviders->firstWhere('is_default', true)?->provider_key
+            ?: $enabledProviders->first()?->provider_key;
+    }
+
+    /**
      * Active Google Drive OAuth connection owned by the user.
      */
     public function googleDriveConnection(): HasOne

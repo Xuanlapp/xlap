@@ -303,6 +303,18 @@ class ProductDesignAssetRepository
         return $asset->refresh();
     }
 
+    /**
+     * Persist merged source/workflow metadata on a design asset.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function updateDataItemAdd(ProductDesignAsset $asset, array $data): ProductDesignAsset
+    {
+        $asset->update(['data_item_add' => $data === [] ? null : $data]);
+
+        return $asset->refresh();
+    }
+
     public function markListingProcessing(ProductDesignAsset $asset, string $marketplace): ProductDesignAsset
     {
         $asset->update([

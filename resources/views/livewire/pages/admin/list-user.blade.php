@@ -218,6 +218,7 @@
                             <th class="px-5 py-4 text-center font-medium">Status</th>
                             <th class="px-5 py-4 text-center font-medium">Admin</th>
                             <th class="px-5 py-4 text-center font-medium">Vertex</th>
+                            <th class="px-5 py-4 text-center font-medium">AI provider</th>
                             <th class="px-5 py-4 text-center font-medium">Listing</th>
                             @foreach ($products as $product)
                                 <th class="px-5 py-4 text-center font-medium">{{ $product->name }}</th>
@@ -267,6 +268,16 @@
                                     @endif
                                 </td>
                                 <td class="px-5 py-5 text-center">
+                                    @php($activeAiProviderKey = $user->activeAiProviderKey())
+                                    @if ($activeAiProviderKey)
+                                        <span class="inline-flex rounded-full bg-cyan-100 px-2.5 py-1 text-xs font-semibold text-cyan-700">
+                                            {{ config("ai_providers.providers.$activeAiProviderKey.label", $activeAiProviderKey) }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-700">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-5 text-center">
                                     @if ($user->can_generate_amazon_listing)
                                         <span class="inline-flex rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-700">Amazon</span>
                                     @elseif ($user->can_generate_etsy_listing)
@@ -301,7 +312,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ 6 + $products->count() }}" class="px-5 py-10 text-center text-sm text-slate-400">
+                                <td colspan="{{ 7 + $products->count() }}" class="px-5 py-10 text-center text-sm text-slate-400">
                                     Chua co user nao.
                                 </td>
                             </tr>

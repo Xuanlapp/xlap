@@ -1,16 +1,83 @@
 <div>
     @if ($isOpen)
+        @php
+            $displayOriginalUrl = $original;
+            $appUrl = rtrim((string) config('app.url'), '/');
+
+            if ($appUrl === '' || str_contains($appUrl, 'localhost') || str_contains($appUrl, '127.0.0.1')) {
+                $appUrl = 'https://xlap.tech';
+            }
+
+            if (is_string($displayOriginalUrl) && str_starts_with($displayOriginalUrl, '/')) {
+                $displayOriginalUrl = $appUrl.$displayOriginalUrl;
+            }
+        @endphp
+
         <div
             x-data="{
                 zoomed: false,
+                copied: false,
                 dimensions: 'Loading...',
                 generatedAt: new Date().toLocaleString(),
+                notifyCopySuccess() {
+                    this.copied = true;
+                    window.dispatchEvent(new CustomEvent('toast', {
+                        detail: {
+                            type: 'success',
+                            title: 'Da copy',
+                            message: 'Da copy link anh vao clipboard.',
+                        },
+                    }));
+                    setTimeout(() => this.copied = false, 1800);
+                },
+                notifyCopyFailure() {
+                    window.dispatchEvent(new CustomEvent('toast', {
+                        detail: {
+                            type: 'error',
+                            title: 'Copy failed',
+                            message: 'Trinh duyet khong cho copy tu dong. Hay copy thu cong link anh.',
+                        },
+                    }));
+                },
+                fallbackCopy(text) {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.setAttribute('readonly', '');
+                    textarea.style.position = 'fixed';
+                    textarea.style.left = '-9999px';
+                    textarea.style.top = '0';
+                    document.body.appendChild(textarea);
+                    textarea.focus();
+                    textarea.select();
+
+                    let copied = false;
+
+                    try {
+                        copied = document.execCommand('copy');
+                    } catch (error) {
+                        copied = false;
+                    }
+
+                    document.body.removeChild(textarea);
+                    return copied;
+                },
                 copyImageUrl() {
-                    if (! @js($original)) {
+                    const imageUrl = @js($displayOriginalUrl);
+
+                    if (! imageUrl) {
                         return;
                     }
 
-                    navigator.clipboard?.writeText(@js($original));
+                    if (! navigator.clipboard?.writeText) {
+                        this.fallbackCopy(imageUrl) ? this.notifyCopySuccess() : this.notifyCopyFailure();
+                        return;
+                    }
+
+                    navigator.clipboard.writeText(imageUrl)
+                        .then(() => this.notifyCopySuccess())
+                        .catch(() => {
+                            this.fallbackCopy(imageUrl) ? this.notifyCopySuccess() : this.notifyCopyFailure();
+                        });
                 },
                 fullscreenImage() {
                     if (this.$refs.previewImage?.requestFullscreen) {
@@ -18,7 +85,7 @@
                         return;
                     }
 
-                    window.open(@js($original ?: $src), '_blank', 'noreferrer');
+                    window.open(@js($displayOriginalUrl ?: $src), '_blank', 'noreferrer');
                 },
             }"
             x-on:keydown.escape.window="$wire.close()"
@@ -110,7 +177,16 @@
                                         class="max-h-[calc(100%-8rem)] max-w-[calc(100%-8rem)] object-contain drop-shadow-sm transition duration-300 ease-out"
                                     >
                                 @else
-                                    <div class="h-80 w-80 animate-pulse rounded-2xl bg-slate-200"></div>
+                                    <div class="flex h-80 w-80 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-100 text-center">
+                                        <svg class="h-10 w-10 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                            <path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+                                            <path d="m4 16 4.5-4.5a2 2 0 0 1 2.8 0L20 20" />
+                                            <path d="m14 14 1.5-1.5a2 2 0 0 1 2.8 0L20 14" />
+                                            <circle cx="8" cy="8" r="1.5" />
+                                        </svg>
+                                        <div class="mt-3 text-sm font-bold text-slate-700">No image</div>
+                                        <div class="mt-1 text-xs font-medium text-slate-500">Bam Generate de tao anh cho slot nay.</div>
+                                    </div>
                                 @endif
                                 <div class="absolute bottom-5 left-5 right-5 rounded-2xl border border-slate-200 bg-white/92 p-4 shadow-sm backdrop-blur">
                                     <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
@@ -138,8 +214,8 @@
                                             </div>
                                         </div> -->
                                         <div class="flex flex-wrap gap-2">
-                                            @if ($original)
-                                                <a href="{{ $original }}" download class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">
+                                            @if ($displayOriginalUrl)
+                                                <a href="{{ $displayOriginalUrl }}" download class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">
                                                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                         <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
                                                     </svg>
@@ -174,28 +250,154 @@
                                         <div>
                                             <div class="text-xs font-medium text-slate-500">Source Image</div>
                                             <div class="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                                <div class="min-w-0 flex-1 truncate text-sm text-slate-600">{{ $original }}</div>
+                                                <div class="min-w-0 flex-1 truncate text-sm text-slate-600">{{ $displayOriginalUrl }}</div>
                                                 <button type="button" x-on:click="copyImageUrl()" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900" aria-label="Copy image URL">
-                                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                    <svg x-show="! copied" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                         <rect x="9" y="9" width="13" height="13" rx="2" />
                                                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                                                     </svg>
+                                                    <svg x-show="copied" x-cloak class="h-4 w-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5" />
+                                                    </svg>
                                                 </button>
                                             </div>
+                                            <div x-show="copied" x-cloak class="mt-1 text-xs font-semibold text-emerald-600">Da copy link anh.</div>
                                         </div>
                                     @endif
 
                                     <div>
                                         <div class="text-xs font-medium text-slate-500">Status</div>
-                                        <div class="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
-                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                                <path d="M20 6 9 17l-5-5" />
-                                            </svg>
-                                            Generated Successfully
-                                        </div>
+                                        @if ($original)
+                                            <div class="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
+                                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                    <path d="M20 6 9 17l-5-5" />
+                                                </svg>
+                                                Generated Successfully
+                                            </div>
+                                        @else
+                                            <div class="mt-2 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700">
+                                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                    <path d="M12 9v4" />
+                                                    <path d="M12 17h.01" />
+                                                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                                                </svg>
+                                                No image
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             </section>
+
+                            @if ($imagePrompt)
+                                @php
+                                    $promptText = trim((string) $imagePrompt);
+                                    $promptIsLong = mb_strlen($promptText) > 150;
+                                    $promptPreview = $promptIsLong ? mb_substr($promptText, 0, 150).'...' : $promptText;
+                                    $previewMockupSlot = match ($editTarget) {
+                                        'mockup1' => 'usp',
+                                        'mockup2' => 'before_after',
+                                        'mockup3' => 'comparison',
+                                        'mockup4' => 'features',
+                                        'mockup5' => 'details',
+                                        'mockup6' => 'custom_guide',
+                                        default => null,
+                                    };
+                                @endphp
+                                <section x-data="{ promptExpanded: false }" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    <div class="mb-3 flex items-center justify-between gap-3">
+                                        <div class="flex min-w-0 items-center gap-3">
+                                            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                    <path d="M4 5h16M4 12h16M4 19h10" />
+                                                </svg>
+                                            </span>
+                                            <h3 class="truncate text-sm font-bold text-slate-950">Prompt Create Image</h3>
+                                        </div>
+
+                                        @if ($action === 'ornament-amazon-two-custom-image' && $editTarget && str_starts_with($editTarget, 'mockup'))
+                                            <button
+                                                type="button"
+                                                x-on:click="window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started')); window.dispatchEvent(new CustomEvent('ornament-amazon-two-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($previewMockupSlot) } }))"
+                                                wire:click="generateOrnamentAmazonTwoMockupImage"
+                                                wire:loading.attr="disabled"
+                                                wire:target="generateOrnamentAmazonTwoMockupImage"
+                                                class="inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 text-xs font-bold text-orange-700 transition-all duration-200 ease-out hover:border-orange-300 hover:bg-orange-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                <span
+                                                    wire:loading
+                                                    wire:target="generateOrnamentAmazonTwoMockupImage"
+                                                    class="h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700"
+                                                    aria-hidden="true"
+                                                ></span>
+                                                <span wire:loading.remove wire:target="generateOrnamentAmazonTwoMockupImage">Generate</span>
+                                                <span wire:loading wire:target="generateOrnamentAmazonTwoMockupImage">Generating...</span>
+                                            </button>
+                                        @endif
+                                    </div>
+
+                                    <div
+                                        class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+                                        x-bind:class="promptExpanded ? 'max-h-56 overflow-y-auto' : 'max-h-32 overflow-hidden'"
+                                    >
+                                        <p
+                                            class="whitespace-pre-line break-words text-sm font-medium leading-6 text-slate-700"
+                                            x-text="promptExpanded ? @js($promptText) : @js($promptPreview)"
+                                        ></p>
+                                    </div>
+
+                                    @if ($promptIsLong)
+                                        <button
+                                            type="button"
+                                            x-on:click="promptExpanded = ! promptExpanded"
+                                            class="mt-2 inline-flex cursor-pointer items-center text-xs font-bold text-blue-600 transition hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                                            x-text="promptExpanded ? 'Thu gon' : 'Xem them'"
+                                        ></button>
+                                    @endif
+                                </section>
+                            @endif
+
+                            @if (count($sourcePreviewImages) > 1 || ! empty($sourceListingFields))
+                                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    @if (count($sourcePreviewImages) > 1)
+                                        <div class="mb-4">
+                                            <div class="mb-2 flex items-center justify-between gap-2">
+                                                <span class="text-xs font-bold uppercase tracking-wide text-slate-500">Source Preview</span>
+                                                <span class="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{{ count($sourcePreviewImages) }} imgs</span>
+                                            </div>
+
+                                            <div class="flex h-24 gap-2 overflow-x-auto pb-1">
+                                                @foreach ($sourcePreviewImages as $index => $image)
+                                                    <button
+                                                        type="button"
+                                                        wire:click="selectSourcePreviewImage({{ $index }})"
+                                                        class="h-16 w-16 shrink-0 overflow-hidden rounded-lg border {{ $original === ($image['original'] ?? null) ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200' }} bg-slate-50 transition hover:border-blue-400 hover:ring-2 hover:ring-blue-100"
+                                                        aria-label="Preview source image {{ $index + 1 }}"
+                                                    >
+                                                        <img src="{{ $image['src'] }}" alt="Source image {{ $index + 1 }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    @if (! empty($sourceListingFields))
+                                        <div class="max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-700">
+                                            @foreach ($sourceListingFields as $field)
+                                                <div class="{{ $loop->first ? '' : 'mt-3 border-t border-slate-200 pt-3' }}">
+                                                    <div class="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">{{ $field['label'] }}</div>
+                                                    @if ($field['label'] === 'Link')
+                                                        <a href="{{ $field['value'] }}" target="_blank" rel="noopener" class="mt-1 block break-all font-mono font-semibold text-blue-700 hover:text-blue-800">
+                                                            {{ $field['value'] }}
+                                                        </a>
+                                                    @else
+                                                        <p class="mt-1 whitespace-pre-line font-semibold text-slate-800">{{ $field['value'] }}</p>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </section>
+                            @endif
 
                             @if (! empty($listingInfo))
                                 <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -237,6 +439,71 @@
                                             </div>
                                         @endforeach
                                     </div>
+                                </section>
+                            @endif
+
+                            @if ($action === 'ornament-amazon-two-custom-image')
+                                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    <div class="mb-4 flex items-center gap-3">
+                                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                <path d="M12 2 14.7 9.3 22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z" />
+                                            </svg>
+                                        </span>
+                                        <div>
+                                            <h3 class="text-sm font-bold text-slate-950">{{ $original ? 'Custom This Image' : 'Generate This Image' }}</h3>
+                                            <p class="mt-0.5 text-xs font-medium text-slate-500">
+                                                {{ $original ? 'Nhap y muon sua roi tao lai anh nay' : 'Tao anh bang B4 prompt cua slot dang mo' }}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    @if ($original)
+                                        <form wire:submit.prevent="customizeOrnamentAmazonTwoImage" class="space-y-3">
+                                            <textarea
+                                                x-ref="ornamentCustomPromptInput"
+                                                wire:model.defer="customPrompt"
+                                                required
+                                                rows="5"
+                                                maxlength="4000"
+                                                class="block min-h-[120px] w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-inner shadow-slate-100 transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-orange-500"
+                                                placeholder="Vi du: giu nguyen bo cuc, doi nen sang mau trang kem, lam anh sang hon, chu ro hon..."
+                                            ></textarea>
+                                            <div class="flex items-center justify-between gap-3 text-xs font-medium text-slate-500">
+                                                <span>{{ $editTarget === 'redesign' ? '2. Create Master' : $title }}</span>
+                                                <span><span x-text="$refs.ornamentCustomPromptInput?.value.length || 0">0</span> / 4000</span>
+                                            </div>
+                                            <button
+                                                type="submit"
+                                                wire:loading.attr="disabled"
+                                                wire:target="customizeOrnamentAmazonTwoImage"
+                                                class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-gray-700 shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-xl hover:shadow-orange-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                    <path d="M12 2 14.7 9.3 22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z" />
+                                                </svg>
+                                                <span wire:loading.remove wire:target="customizeOrnamentAmazonTwoImage">Redesign This Image</span>
+                                                <span wire:loading wire:target="customizeOrnamentAmazonTwoImage">Generating...</span>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <div class="rounded-xl border border-dashed border-orange-200 bg-orange-50/70 px-4 py-3 text-sm font-medium leading-6 text-slate-700">
+                                            Slot nay chua co anh. Bam Generate de tao anh bang prompt B4 tuong ung.
+                                        </div>
+                                        <button
+                                            type="button"
+                                            wire:click="generateOrnamentAmazonTwoMockupImage"
+                                            wire:loading.attr="disabled"
+                                            wire:target="generateOrnamentAmazonTwoMockupImage"
+                                            class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-gray-700 shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-xl hover:shadow-orange-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                <path d="M12 2 14.7 9.3 22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z" />
+                                            </svg>
+                                            <span wire:loading.remove wire:target="generateOrnamentAmazonTwoMockupImage">Generate</span>
+                                            <span wire:loading wire:target="generateOrnamentAmazonTwoMockupImage">Generating...</span>
+                                        </button>
+                                    @endif
                                 </section>
                             @endif
 

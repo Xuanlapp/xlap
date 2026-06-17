@@ -6,6 +6,10 @@
     'assetId' => null,
     'productSlug' => null,
     'keyword' => null,
+    'action' => null,
+    'editTarget' => null,
+    'providerKey' => null,
+    'imageModel' => null,
 ])
 
 <div
@@ -17,7 +21,7 @@
             <button
                 type="button"
                 x-show="! failed"
-                wire:click="$dispatch('review-image', { src: @js($src), original: @js($original ?: $src), title: @js($alt), assetId: @js($assetId), productSlug: @js($productSlug), keyword: @js($keyword) })"
+                wire:click="$dispatch('review-image', { src: @js($src), original: @js($original ?: $src), title: @js($alt), assetId: @js($assetId), productSlug: @js($productSlug), keyword: @js($keyword), action: @js($action), editTarget: @js($editTarget), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
                 class="h-full w-full cursor-zoom-in"
             >
                 <img

@@ -113,4 +113,9 @@ class ProductDesignAsset extends Model
     {
         return $this->hasOne(ProductDriveUpload::class);
     }
+
+    public function ornamentAmazonTwoWorkflow(): HasOne
+    {
+        return $this->hasOne(OrnamentAmazonTwoWorkflow::class);
+    }
 }

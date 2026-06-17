@@ -9,7 +9,9 @@ use App\Models\User;
 use App\Repositories\Product\ProductRepository;
 use App\Repositories\User\UserRepository;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class UserAccessService
 {
@@ -37,17 +39,25 @@ class UserAccessService
     }
 
     /**
-     * @param  array{name: string, email: string, password: string, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>}  $data
+     * @param  array{name: string, email: string, password: string, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
      */
     public function createUser(array $data): User
     {
-        return ($this->createUserWithProductAccess)($data);
+        $user = ($this->createUserWithProductAccess)($data);
+
+        $this->syncAiProviders(
+            user: $user,
+            providerKeys: $data['selectedAiProviders'] ?? [],
+            preferredProviderKey: $data['preferredAiProvider'] ?? null,
+        );
+
+        return $user->refresh();
     }
 
     /**
      * Update account details and access for a managed user.
      *
-     * @param  array{name: string, email: string, password?: string|null, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>}  $data
+     * @param  array{name: string, email: string, password?: string|null, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
      */
     public function updateUser(User $targetUser, array $data): User
     {
@@ -73,7 +83,58 @@ class UserAccessService
 
         $targetUser->products()->sync($productIds);
 
+        $this->syncAiProviders(
+            user: $targetUser,
+            providerKeys: $data['selectedAiProviders'] ?? [],
+            preferredProviderKey: $data['preferredAiProvider'] ?? null,
+        );
+
         return $targetUser->refresh();
+    }
+
+    /**
+     * @return array<string, array{label: string, description?: string, model?: string}>
+     */
+    public function aiProviderOptions(): array
+    {
+        return config('ai_providers.providers', []);
+    }
+
+    /**
+     * Sync enabled provider names for a user and keep exactly one selected default.
+     *
+     * @param  array<int, string>  $providerKeys
+     */
+    public function syncAiProviders(User $user, array $providerKeys, ?string $preferredProviderKey): void
+    {
+        $validProviderKeys = array_keys($this->aiProviderOptions());
+        $enabledProviderKeys = collect($providerKeys)
+            ->map(fn (string $providerKey): string => trim($providerKey))
+            ->filter(fn (string $providerKey): bool => in_array($providerKey, $validProviderKeys, true))
+            ->unique()
+            ->values();
+
+        if ($preferredProviderKey !== null && $preferredProviderKey !== '' && ! $enabledProviderKeys->contains($preferredProviderKey)) {
+            throw ValidationException::withMessages([
+                'preferredAiProvider' => 'Provider dang chon phai nam trong danh sach provider da cap cho user.',
+            ]);
+        }
+
+        $defaultProviderKey = $preferredProviderKey ?: $enabledProviderKeys->first();
+
+        DB::transaction(function () use ($user, $validProviderKeys, $enabledProviderKeys, $defaultProviderKey): void {
+            foreach ($validProviderKeys as $providerKey) {
+                $isEnabled = $enabledProviderKeys->contains($providerKey);
+
+                $user->aiProviders()->updateOrCreate(
+                    ['provider_key' => $providerKey],
+                    [
+                        'is_enabled' => $isEnabled,
+                        'is_default' => $isEnabled && $providerKey === $defaultProviderKey,
+                    ],
+                );
+            }
+        });
     }
 
     public function toggleProduct(int $userId, int $productId): bool
@@ -112,5 +173,4 @@ class UserAccessService
 
         return $enabled;
     }
-
 }

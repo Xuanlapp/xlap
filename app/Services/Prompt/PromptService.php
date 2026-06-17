@@ -15,6 +15,8 @@ class PromptService
 {
     public const MAX_PROMPTS_PER_PRODUCT = 4;
 
+    public const ORNAMENT_AMAZON_TWO_MAX_PROMPTS = 1;
+
     public function __construct(
         private readonly ProductRepository $products,
         private readonly PromptRepository $prompts,
@@ -32,20 +34,25 @@ class PromptService
     {
         $product = $this->productBySlug($productSlug);
 
-        return $this->prompts->forUserAndProduct($user->id, $product->id);
+        $maxPrompts = $this->maxPromptsForProduct($productSlug);
+
+        return $this->prompts->forUserAndProduct($user->id, $product->id)
+            ->filter(fn (Prompt $prompt): bool => (int) $prompt->prompt_number <= $maxPrompts)
+            ->values();
     }
 
     public function createNextPrompt(User $user, string $productSlug): Prompt
     {
         $product = $this->productBySlug($productSlug);
-        $prompts = $this->prompts->forUserAndProduct($user->id, $product->id);
+        $prompts = $this->promptsForUserProduct($user, $productSlug);
+        $maxPrompts = $this->maxPromptsForProduct($productSlug);
 
-        if ($prompts->count() >= self::MAX_PROMPTS_PER_PRODUCT) {
-            throw new RuntimeException('Trang nay da du 4 prompt.');
+        if ($prompts->count() >= $maxPrompts) {
+            throw new RuntimeException("Trang nay da du {$maxPrompts} prompt.");
         }
 
         $usedNumbers = $prompts->pluck('prompt_number')->map(fn ($number): int => (int) $number)->all();
-        $promptNumber = $this->nextPromptNumber($usedNumbers);
+        $promptNumber = $this->nextPromptNumber($usedNumbers, $maxPrompts);
 
         return $this->prompts->createForSlot(
             $user->id,
@@ -85,17 +92,24 @@ class PromptService
         };
     }
 
+    public function maxPromptsForProduct(string $productSlug): int
+    {
+        return $productSlug === 'ornament-amazon-2'
+            ? self::ORNAMENT_AMAZON_TWO_MAX_PROMPTS
+            : self::MAX_PROMPTS_PER_PRODUCT;
+    }
+
     /**
      * @param array<int, int> $usedNumbers
      */
-    private function nextPromptNumber(array $usedNumbers): int
+    private function nextPromptNumber(array $usedNumbers, int $maxPrompts): int
     {
-        for ($number = 1; $number <= self::MAX_PROMPTS_PER_PRODUCT; $number++) {
+        for ($number = 1; $number <= $maxPrompts; $number++) {
             if (! in_array($number, $usedNumbers, true)) {
                 return $number;
             }
         }
 
-        throw new RuntimeException('Trang nay da du 4 prompt.');
+        throw new RuntimeException("Trang nay da du {$maxPrompts} prompt.");
     }
 }

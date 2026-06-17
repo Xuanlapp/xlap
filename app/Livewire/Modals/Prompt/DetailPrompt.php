@@ -129,12 +129,15 @@ class DetailPrompt extends Component
     public function render(): View
     {
         $prompts = $this->isOpen ? $this->prompts() : new Collection();
+        $maxPrompts = $this->isOpen
+            ? app(PromptService::class)->maxPromptsForProduct($this->productSlug)
+            : PromptService::MAX_PROMPTS_PER_PRODUCT;
 
         return view('livewire.modals.prompt.detail-prompt', [
             'prompts' => $prompts,
             'promptLabels' => $this->promptLabels($prompts),
-            'canAddPrompt' => $this->isOpen && $prompts->count() < PromptService::MAX_PROMPTS_PER_PRODUCT,
-            'maxPrompts' => PromptService::MAX_PROMPTS_PER_PRODUCT,
+            'canAddPrompt' => $this->isOpen && $prompts->count() < $maxPrompts,
+            'maxPrompts' => $maxPrompts,
         ]);
     }
 

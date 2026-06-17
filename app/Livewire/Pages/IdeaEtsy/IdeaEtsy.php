@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\IdeaEtsy;
 
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\OrnamentAmazon\OrnamentAmazonService;
+use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
@@ -28,7 +29,7 @@ class IdeaEtsy extends Component
             'imageLink' => $imageLink,
             'forceKeyword' => $forceKeyword,
         ], [
-            'productSlug' => ['required', 'string', Rule::in(['sticker', 'ornament', 'ornament-etsy'])],
+            'productSlug' => ['required', 'string', Rule::in(['sticker', 'ornament', 'ornament-etsy', 'ornament-amazon-2'])],
             'keyword' => ['required', 'string', 'max:255'],
             'imageLink' => ['required', 'string', 'max:1000'],
             'forceKeyword' => ['boolean'],
@@ -46,7 +47,7 @@ class IdeaEtsy extends Component
 
         $keyword = trim($validated['keyword']);
         $slug = $validated['productSlug'];
-        $requiredKeyword = $slug === 'ornament-etsy' ? 'ornament' : $slug;
+        $requiredKeyword = in_array($slug, ['ornament-etsy', 'ornament-amazon-2'], true) ? 'ornament' : $slug;
 
         if (! Str::contains(Str::lower($keyword), $requiredKeyword)) {
             if (! $validated['forceKeyword']) {
@@ -65,6 +66,7 @@ class IdeaEtsy extends Component
                 'sticker' => app(StickerService::class)->createAsset($user, $keyword, $validated['imageLink']),
                 'ornament' => app(OrnamentAmazonService::class)->createAsset($user, $keyword, $validated['imageLink']),
                 'ornament-etsy' => app(OrnamentEtsyService::class)->createAsset($user, $keyword, $validated['imageLink']),
+                'ornament-amazon-2' => app(OrnamentAmazonTwoService::class)->createAsset($user, $keyword, $validated['imageLink']),
             };
         } catch (InvalidArgumentException $exception) {
             if (! $validated['forceKeyword'] && Str::contains($exception->getMessage(), 'Keyword phai chua tu')) {
@@ -92,7 +94,7 @@ class IdeaEtsy extends Component
         $targetProducts = auth()->user()
             ? auth()->user()
                 ->products()
-                ->whereIn('slug', ['sticker', 'ornament', 'ornament-etsy'])
+                ->whereIn('slug', ['sticker', 'ornament', 'ornament-etsy', 'ornament-amazon-2'])
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(['products.name', 'products.slug'])

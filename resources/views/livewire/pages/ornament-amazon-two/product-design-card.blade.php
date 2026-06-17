@@ -1,0 +1,1031 @@
+<article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
+                STT: {{ $asset->item_number }}
+            </span>
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-slate-100 px-3 text-xs font-bold text-slate-600">
+                API: {{ $providerLabel }}
+            </span>
+
+            <h2 class="min-w-0 truncate text-lg font-bold text-slate-950">
+                {{ $asset->keyword ?: 'Ornament item' }}
+            </h2>
+
+            @if (! $asset->is_approved && ! $asset->redesign)
+                <x-button
+                    color="slate"
+                    variant="ghost"
+                    size="xs"
+                    type="button"
+                    wire:click="$dispatch('openModal', { component: 'modals.ornament-amazon-two.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
+                >
+                    Edit item
+                </x-button>
+            @endif
+
+            @if ($asset->is_approved)
+                <x-badge color="green">
+                    Da duyet
+                </x-badge>
+            @elseif ($asset->hasApprovableOutput())
+                <x-button
+                    color="cyan"
+                    variant="solid"
+                    size="xs"
+                    type="button"
+                    wire:click="toggleApproval"
+                    wire:loading.attr="disabled"
+                    wire:target="toggleApproval"
+                >
+                    <span wire:loading.remove wire:target="toggleApproval">
+                        Duyet
+                    </span>
+                    <span wire:loading wire:target="toggleApproval">Saving...</span>
+                </x-button>
+            @endif
+        </div>
+
+        <button
+            type="button"
+            wire:click="$dispatch('openModal', { component: 'modals.product-design.delete-idea-confirm', arguments: { productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) } })"
+            class="inline-flex h-8 items-center rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-bold text-rose-600 transition hover:border-rose-300 hover:bg-rose-100"
+        >
+            Delete
+        </button>
+    </div>
+
+    @php
+        $topWorkflowScript = collect($workflow['script'] ?? [])->filter();
+        $topFormatWorkflowText = function (mixed $value): string {
+            if (is_array($value)) {
+                return collect($value)
+                    ->map(fn (mixed $item, mixed $key): string => is_string($key)
+                        ? strtoupper(str_replace('_', ' ', $key)).': '.(is_array($item) ? json_encode($item, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : (string) $item)
+                        : '- '.(is_array($item) ? json_encode($item, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : (string) $item))
+                    ->implode("\n");
+            }
+
+            return trim((string) $value);
+        };
+        $topScriptTabs = collect([
+            'audience' => 'Audience',
+            'style' => 'Style',
+            'main' => 'Main',
+            'usp' => 'USP',
+            'before_after' => 'B-A',
+            'comparison' => 'Compare',
+            'features' => 'Features',
+            'details' => 'Details',
+            'custom_guide' => 'Guide',
+        ])
+            ->mapWithKeys(fn (string $label, string $key): array => [$key => [
+                'label' => $label,
+                'content' => $topFormatWorkflowText($workflow['script'][$key] ?? ''),
+            ]])
+            ->filter(fn (array $tab): bool => trim($tab['content']) !== '');
+        $topPromptTabs = collect([
+            'usp' => 'USP',
+            'before_after' => 'B-A',
+            'comparison' => 'Compare',
+            'features' => 'Features',
+            'details' => 'Details',
+            'custom_guide' => 'Guide',
+        ])
+            ->mapWithKeys(fn (string $label, string $key): array => [$key => [
+                'label' => $label,
+                'content' => $topFormatWorkflowText($workflow['prompts'][$key] ?? ''),
+            ]])
+            ->merge(
+                collect([
+                    'pain' => 'A+ Pain',
+                    'solution' => 'A+ Solution',
+                    'paradise' => 'A+ Paradise',
+                    'closeup' => 'A+ Close-up',
+                    'guide' => 'A+ Guide',
+                    'care' => 'A+ Care',
+                ])->flatMap(function (string $label, string $key) use ($workflow, $topFormatWorkflowText): array {
+                    return [
+                        'aplus_'.$key.'_desktop' => [
+                            'label' => $label.' Desk',
+                            'content' => $topFormatWorkflowText($workflow['aplus_prompts'][$key]['desktop'] ?? ''),
+                        ],
+                        'aplus_'.$key.'_mobile' => [
+                            'label' => $label.' Mob',
+                            'content' => $topFormatWorkflowText($workflow['aplus_prompts'][$key]['mobile'] ?? ''),
+                        ],
+                    ];
+                })
+            )
+            ->filter(fn (array $tab): bool => trim($tab['content']) !== '');
+        $hasWorkflowScript = $topScriptTabs->isNotEmpty();
+        $hasPersonRefs = filled($personARef) && filled($personBRef);
+        $promptCreateDisabledReason = ! $hasWorkflowScript
+            ? 'Can tao 3. Script truoc.'
+            : (! $hasPersonRefs ? 'Can tao du 4. Person A/B truoc.' : null);
+    @endphp
+
+    <div class="grid gap-5 lg:grid-cols-3">
+        <div class="min-w-0">
+            <div class="mb-2 flex h-5 items-center justify-between gap-2">
+                <x-label class="truncate text-xs font-bold uppercase text-slate-600">1. Input Image</x-label>
+            </div>
+
+            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="ornament-amazon-2" :keyword="$asset->keyword">
+                <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
+            </x-image-preview>
+
+        </div>
+
+        <div class="min-w-0">
+            <div class="mb-2 flex h-5 items-center justify-between gap-2">
+                <x-label class="truncate text-xs font-bold uppercase text-blue-600">2. Main Image</x-label>
+                @if (! $asset->is_approved)
+                    <div class="flex shrink-0 items-center gap-1.5">
+                        <input
+                            id="main-image-upload-{{ $asset->id }}"
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            wire:model="mainImageUpload"
+                            class="sr-only"
+                        >
+                        <button
+                            type="button"
+                            x-data
+                            x-on:click="document.getElementById('main-image-upload-{{ $asset->id }}')?.click()"
+                            wire:loading.attr="disabled"
+                            wire:target="mainImageUpload,updatedMainImageUpload"
+                            class="group relative inline-flex h-6 w-6 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-600 transition hover:border-blue-200 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label="Upload image"
+                        >
+                            <svg wire:loading.remove wire:target="mainImageUpload,updatedMainImageUpload" class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+                            </svg>
+                            <span wire:loading wire:target="mainImageUpload,updatedMainImageUpload" class="h-3 w-3 animate-spin rounded-full border-2 border-blue-300 border-t-blue-800"></span>
+                            <span class="pointer-events-none absolute -top-9 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[11px] font-bold text-white opacity-0 shadow-lg transition group-hover:opacity-100">
+                                Upload image
+                            </span>
+                        </button>
+
+                        @if ($asset->image_link)
+                            <livewire:pages.ornament-amazon-two.workflow-action-button
+                                :asset-id="$asset->id"
+                                action="main"
+                                :provider-key="$providerKey"
+                                :image-model="$imageModel"
+                                :key="'ornament-amazon-two-main-action-'.$asset->id.'-'.$providerKey.'-'.$imageModel"
+                            />
+                        @endif
+                    </div>
+                @endif
+            </div>
+
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                <div wire:loading.flex wire:target="mainImageUpload,updatedMainImageUpload" class="absolute inset-0 z-20 items-center justify-center bg-white/82 backdrop-blur-sm">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-full border border-blue-200 bg-blue-50 shadow-lg">
+                        <span class="h-7 w-7 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700"></span>
+                    </div>
+                </div>
+
+                <div wire:loading.class="invisible" wire:target="mainImageUpload,updatedMainImageUpload" class="h-full w-full">
+                    <x-image-preview reviewable class="h-full w-full" :src="$asset->redesign_preview_url" :original="$asset->redesign" alt="Redesign image" :asset-id="$asset->id" product-slug="ornament-amazon-2" :keyword="$asset->keyword" action="ornament-amazon-two-custom-image" edit-target="redesign" :provider-key="$providerKey" :image-model="$imageModel">
+                        <span class="px-4 text-center text-sm font-medium text-slate-400">
+                            {{ $asset->image_link ? 'Waiting for creation...' : 'Upload hoac tao Main Image' }}
+                        </span>
+                    </x-image-preview>
+                </div>
+            </div>
+        </div>
+
+        <div
+            class="min-w-0 {{ $asset->image_link ? '' : 'opacity-55' }}"
+        >
+            <div class="mb-2 flex h-5 items-center justify-between gap-2">
+                <x-label class="truncate text-xs font-bold uppercase text-violet-700">3. Script</x-label>
+                @if ($asset->image_link && ! $asset->is_approved)
+                    <livewire:pages.ornament-amazon-two.workflow-action-button
+                        :asset-id="$asset->id"
+                        action="script"
+                        :provider-key="$providerKey"
+                        :text-model="$textModel"
+                        :key="'ornament-amazon-two-script-action-'.$asset->id.'-'.$providerKey.'-'.$textModel"
+                    />
+                @endif
+            </div>
+
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-violet-100 bg-white shadow-sm ring-1 ring-violet-950/[0.03]">
+                <div class="h-full w-full">
+                    @if ($topScriptTabs->isNotEmpty())
+                        <div
+                            x-data="{ activeScript: @js($topScriptTabs->keys()->first()) }"
+                            class="flex h-full flex-col bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.08),transparent_34%),linear-gradient(180deg,#ffffff,#f8fafc)]"
+                        >
+                            <div class="border-b border-violet-100 px-3 py-3">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <div class="truncate text-[11px] font-extrabold uppercase tracking-wide text-violet-700">Generated Script</div>
+                                        <div class="mt-0.5 truncate text-[11px] font-medium text-slate-500">Ready for review</div>
+                                    </div>
+                                    <span class="shrink-0 rounded-full bg-violet-50 px-2 py-1 text-[10px] font-bold text-violet-700">{{ $topScriptTabs->count() }} parts</span>
+                                </div>
+
+                                <label class="mt-3 block">
+                                    <span class="sr-only">Choose script section</span>
+                                    <select
+                                        x-model="activeScript"
+                                        class="h-9 w-full rounded-lg border border-violet-100 bg-white px-3 text-xs font-bold text-slate-700 shadow-sm transition focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                                    >
+                                    @foreach ($topScriptTabs as $tabKey => $tab)
+                                        <option value="{{ $tabKey }}">{{ $tab['label'] }}</option>
+                                    @endforeach
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div class="min-h-0 flex-1 overflow-y-auto p-3">
+                                @foreach ($topScriptTabs as $tabKey => $tab)
+                                    <div x-show="activeScript === @js($tabKey)" x-cloak class="rounded-lg border border-slate-200 bg-white/85 p-3 shadow-sm">
+                                        <div class="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-slate-400">{{ $tab['label'] }}</div>
+                                        <p class="whitespace-pre-line text-xs font-medium leading-5 text-slate-700">{{ $tab['content'] }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <div class="flex h-full flex-col items-center justify-center px-5 text-center">
+                            <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-lg font-black text-violet-700">S</div>
+                            <div class="text-sm font-bold text-slate-700">No script yet</div>
+                            <div class="mt-1 text-xs font-medium leading-5 text-slate-400">
+                                {{ $asset->image_link ? 'Bam Generate Script de tao noi dung cho workflow.' : 'Cho anh nguon truoc khi tao script.' }}
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+        </div>
+
+        <div class="min-w-0 {{ $asset->image_link ? '' : 'opacity-55' }}">
+            <div class="mb-2 flex h-5 items-center justify-between gap-2">
+                <x-label class="truncate text-xs font-bold uppercase text-sky-700">4. Person A/B</x-label>
+            </div>
+
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-sky-100 bg-white p-3 shadow-sm ring-1 ring-sky-950/[0.03]">
+                <div class="grid h-full min-h-0 grid-rows-2 gap-3">
+                    @foreach ([['a', 'Person A', 'personARef', 'personAImageUpload'], ['b', 'Person B', 'personBRef', 'personBImageUpload']] as [$personKey, $personLabel, $refModel, $uploadModel])
+                        @php
+                            $refValue = $personKey === 'a' ? $personARef : $personBRef;
+                            $uploadTarget = $personKey === 'a'
+                                ? 'personAImageUpload,updatedPersonAImageUpload'
+                                : 'personBImageUpload,updatedPersonBImageUpload';
+                        @endphp
+
+                        <div
+                            x-data="{ showUrl: false }"
+                            class="relative flex min-h-0 flex-col rounded-lg border border-slate-200 bg-slate-50/70 p-2"
+                        >
+                            <div wire:loading.flex wire:target="{{ $uploadTarget }}" class="absolute inset-0 z-20 items-center justify-center rounded-lg bg-white/82 backdrop-blur-sm">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-full border border-sky-200 bg-sky-50 shadow-lg">
+                                    <span class="h-6 w-6 animate-spin rounded-full border-4 border-sky-200 border-t-sky-700"></span>
+                                </div>
+                            </div>
+                            <div class="flex h-7 shrink-0 items-center justify-between gap-2">
+                                <div class="text-[10px] font-extrabold uppercase tracking-wide text-slate-600">{{ $personLabel }}</div>
+                                @if (! $asset->is_approved)
+                                    <div class="flex shrink-0 items-center gap-1">
+                                        <input
+                                            id="person-{{ $personKey }}-upload-{{ $asset->id }}"
+                                            type="file"
+                                            accept="image/png,image/jpeg,image/webp"
+                                            wire:model="{{ $uploadModel }}"
+                                            class="sr-only"
+                                        >
+                                        <button
+                                            type="button"
+                                            x-on:click="document.getElementById('person-{{ $personKey }}-upload-{{ $asset->id }}')?.click()"
+                                            wire:loading.attr="disabled"
+                                            wire:target="{{ $uploadTarget }}"
+                                            class="group relative inline-flex h-6 w-6 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                            aria-label="Upload image"
+                                        >
+                                            <svg wire:loading.remove wire:target="{{ $uploadTarget }}" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+                                            </svg>
+                                            <span wire:loading wire:target="{{ $uploadTarget }}" class="h-3 w-3 animate-spin rounded-full border-2 border-sky-300 border-t-sky-800"></span>
+                                            <span class="pointer-events-none absolute -top-8 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-bold text-white opacity-0 shadow-lg transition group-hover:opacity-100">
+                                                Upload image
+                                            </span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            x-on:click="showUrl = ! showUrl"
+                                            class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 transition hover:bg-slate-100"
+                                        >
+                                            URL
+                                        </button>
+
+                                        @if ($asset->image_link)
+                                            <livewire:pages.ornament-amazon-two.workflow-action-button
+                                                :asset-id="$asset->id"
+                                                action="person"
+                                                :person="$personKey"
+                                                :provider-key="$providerKey"
+                                                :image-model="$imageModel"
+                                                :disabled="! $hasWorkflowScript"
+                                                :key="'ornament-amazon-two-person-action-'.$asset->id.'-'.$personKey.'-'.$providerKey.'-'.$imageModel.'-'.($hasWorkflowScript ? 'ready' : 'locked')"
+                                            />
+                                        @endif
+
+                                        <button
+                                            type="button"
+                                            wire:click="useCreateMasterAsPersonRef('{{ $personKey }}')"
+                                            wire:loading.attr="disabled"
+                                            wire:target="useCreateMasterAsPersonRef('{{ $personKey }}')"
+                                            class="rounded-md border border-violet-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 transition hover:bg-violet-50 disabled:opacity-60"
+                                            @disabled(! $asset->redesign)
+                                        >
+                                            #2
+                                        </button>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div x-show="showUrl" x-cloak class="mt-1 shrink-0">
+                                <input
+                                    type="url"
+                                    wire:model.blur="{{ $refModel }}"
+                                    class="h-8 w-full truncate rounded-md border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                                    placeholder="Paste ref URL"
+                                >
+                            </div>
+
+                            @if (filled($refValue))
+                                <button
+                                    type="button"
+                                    wire:click="$dispatch('review-image', { src: @js($refValue), original: @js($refValue), title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                    class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
+                                >
+                                    <img src="{{ $refValue }}" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain">
+                                </button>
+                            @else
+                                <div class="mt-2 flex min-h-0 flex-1 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white px-2 text-center text-[11px] font-semibold text-slate-400">
+                                    No ref attached
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <div class="min-w-0 {{ $promptCreateDisabledReason ? 'opacity-55' : '' }}">
+            <div class="mb-2 flex h-5 items-center justify-between gap-2">
+                <x-label class="truncate text-xs font-bold uppercase text-amber-700">5. Prompt create</x-label>
+                @if (! $asset->is_approved)
+                    <div class="flex min-w-0 items-center gap-2">
+                        @if ($promptCreateDisabledReason)
+                            <span class="hidden max-w-32 truncate text-[10px] font-semibold text-slate-400 sm:inline" title="{{ $promptCreateDisabledReason }}">
+                                {{ $promptCreateDisabledReason }}
+                            </span>
+                        @endif
+                        <button
+                            type="button"
+                            x-on:click="@js(! (bool) $promptCreateDisabledReason) && window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started'))"
+                            wire:click="generateWorkflowPrompts"
+                            wire:loading.attr="disabled"
+                            wire:target="generateWorkflowPrompts"
+                            class="shrink-0 rounded-lg border border-transparent bg-transparent px-3 py-2 text-xs font-medium text-orange-600 transition hover:bg-orange-50 focus:outline-none focus:ring-4 focus:ring-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
+                            title="{{ $promptCreateDisabledReason ?: 'Generate prompt create' }}"
+                            @disabled((bool) $promptCreateDisabledReason)
+                        >
+                            <span wire:loading.remove wire:target="generateWorkflowPrompts">Generate</span>
+                            <span wire:loading wire:target="generateWorkflowPrompts">Writing...</span>
+                        </button>
+                    </div>
+                @endif
+            </div>
+
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm ring-1 ring-amber-950/[0.03]">
+                <div wire:loading.flex wire:target="generateWorkflowPrompts" class="absolute inset-0 z-10 bg-white/95 backdrop-blur-sm">
+                    <x-spinner />
+                </div>
+
+                <div wire:loading.class="invisible" wire:target="generateWorkflowPrompts" class="h-full w-full">
+                    @if ($topPromptTabs->isNotEmpty())
+                        <div
+                            x-data="{ activePrompt: @js($topPromptTabs->keys()->first()) }"
+                            class="flex h-full flex-col bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,#ffffff,#f8fafc)]"
+                        >
+                            <div class="border-b border-amber-100 px-3 py-3">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <div class="mt-0.5 truncate text-[11px] font-medium text-slate-500">Ready for B5</div>
+                                    </div>
+                                    <span class="shrink-0 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">{{ $topPromptTabs->count() }} parts</span>
+                                </div>
+
+                                <label class="mt-3 block">
+                                    <span class="sr-only">Choose prompt section</span>
+                                    <select
+                                        x-model="activePrompt"
+                                        class="h-9 w-full rounded-lg border border-amber-100 bg-white px-3 text-xs font-bold text-slate-700 shadow-sm transition focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                                    >
+                                        @foreach ($topPromptTabs as $tabKey => $tab)
+                                            <option value="{{ $tabKey }}">{{ $tab['label'] }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div class="min-h-0 flex-1 overflow-y-auto p-3">
+                                @foreach ($topPromptTabs as $tabKey => $tab)
+                                    <div x-show="activePrompt === @js($tabKey)" x-cloak class="rounded-lg border border-slate-200 bg-white/85 p-3 shadow-sm">
+                                        <div class="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-slate-400">{{ $tab['label'] }}</div>
+                                        <p class="whitespace-pre-line text-xs font-medium leading-5 text-slate-700">{{ $tab['content'] }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <div class="flex h-full flex-col items-center justify-center px-5 text-center">
+                            <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-lg font-black text-amber-700">P</div>
+                            <div class="text-sm font-bold text-slate-700">No prompt yet</div>
+                            <div class="mt-1 text-xs font-medium leading-5 text-slate-400">
+                                {{ $topScriptTabs->isNotEmpty() ? 'Bam Generate de tao B4 prompt.' : 'Tao Script truoc khi tao B4 prompt.' }}
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        @php
+            $mockupB5Slots = [
+                'usp' => ['number' => 1, 'label' => 'USP', 'column' => 'mockup1', 'preview' => 'mockup1_preview_url'],
+                'before_after' => ['number' => 2, 'label' => 'Before After', 'column' => 'mockup2', 'preview' => 'mockup2_preview_url'],
+                'comparison' => ['number' => 3, 'label' => 'Comparison', 'column' => 'mockup3', 'preview' => 'mockup3_preview_url'],
+                'features' => ['number' => 4, 'label' => 'Features', 'column' => 'mockup4', 'preview' => 'mockup4_preview_url'],
+                'details' => ['number' => 5, 'label' => 'Details', 'column' => 'mockup5', 'preview' => 'mockup5_preview_url'],
+                'custom_guide' => ['number' => 6, 'label' => 'Custom Guide', 'column' => 'mockup6', 'preview' => 'mockup6_preview_url'],
+            ];
+            $mockupB5DisplayUrl = static function (mixed $url): ?string {
+                if (! is_string($url) || trim($url) === '') {
+                    return null;
+                }
+
+                return trim($url);
+            };
+            $mockupB5Images = collect($mockupB5Slots)
+                ->mapWithKeys(fn (array $slot, string $key): array => [$key => [
+                    'number' => $slot['number'],
+                    'label' => $slot['label'],
+                    'preview' => $mockupB5DisplayUrl($asset->getAttribute($slot['column'])),
+                    'original' => $mockupB5DisplayUrl($asset->getAttribute($slot['column'])),
+                ]])
+                ->all();
+            $mockupB5Ready = collect(array_keys($mockupB5Slots))
+                ->every(fn (string $key): bool => filled($workflow['prompts'][$key] ?? null));
+            $mockupB5PromptSlots = collect(array_keys($mockupB5Slots))
+                ->filter(fn (string $key): bool => filled($workflow['prompts'][$key] ?? null))
+                ->values()
+                ->all();
+        @endphp
+
+        @once
+            <style>
+                [x-cloak] { display: none !important; }
+            </style>
+            <script>
+                if (! window.ornamentAmazonTwoMockupB5) {
+                    window.ornamentAmazonTwoMockupB5 = function (config) {
+                        return {
+                    slots: config.slots || [],
+                    promptSlots: config.promptSlots || [],
+                    images: config.images || {},
+                    slotStates: {},
+                    running: false,
+                    doneCount: 0,
+                    targetCount: 0,
+                    errorCount: 0,
+                    statusMessage: '',
+                    statusState: 'idle',
+                    csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+
+                    init() {
+                        window.addEventListener('ornament-amazon-two-preview-mockup-generation-started', (event) => {
+                            if (Number(event.detail?.assetId || 0) !== Number(config.assetId)) {
+                                return;
+                            }
+
+                            const slot = event.detail?.slot;
+
+                            if (! slot || ! this.slots.includes(slot)) {
+                                return;
+                            }
+
+                            this.setSlotState(slot, 'generating');
+                            this.images[slot] = {
+                                ...(this.images[slot] || {}),
+                                preview: null,
+                                original: null,
+                            };
+                            this.statusMessage = `Generating mockup ${this.slotNumber(slot)}...`;
+                            this.statusState = 'running';
+
+                            window.clearTimeout(this.images[slot]?.timeoutId);
+                            const timeoutId = window.setTimeout(() => {
+                                if (this.slotStates[slot] === 'generating') {
+                                    this.setSlotState(slot, 'error');
+                                    this.statusMessage = `Generate failed: ${slot}`;
+                                    this.statusState = 'error';
+                                }
+                            }, 10 * 60 * 1000);
+
+                            this.images[slot] = {
+                                ...(this.images[slot] || {}),
+                                timeoutId,
+                            };
+                        });
+
+                        window.addEventListener('ornament-amazon-two-preview-mockup-generation-finished', (event) => {
+                            if (Number(event.detail?.assetId || 0) !== Number(config.assetId)) {
+                                return;
+                            }
+
+                            const slot = event.detail?.slot;
+
+                            if (! slot || ! this.slots.includes(slot)) {
+                                return;
+                            }
+
+                            window.clearTimeout(this.images[slot]?.timeoutId);
+
+                            if (event.detail?.ok === false) {
+                                this.setSlotState(slot, 'error');
+                                this.statusMessage = event.detail?.message || `Generate failed: ${slot}`;
+                                this.statusState = 'error';
+                                return;
+                            }
+
+                            const imageUrl = event.detail?.url || null;
+
+                            if (imageUrl) {
+                                this.images[slot] = {
+                                    ...(this.images[slot] || {}),
+                                    preview: imageUrl,
+                                    original: imageUrl,
+                                };
+                            }
+
+                            this.setSlotState(slot, 'done');
+                            this.statusMessage = `Done mockup ${this.slotNumber(slot)}`;
+                            this.statusState = 'done';
+                        });
+                    },
+
+                    doneImageCount() {
+                        return this.slots.filter((slot) => this.originalUrl(slot)).length;
+                    },
+
+                    imageUrl(slot) {
+                        return this.images?.[slot]?.preview || this.images?.[slot]?.original || null;
+                    },
+
+                    originalUrl(slot) {
+                        return this.images?.[slot]?.original || this.images?.[slot]?.preview || null;
+                    },
+
+                    gallery() {
+                        return this.slots
+                            .map((slot) => {
+                                const original = this.originalUrl(slot);
+                                const preview = this.imageUrl(slot);
+
+                                if (! original && ! preview) {
+                                    return null;
+                                }
+
+                                return {
+                                    src: preview || original,
+                                    original: original || preview,
+                                    title: `MOCKUP ${this.slotNumber(slot)}`,
+                                    editTarget: `mockup${this.slotNumber(slot)}`,
+                                };
+                            })
+                            .filter(Boolean);
+                    },
+
+                    galleryIndex(slot) {
+                        const current = this.originalUrl(slot);
+
+                        if (! current) {
+                            return 0;
+                        }
+
+                        return Math.max(0, this.gallery().findIndex((image) => image.original === current || image.src === current));
+                    },
+
+                    previewSlot(slot) {
+                        const src = this.imageUrl(slot);
+                        const original = this.originalUrl(slot);
+
+                        if (! src && ! original) {
+                            window.dispatchEvent(new CustomEvent('toast', {
+                                detail: {
+                                    type: 'error',
+                                    title: 'Khong co anh *',
+                                    message: `Mockup ${this.slotNumber(slot)} chua co anh.`,
+                                },
+                            }));
+
+                            return;
+                        }
+
+                        if (window.Livewire && typeof window.Livewire.dispatch === 'function') {
+                            window.Livewire.dispatch('review-image', {
+                                src: src || original,
+                                original: original || src,
+                                title: `MOCKUP ${this.slotNumber(slot)}`,
+                                gallery: this.gallery(),
+                                currentIndex: this.galleryIndex(slot),
+                                action: 'ornament-amazon-two-custom-image',
+                                productSlug: 'ornament-amazon-2',
+                                assetId: config.assetId,
+                                keyword: config.keyword,
+                                editTarget: `mockup${this.slotNumber(slot)}`,
+                                providerKey: config.providerKey,
+                                imageModel: config.imageModel,
+                            });
+                        } else {
+                            window.open(original || src, '_blank', 'noopener');
+                        }
+                    },
+
+                    slotNumber(slot) {
+                        return this.images?.[slot]?.number || this.slots.indexOf(slot) + 1;
+                    },
+
+                    isGenerating(slot) {
+                        return this.slotStates[slot] === 'generating'
+                            || (
+                                this.running
+                                && this.promptSlots.includes(slot)
+                                && this.slotStates[slot] !== 'done'
+                                && this.slotStates[slot] !== 'error'
+                            );
+                    },
+
+                    setSlotState(slot, state) {
+                        this.slotStates = {
+                            ...this.slotStates,
+                            [slot]: state,
+                        };
+                    },
+
+                    slotMessage(slot, fallback) {
+                        if (this.slotStates[slot] === 'generating') {
+                            return 'Generating';
+                        }
+
+                        if (this.slotStates[slot] === 'queued') {
+                            return 'Queued';
+                        }
+
+                        if (this.slotStates[slot] === 'error') {
+                            return 'Generate failed';
+                        }
+
+                        return fallback;
+                    },
+
+                    async generateAll() {
+                        if (this.running) {
+                            return;
+                        }
+
+                        if (config.disabledReason) {
+                            this.statusMessage = config.disabledReason;
+                            this.statusState = 'error';
+                            return;
+                        }
+
+                        if (! this.promptSlots.length) {
+                            this.statusMessage = 'Can tao B4 prompt truoc.';
+                            this.statusState = 'error';
+                            return;
+                        }
+
+                        this.running = true;
+                        this.doneCount = 0;
+                        this.targetCount = this.promptSlots.length;
+                        this.errorCount = 0;
+                        this.statusMessage = `Generating 0/${this.targetCount}...`;
+                        this.statusState = 'running';
+                        this.slots.forEach((slot) => {
+                            if (this.promptSlots.includes(slot)) {
+                                this.setSlotState(slot, 'generating');
+                                this.images[slot] = {
+                                    ...(this.images[slot] || {}),
+                                    preview: null,
+                                    original: null,
+                                };
+                            } else {
+                                this.setSlotState(slot, 'missing');
+                            }
+                        });
+                        window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started'));
+                        await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+                        await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+                        try {
+                            try {
+                                await this.postJson(config.prepareUrl, {});
+                            } catch (error) {
+                                this.promptSlots.forEach((slot) => {
+                                    this.setSlotState(slot, 'error');
+                                });
+                                this.errorCount = this.promptSlots.length;
+                                this.statusMessage = error.message || 'Khong the chuan bi tao mockup.';
+                                this.statusState = 'error';
+
+                                return;
+                            }
+
+                            await Promise.all(this.promptSlots.map(async (slot) => {
+                                try {
+                                    this.setSlotState(slot, 'generating');
+                                    const data = await this.postJson(
+                                        config.generateUrlTemplate.replace('__slot__', encodeURIComponent(slot)),
+                                        {
+                                            provider_key: config.providerKey,
+                                            image_model: config.imageModel,
+                                        },
+                                    );
+
+                                    const imageUrl = data.url || null;
+                                    this.images[slot] = {
+                                        ...(this.images[slot] || {}),
+                                        preview: imageUrl,
+                                        original: imageUrl,
+                                    };
+                                    this.setSlotState(slot, 'done');
+                                    this.doneCount += 1;
+                                    this.statusMessage = `Generating ${this.doneCount}/${this.targetCount}...`;
+                                } catch (error) {
+                                    this.setSlotState(slot, 'error');
+                                    this.errorCount += 1;
+                                    this.statusMessage = error.message || `Generate failed: ${slot}`;
+                                    this.statusState = 'error';
+                                }
+                            }));
+
+                            if (window.Livewire && typeof window.Livewire.dispatch === 'function') {
+                                window.Livewire.dispatch('ornament-amazon-two-product-design-updated', { assetId: config.assetId });
+                            }
+
+                            if (this.errorCount === 0) {
+                                this.statusMessage = `Done ${this.doneCount}/${this.targetCount}`;
+                                this.statusState = 'done';
+                            }
+                        } finally {
+                            this.running = false;
+                            window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-finished'));
+                        }
+                    },
+
+                    async postJson(url, payload) {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': this.csrfToken,
+                            },
+                            body: JSON.stringify(payload),
+                        });
+
+                        const data = await response.json().catch(() => ({}));
+
+                        if (! response.ok || data.ok === false) {
+                            throw new Error(data.message || `HTTP ${response.status}`);
+                        }
+
+                        return data;
+                    },
+                        };
+                    };
+                }
+            </script>
+        @endonce
+
+        @php
+            $generateDisabledReason = $asset->is_approved
+                ? 'Item da duyet.'
+                : (! $asset->redesign
+                    ? 'Can tao anh Create Master truoc.'
+                    : ($mockupB5PromptSlots === [] ? 'Can tao B4 prompt truoc.' : null));
+        @endphp
+
+        <div
+            class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}"
+            x-data="window.ornamentAmazonTwoMockupB5({
+                slots: @js(array_keys($mockupB5Slots)),
+                promptSlots: @js($mockupB5PromptSlots),
+                images: @js($mockupB5Images),
+                prepareUrl: @js(route('offorest.ornament-amazon-2.workflow.listing-images.prepare', ['asset' => $asset->id])),
+                generateUrlTemplate: @js(route('offorest.ornament-amazon-2.workflow.listing-images.generate', ['asset' => $asset->id, 'slot' => '__slot__'])),
+                providerKey: @js($providerKey),
+                imageModel: @js($imageModel),
+                assetId: @js($asset->id),
+                keyword: @js($asset->keyword),
+                disabledReason: @js($generateDisabledReason),
+            })"
+        >
+            <div class="mb-2 flex h-5 items-center justify-between gap-2">
+                <x-label class="truncate text-xs font-bold uppercase text-orange-600">6. Mockup</x-label>
+                <div class="flex min-w-0 items-center gap-2">
+                    @if ($generateDisabledReason)
+                        <span class="hidden max-w-28 truncate text-[10px] font-semibold text-slate-400 sm:inline" title="{{ $generateDisabledReason }}">
+                            {{ $generateDisabledReason }}
+                        </span>
+                    @endif
+                    <button
+                        type="button"
+                        x-on:click.prevent.stop="$data.generateAll()"
+                        x-bind:disabled="running || @js((bool) $generateDisabledReason)"
+                        x-bind:aria-busy="running ? 'true' : 'false'"
+                        title="{{ $generateDisabledReason ?: 'Generate all 6 mockup images' }}"
+                        class="shrink-0 cursor-pointer rounded-lg border border-transparent bg-transparent px-3 py-2 text-xs font-medium text-orange-600 transition-all duration-200 ease-out hover:bg-orange-50 focus:outline-none focus:ring-4 focus:ring-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <span
+                            x-show="running"
+                            x-cloak
+                            class="mr-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700 align-[-2px]"
+                            aria-hidden="true"
+                        ></span>
+                        <span>Generate</span>
+                        <span x-show="running" x-cloak class="ml-1 text-orange-500">...</span>
+                    </button>
+                </div>
+            </div>
+
+
+            @php
+                $psdMockups = collect($mockupB5Slots)
+                    ->map(fn (array $slot, string $slotKey) => [
+                        'slotKey' => $slotKey,
+                        'slot' => $slot['number'],
+                        'label' => $slot['label'],
+                        'column' => $slot['column'],
+                        'src' => $mockupB5DisplayUrl($asset->getAttribute($slot['column'])),
+                        'original' => $mockupB5DisplayUrl($asset->getAttribute($slot['column'])),
+                        'prompt' => is_string($workflow['prompts'][$slotKey] ?? null) ? trim($workflow['prompts'][$slotKey]) : '',
+                        'canGenerate' => ! $asset->is_approved && filled($asset->redesign) && filled($workflow['prompts'][$slotKey] ?? null),
+                    ]);
+                $psdMockupGallery = $psdMockups
+                    ->filter(fn (array $mockup): bool => filled($mockup['original']) || $mockup['canGenerate'])
+                    ->map(fn (array $mockup) => [
+                        'src' => $mockup['src'] ?: '',
+                        'original' => $mockup['original'] ?: '',
+                        'title' => 'MOCKUP '.$mockup['slot'].' '.$mockup['label'],
+                        'editTarget' => $mockup['column'],
+                        'prompt' => $mockup['prompt'],
+                        'canGenerate' => $mockup['canGenerate'],
+                    ])
+                    ->values()
+                    ->all();
+                $psdMockupGalleryIndexByTarget = collect($psdMockupGallery)
+                    ->mapWithKeys(fn (array $mockup, int $index): array => [
+                        (string) ($mockup['editTarget'] ?? '') => $index,
+                    ])
+                    ->all();
+                $psdMockupCount = $psdMockups->filter(fn ($mockup) => filled($mockup['original']))->count();
+            @endphp
+
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+                <div wire:loading.flex wire:target="generateAllWorkflowImages" class="absolute inset-0 z-40 items-center justify-center bg-white/85 backdrop-blur-sm">
+                    <div class="flex flex-col items-center gap-2 text-center text-orange-600">
+                        <span class="h-8 w-8 animate-spin rounded-full border-4 border-orange-200 border-t-orange-600"></span>
+                        <span class="text-xs font-bold text-slate-700">Generating mockups...</span>
+                    </div>
+                </div>
+
+                <div class="flex h-full min-h-0 flex-col">
+                    <div class="mb-2 flex items-center justify-between gap-2 px-1">
+                        <span class="text-xs font-bold uppercase text-slate-600">
+                            <span>{{ $psdMockupCount }}</span>/6 MOCKUP
+                        </span>
+
+                        <span x-show="! running" class="text-[11px] font-medium text-slate-400">Ready</span>
+
+                        <span x-show="running" x-cloak class="inline-flex items-center gap-1.5 text-[11px] font-bold text-orange-600">
+                            <span class="h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-600"></span>
+                            <span x-text="doneCount + '/' + targetCount"></span>
+                        </span>
+                    </div>
+
+                    <div
+                        x-show="statusMessage"
+                        x-cloak
+                        class="mb-2 rounded-md border px-2 py-1 text-[10px] font-semibold"
+                        x-bind:class="{
+                            'border-orange-200 bg-orange-50 text-orange-700': statusState === 'running',
+                            'border-emerald-200 bg-emerald-50 text-emerald-700': statusState === 'done',
+                            'border-red-200 bg-red-50 text-red-700': statusState === 'error',
+                            'border-slate-200 bg-slate-50 text-slate-600': statusState === 'idle'
+                        }"
+                        x-text="statusMessage"
+                    ></div>
+
+                    <div class="min-h-0 flex-1 overflow-y-auto pr-1">
+                        <div class="grid grid-cols-2 gap-2">
+                            @foreach ($mockupB5Slots as $slotKey => $slot)
+                                @php
+                                    $slotFallback = $asset->redesign
+                                        ? ($mockupB5Ready ? 'Waiting image' : 'Need B4')
+                                        : 'Need master';
+                                    $slotImageUrl = $mockupB5DisplayUrl($asset->getAttribute($slot['column']));
+                                    $slotPrompt = is_string($workflow['prompts'][$slotKey] ?? null) ? trim($workflow['prompts'][$slotKey]) : '';
+                                    $slotCanGenerate = ! $asset->is_approved && filled($asset->redesign) && $slotPrompt !== '';
+                                    $slotCanPreview = filled($slotImageUrl) || $slotCanGenerate;
+                                    $slotGalleryIndex = $psdMockupGalleryIndexByTarget[$slot['column']] ?? 0;
+                                @endphp
+
+                                <div class="relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition-all duration-200 ease-out hover:border-orange-200">
+                                    @if ($slotImageUrl)
+                                        <button
+                                            type="button"
+                                            wire:click="$dispatch('review-image', { src: @js($slotImageUrl), original: @js($slotImageUrl), title: @js('MOCKUP '.$slot['number'].' '.$slot['label']), gallery: @js($psdMockupGallery), currentIndex: {{ $slotGalleryIndex }}, action: 'ornament-amazon-two-custom-image', productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword), editTarget: @js($slot['column']), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
+                                            class="relative h-full w-full cursor-pointer overflow-hidden transition-all duration-200 ease-out hover:bg-orange-50 hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+                                        >
+                                            <img
+                                                src="{{ $slotImageUrl }}"
+                                                alt="MOCKUP {{ $slot['number'] }} {{ $slot['label'] }}"
+                                                loading="lazy"
+                                                decoding="async"
+                                                fetchpriority="low"
+                                                class="h-full w-full object-cover"
+                                            >
+                                        </button>
+                                    @else
+                                        <button
+                                            type="button"
+                                            @if ($slotCanPreview)
+                                                wire:click="$dispatch('review-image', { src: '', original: '', title: @js('MOCKUP '.$slot['number'].' '.$slot['label']), gallery: @js($psdMockupGallery), currentIndex: {{ $slotGalleryIndex }}, action: 'ornament-amazon-two-custom-image', productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword), editTarget: @js($slot['column']), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
+                                            @else
+                                                disabled
+                                                aria-disabled="true"
+                                            @endif
+                                            class="relative h-full w-full overflow-hidden transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 {{ $slotCanPreview ? 'cursor-pointer hover:bg-orange-50 hover:opacity-95' : 'cursor-not-allowed opacity-70' }}"
+                                        >
+                                            <template x-if="imageUrl(@js($slotKey))">
+                                                <img
+                                                    x-bind:src="imageUrl(@js($slotKey))"
+                                                    alt="MOCKUP {{ $slot['number'] }} {{ $slot['label'] }}"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    fetchpriority="low"
+                                                    class="h-full w-full object-cover"
+                                                >
+                                            </template>
+
+                                            <div
+                                                x-show="! imageUrl(@js($slotKey))"
+                                                class="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-2 text-center"
+                                            >
+                                                <div class="flex flex-col items-center gap-1.5 text-slate-400">
+                                                    <span class="text-[10px] font-semibold leading-3 text-slate-400">
+                                                        <span x-show="isGenerating(@js($slotKey))" x-cloak>{{ $slotFallback }}</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    @endif
+
+                                    <div
+                                        x-show="isGenerating(@js($slotKey))"
+                                        x-cloak
+                                        class="absolute inset-0 z-20 bg-slate-50"
+                                    >
+                                        <x-spinner />
+                                    </div>
+
+                                    <div
+                                        x-show="slotStates[@js($slotKey)] === 'error'"
+                                        x-cloak
+                                        class="absolute inset-x-1.5 bottom-1.5 rounded-md border border-red-200 bg-red-50 px-1.5 py-1 text-center font-mono text-[9px] font-bold text-red-700 shadow-sm"
+                                    >
+                                        Error
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+</article>

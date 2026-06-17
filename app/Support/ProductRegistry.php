@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Livewire\Pages\Mockup\Index as MockupPage;
 use App\Livewire\Pages\OrnamentAmazon\ListOrnamentAmazon;
+use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\Poster\Index as PosterPage;
 use App\Livewire\Pages\Redesign\Index as RedesignPage;
@@ -69,6 +70,16 @@ class ProductRegistry
                 'path' => 'ornament-etsy',
                 'component' => ListOrnamentEtsy::class,
                 'sort_order' => 36,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Ornament Amazon 2',
+                'slug' => 'ornament-amazon-2',
+                'description' => 'Create a second Amazon ornament-ready workflow.',
+                'route_name' => 'offorest.products.ornament-amazon-2',
+                'path' => 'ornament-amazon-2',
+                'component' => ListOrnamentAmazonTwo::class,
+                'sort_order' => 37,
                 'is_active' => true,
             ],
             [

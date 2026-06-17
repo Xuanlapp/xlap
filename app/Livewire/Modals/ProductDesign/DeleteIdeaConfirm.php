@@ -5,6 +5,8 @@ namespace App\Livewire\Modals\ProductDesign;
 use App\Livewire\Concerns\ReportsUserActionErrors;
 use App\Livewire\Pages\OrnamentAmazon\ListOrnamentAmazon;
 use App\Livewire\Pages\OrnamentAmazon\OrnamentAmazonStatusPanel;
+use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
+use App\Livewire\Pages\OrnamentAmazonTwo\OrnamentAmazonTwoStatusPanel;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\OrnamentEtsy\OrnamentEtsyStatusPanel;
 use App\Livewire\Pages\Sticker\ListSticker;
@@ -12,6 +14,7 @@ use App\Livewire\Pages\Sticker\StickerStatusPanel;
 use App\Models\ProductDesignAsset;
 use App\Services\Logging\ActivityLogService;
 use App\Services\OrnamentAmazon\OrnamentAmazonService;
+use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
@@ -48,7 +51,7 @@ class DeleteIdeaConfirm extends Component
         $assetId = (int) ($arguments['assetId'] ?? 0);
         $productSlug = (string) ($arguments['productSlug'] ?? '');
 
-        if ($assetId < 1 || ! in_array($productSlug, ['sticker', 'ornament', 'ornament-etsy'], true)) {
+        if ($assetId < 1 || ! in_array($productSlug, ['sticker', 'ornament', 'ornament-etsy', 'ornament-amazon-2'], true)) {
             return;
         }
 
@@ -108,6 +111,7 @@ class DeleteIdeaConfirm extends Component
             'sticker' => app(StickerService::class)->deleteAsset(auth()->user(), $this->assetId),
             'ornament' => app(OrnamentAmazonService::class)->deleteAsset(auth()->user(), $this->assetId),
             'ornament-etsy' => app(OrnamentEtsyService::class)->deleteAsset(auth()->user(), $this->assetId),
+            'ornament-amazon-2' => app(OrnamentAmazonTwoService::class)->deleteAsset(auth()->user(), $this->assetId),
             default => throw new RuntimeException('Product khong hop le.'),
         };
     }
@@ -118,6 +122,7 @@ class DeleteIdeaConfirm extends Component
             'sticker' => 'Sticker Workspace',
             'ornament' => 'Ornament Amazon',
             'ornament-etsy' => 'Ornament Etsy',
+            'ornament-amazon-2' => 'Ornament Amazon 2',
             default => 'trang hien tai',
         };
     }
@@ -128,6 +133,7 @@ class DeleteIdeaConfirm extends Component
             'sticker' => 'sticker.item_deleted',
             'ornament' => 'ornament.item_deleted',
             'ornament-etsy' => 'ornament_etsy.item_deleted',
+            'ornament-amazon-2' => 'ornament_amazon_2.item_deleted',
             default => 'product_design.item_deleted',
         };
 
@@ -145,6 +151,7 @@ class DeleteIdeaConfirm extends Component
             'sticker' => $this->dispatchStickerEvents(),
             'ornament' => $this->dispatchOrnamentEvents(),
             'ornament-etsy' => $this->dispatchOrnamentEtsyEvents(),
+            'ornament-amazon-2' => $this->dispatchOrnamentAmazonTwoEvents(),
             default => null,
         };
     }
@@ -171,5 +178,13 @@ class DeleteIdeaConfirm extends Component
         $this->dispatch('ornament-etsy-product-design-workflow-updated')->to(OrnamentEtsyStatusPanel::class);
         $this->dispatch('ornament-etsy-product-design-approval-updated')->to(ListOrnamentEtsy::class);
         $this->dispatch('ornament-etsy-product-design-approval-updated')->to(OrnamentEtsyStatusPanel::class);
+    }
+
+    private function dispatchOrnamentAmazonTwoEvents(): void
+    {
+        $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
+        $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
+        $this->dispatch('ornament-amazon-two-product-design-approval-updated')->to(ListOrnamentAmazonTwo::class);
+        $this->dispatch('ornament-amazon-two-product-design-approval-updated')->to(OrnamentAmazonTwoStatusPanel::class);
     }
 }

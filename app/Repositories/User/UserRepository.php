@@ -14,6 +14,7 @@ class UserRepository
     {
         return User::query()
             ->with([
+                'aiProviders',
                 'vertexApiCredential',
                 'products' => fn ($query) => $query->where('is_active', true),
             ])

@@ -12,7 +12,7 @@ new class extends Component
     {
         $logout();
 
-        $this->redirect('/', navigate: true);
+        $this->redirect('/');
     }
 
     /**
@@ -39,7 +39,7 @@ new class extends Component
     $activeClass = 'bg-blue-600 text-white shadow-lg shadow-blue-600/18';
     $inactiveClass = 'text-slate-600 hover:bg-slate-100 hover:text-slate-950';
     $iconClass = 'h-5 w-5 shrink-0';
-    $pageProducts = $products->whereIn('slug', ['ornament', 'ornament-etsy', 'sticker']);
+    $pageProducts = $products->whereIn('slug', ['ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker']);
     $ideaProducts = $products->whereIn('slug', ['ytrends', 'idea-etsy']);
     $avatarPalettes = [
         'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600',
@@ -54,11 +54,11 @@ new class extends Component
 @endphp
 
 <div x-data="{ sidebarOpen: false, userMenuOpen: false }" x-on:keydown.escape.window="sidebarOpen = false; userMenuOpen = false">
-    <div class="sticky top-0 z-40 border-b border-slate-500 px-3 py-2 text-slate-950 backdrop-blur md:hidden">
-        <div class="flex h-12 items-center rounded-2xl border border-slate-300 bg-white/80 px-2 shadow-sm shadow-slate-300/40">
+    <div class="sticky top-0 z-40 border-b border-slate-200 bg-gray-100 px-3 py-2 text-slate-950">
+        <div class="flex h-11 items-center rounded-xl border border-slate-300 bg-white px-2 shadow-sm">
         <button
             type="button"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none"
             x-on:click="sidebarOpen = true"
             aria-label="Open navigation"
         >
@@ -70,15 +70,15 @@ new class extends Component
         </button>
 
         <a href="{{ route('dashboard') }}" wire:navigate class="ml-2 flex min-w-0 items-center gap-2 focus:outline-none">
-            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950 shadow-sm">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 shadow-sm">
                 <x-application-logo class="h-6 w-6" />
             </span>
-            <span class="truncate text-sm font-extrabold tracking-wide">Offorest</span>
+            <span class="truncate text-sm font-semibold">Offorest</span>
         </a>
 
         <button
             type="button"
-            class="ml-auto flex h-9 w-9 items-center justify-center overflow-hidden rounded-full {{ $avatarClass }} text-sm font-extrabold text-black shadow-sm ring-2 ring-white focus:outline-none"
+            class="ml-auto flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white text-sm font-semibold text-slate-950 shadow-sm ring-2 ring-blue-200 focus:outline-none"
             x-on:click="userMenuOpen = ! userMenuOpen"
             x-bind:aria-expanded="userMenuOpen.toString()"
             aria-haspopup="true"
@@ -147,7 +147,7 @@ new class extends Component
         </div>
     </div>
 
-    <aside class="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-300 bg-gray-200 p-3 md:block">
+    <aside class="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-300 bg-gray-200 p-3">
         <div class="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-300 bg-white shadow-xl shadow-slate-300/70 ring-1 ring-slate-950/5">
             <div class="flex h-20 items-center gap-3 border-b border-slate-200 px-4">
                 <a href="{{ route('dashboard') }}" wire:navigate class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 shadow-sm">
@@ -286,6 +286,15 @@ new class extends Component
                                 </svg>
                                 <span>Logs</span>
                             </a>
+                            <a href="{{ route('offorest.admin.api-credits') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.api-credits') ? $activeClass : $inactiveClass }}">
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.api-credits') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                    <path d="M4 7h16" />
+                                    <path d="M4 17h16" />
+                                    <path d="M7 4v6" />
+                                    <path d="M17 14v6" />
+                                </svg>
+                                <span>API Credits</span>
+                            </a>
                         </div>
                     </div>
                 @endif
@@ -310,8 +319,8 @@ new class extends Component
         </div>
     </aside>
 
-    <div x-show="sidebarOpen" x-cloak class="fixed inset-0 z-50 md:hidden">
-        <button type="button" class="absolute inset-0 bg-slate-950/45 backdrop-blur-sm focus:outline-none" x-on:click="sidebarOpen = false" aria-label="Close navigation"></button>
+    <div x-show="sidebarOpen" x-cloak class="fixed inset-0 z-50">
+        <button type="button" class="absolute inset-0 bg-slate-200/60 backdrop-blur-sm focus:outline-none" x-on:click="sidebarOpen = false" aria-label="Close navigation"></button>
         <aside
             x-transition:enter="transition ease-out duration-200"
             x-transition:enter-start="-translate-x-full"
@@ -319,17 +328,18 @@ new class extends Component
             x-transition:leave="transition ease-in duration-150"
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="-translate-x-full"
-            class="relative flex h-full w-80 max-w-[86vw] flex-col bg-white shadow-2xl focus:outline-none"
+            class="relative flex h-full flex-col bg-white shadow-2xl focus:outline-none"
+            style="width: 240px; max-width: 82vw;"
         >
             <div class="flex h-full min-h-0 flex-col overflow-hidden border-r border-slate-200 bg-white">
                 <div class="flex h-16 items-center justify-between border-b border-slate-200 px-4">
                     <a href="{{ route('dashboard') }}" wire:navigate x-on:click="sidebarOpen = false" class="flex items-center gap-3 focus:outline-none">
-                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                            <x-application-logo class="h-7 w-7" />
+                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
+                            <x-application-logo class="h-6 w-6" />
                         </span>
-                        <span class="text-sm font-extrabold tracking-wide text-slate-950">Offorest</span>
+                        <span class="text-sm font-semibold tracking-normal text-slate-950">Offorest</span>
                     </a>
-                    <button type="button" x-on:click="sidebarOpen = false" class="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none" aria-label="Close navigation">
+                    <button type="button" x-on:click="sidebarOpen = false" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none" aria-label="Close navigation">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M18 6 6 18" />
                             <path d="m6 6 12 12" />
@@ -337,47 +347,52 @@ new class extends Component
                     </button>
                 </div>
 
-                <div class="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+                <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4">
                     <div>
-                        <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Page</p>
-                        <div class="mt-2 space-y-1">
+                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Page</p>
+                        <div class="mt-3 space-y-3">
                             @foreach ($pageProducts as $product)
-                                <a href="{{ route('offorest.products.'.$product->slug) }}" wire:navigate x-on:click="sidebarOpen = false" class="{{ $navItemClass }} {{ request()->routeIs('offorest.products.'.$product->slug) ? $activeClass : $inactiveClass }}">
+                                <a href="{{ route('offorest.products.'.$product->slug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
                                     <span>{{ $product->name }}</span>
                                 </a>
                             @endforeach
                         </div>
                     </div>
                     @if ($ideaProducts->isNotEmpty())
-                        <div class="mt-5 border-t border-slate-200 pt-4">
-                            <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Idea</p>
-                            <div class="mt-2 space-y-1">
+                        <div class="mt-6 border-t border-slate-200 pt-3">
+                            <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Idea</p>
+                            <div class="mt-3 space-y-3">
                                 @foreach ($ideaProducts as $product)
-                                    <a href="{{ route('offorest.products.'.$product->slug) }}" wire:navigate x-on:click="sidebarOpen = false" class="{{ $navItemClass }} {{ request()->routeIs('offorest.products.'.$product->slug) ? $activeClass : $inactiveClass }}">
+                                    <a href="{{ route('offorest.products.'.$product->slug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
                                         <span>{{ $product->name }}</span>
                                     </a>
                                 @endforeach
                             </div>
                         </div>
                     @endif
-                    <div class="mt-5 border-t border-slate-200 pt-4">
-                        <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Catalog</p>
-                        <a href="{{ route('offorest.listing-metadata') }}" wire:navigate x-on:click="sidebarOpen = false" class="{{ $navItemClass }} {{ request()->routeIs('offorest.listing-metadata') ? $activeClass : $inactiveClass }}">Listing</a>
-                        <a href="{{ route('offorest.drive-uploads') }}" wire:navigate x-on:click="sidebarOpen = false" class="{{ $navItemClass }} {{ request()->routeIs('offorest.drive-uploads') ? $activeClass : $inactiveClass }}">Uploads</a>
-                        <a href="{{ route('offorest.exports') }}" wire:navigate x-on:click="sidebarOpen = false" class="{{ $navItemClass }} {{ request()->routeIs('offorest.exports') ? $activeClass : $inactiveClass }}">Export</a>
+                    <div class="mt-6 border-t border-slate-200 pt-3">
+                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Catalog</p>
+                        <div class="mt-3 space-y-3">
+                            <a href="{{ route('offorest.listing-metadata') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Listing</a>
+                            <a href="{{ route('offorest.drive-uploads') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Uploads</a>
+                            <a href="{{ route('offorest.exports') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Export</a>
+                        </div>
                     </div>
                     @if (auth()->user()->is_admin)
-                        <div class="mt-5 border-t border-slate-200 pt-4">
-                            <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Admin</p>
-                            <a href="{{ route('offorest.admin.users') }}" wire:navigate x-on:click="sidebarOpen = false" class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.users') ? $activeClass : $inactiveClass }}">Users</a>
-                            <a href="{{ route('offorest.admin.logs') }}" wire:navigate x-on:click="sidebarOpen = false" class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.logs') ? $activeClass : $inactiveClass }}">Logs</a>
+                        <div class="mt-6 border-t border-slate-200 pt-3">
+                            <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Admin</p>
+                            <div class="mt-3 space-y-3">
+                                <a href="{{ route('offorest.admin.users') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Users</a>
+                                <a href="{{ route('offorest.admin.logs') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Logs</a>
+                                <a href="{{ route('offorest.admin.api-credits') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">API Credits</a>
+                            </div>
                         </div>
                     @endif
                 </div>
 
                 <div class="border-t border-slate-200 p-3">
-                    <div class="flex items-center gap-3 rounded-2xl border border-slate-600 bg-white p-3 shadow-sm">
-                        <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl {{ $avatarClass }} text-sm font-extrabold text-black shadow-sm">
+                    <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-sm font-semibold text-slate-950 shadow-sm">
                             @if (auth()->user()->avatar_path)
                                 <img src="{{ Storage::url(auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" class="h-full w-full object-cover">
                             @else
@@ -385,7 +400,7 @@ new class extends Component
                             @endif
                         </span>
                         <span class="min-w-0">
-                            <span class="block truncate text-sm font-bold text-slate-950">{{ auth()->user()->name }}</span>
+                            <span class="block truncate text-sm font-semibold text-slate-950">{{ auth()->user()->name }}</span>
                             <span class="block truncate text-xs font-medium text-slate-500">{{ auth()->user()->email }}</span>
                         </span>
                         <span class="ml-auto h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100"></span>

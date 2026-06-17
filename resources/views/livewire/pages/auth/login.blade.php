@@ -3,6 +3,7 @@
 use App\Livewire\Forms\LoginForm;
 use App\Support\TurnstileVerifier;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -22,7 +23,14 @@ new #[Layout('layouts.guest')] class extends Component
     {
         $this->validate();
 
-        $this->form->authenticate();
+        try {
+            $this->form->authenticate();
+        } catch (ValidationException $exception) {
+            $this->form->turnstileToken = '';
+            $this->dispatch('offorest-turnstile-reset');
+
+            throw $exception;
+        }
 
         Session::regenerate();
 
@@ -120,6 +128,7 @@ new #[Layout('layouts.guest')] class extends Component
                 @if (app(TurnstileVerifier::class)->enabled())
                     <div wire:ignore class="flex justify-center">
                         <div
+                            data-turnstile-login
                             class="cf-turnstile"
                             data-sitekey="{{ app(TurnstileVerifier::class)->siteKey() }}"
                             data-callback="offorestTurnstileVerified"
@@ -151,9 +160,15 @@ new #[Layout('layouts.guest')] class extends Component
 
                 <button
                     type="submit"
-                    class="mt-2 flex w-full items-center justify-center rounded-full bg-gradient-to-r from-sky-600 to-cyan-400 px-5 py-3.5 text-sm font-semibold tracking-wide text-white shadow-lg shadow-sky-500/30 transition duration-200 hover:scale-[1.01] hover:from-sky-500 hover:to-cyan-300 focus:outline-none focus:ring-4 focus:ring-sky-400/30"
+                    wire:loading.attr="disabled"
+                    wire:target="login"
+                    class="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-600 to-cyan-400 px-5 py-3.5 text-sm font-semibold tracking-wide text-white shadow-lg shadow-sky-500/30 transition duration-200 hover:scale-[1.01] hover:from-sky-500 hover:to-cyan-300 focus:outline-none focus:ring-4 focus:ring-sky-400/30 disabled:cursor-wait disabled:opacity-75"
                 >
-                    ĐĂNG NHẬP
+                    <span wire:loading.remove wire:target="login">ĐĂNG NHẬP</span>
+                    <span wire:loading wire:target="login" class="inline-flex items-center gap-2">
+                        <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                        ĐANG ĐĂNG NHẬP...
+                    </span>
                 </button>
 
                 <div class="flex items-center gap-4 py-2">
@@ -185,15 +200,76 @@ new #[Layout('layouts.guest')] class extends Component
 @if (app(TurnstileVerifier::class)->enabled())
     @once
         @push('scripts')
-            <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+            <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer onload="window.offorestTurnstile?.render()"></script>
             <script>
+                window.offorestTurnstile = window.offorestTurnstile || {
+                    widgetId: null,
+
+                    element() {
+                        return document.querySelector('[data-turnstile-login]');
+                    },
+
+                    livewireComponent() {
+                        const element = this.element();
+                        const root = element?.closest('[wire\\:id]');
+                        const id = root?.getAttribute('wire:id');
+
+                        return id && window.Livewire ? window.Livewire.find(id) : null;
+                    },
+
+                    setToken(token) {
+                        this.livewireComponent()?.set('form.turnstileToken', token || '');
+                    },
+
+                    render() {
+                        const element = this.element();
+
+                        if (! element || ! window.turnstile || element.dataset.rendered === '1') {
+                            return;
+                        }
+
+                        this.widgetId = window.turnstile.render(element, {
+                            sitekey: element.dataset.sitekey,
+                            callback: window.offorestTurnstileVerified,
+                            'expired-callback': window.offorestTurnstileExpired,
+                            'error-callback': window.offorestTurnstileExpired,
+                        });
+                        element.dataset.rendered = '1';
+                    },
+
+                    reset() {
+                        this.setToken('');
+
+                        if (window.turnstile && this.widgetId !== null) {
+                            window.turnstile.reset(this.widgetId);
+                            return;
+                        }
+
+                        const element = this.element();
+
+                        if (element) {
+                            delete element.dataset.rendered;
+                        }
+
+                        this.render();
+                    },
+                };
+
                 window.offorestTurnstileVerified = function (token) {
-                    Livewire.find(document.querySelector('[wire\\:id]').getAttribute('wire:id')).set('form.turnstileToken', token);
+                    window.offorestTurnstile?.setToken(token);
                 };
 
                 window.offorestTurnstileExpired = function () {
-                    Livewire.find(document.querySelector('[wire\\:id]').getAttribute('wire:id')).set('form.turnstileToken', '');
+                    window.offorestTurnstile?.setToken('');
                 };
+
+                window.addEventListener('offorest-turnstile-reset', () => {
+                    setTimeout(() => window.offorestTurnstile?.reset(), 50);
+                });
+
+                document.addEventListener('livewire:navigated', () => {
+                    setTimeout(() => window.offorestTurnstile?.render(), 50);
+                });
             </script>
         @endpush
     @endonce

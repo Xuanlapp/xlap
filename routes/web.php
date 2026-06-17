@@ -4,7 +4,9 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\GoogleDriveOAuthController;
 use App\Http\Controllers\IdeaEtsyExtensionDownloadController;
 use App\Http\Controllers\ImagePreviewController;
+use App\Http\Controllers\OrnamentAmazonTwoWorkflowImageController;
 use App\Livewire\Pages\Admin\ActivityLogs;
+use App\Livewire\Pages\Admin\ApiCredits;
 use App\Livewire\Pages\Admin\ListUser;
 use App\Livewire\Pages\Drive\DriveUploads;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
@@ -55,6 +57,10 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
         ->middleware('admin')
         ->name('offorest.admin.logs');
 
+    Route::get('admin/api-credits', ApiCredits::class)
+        ->middleware('admin')
+        ->name('offorest.admin.api-credits');
+
     Route::get('listing-metadata', ListingMetadataStatus::class)
         ->name('offorest.listing-metadata');
 
@@ -67,6 +73,26 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('idea-etsy/extension/download', IdeaEtsyExtensionDownloadController::class)
         ->middleware('product:idea-etsy')
         ->name('offorest.idea-etsy.extension.download');
+
+    Route::post('ornament-amazon-2/workflow/{asset}/listing-images/prepare', [OrnamentAmazonTwoWorkflowImageController::class, 'prepare'])
+        ->middleware('product:ornament-amazon-2')
+        ->name('offorest.ornament-amazon-2.workflow.listing-images.prepare');
+
+    Route::post('ornament-amazon-2/workflow/{asset}/redesign', [OrnamentAmazonTwoWorkflowImageController::class, 'redesign'])
+        ->middleware('product:ornament-amazon-2')
+        ->name('offorest.ornament-amazon-2.workflow.redesign');
+
+    Route::post('ornament-amazon-2/workflow/{asset}/script', [OrnamentAmazonTwoWorkflowImageController::class, 'script'])
+        ->middleware('product:ornament-amazon-2')
+        ->name('offorest.ornament-amazon-2.workflow.script');
+
+    Route::post('ornament-amazon-2/workflow/{asset}/person/{person}', [OrnamentAmazonTwoWorkflowImageController::class, 'person'])
+        ->middleware('product:ornament-amazon-2')
+        ->name('offorest.ornament-amazon-2.workflow.person');
+
+    Route::post('ornament-amazon-2/workflow/{asset}/listing-images/{slot}', [OrnamentAmazonTwoWorkflowImageController::class, 'generate'])
+        ->middleware('product:ornament-amazon-2')
+        ->name('offorest.ornament-amazon-2.workflow.listing-images.generate');
 
     Route::get('admin/google-drive/connect', [GoogleDriveOAuthController::class, 'connect'])
         ->middleware('admin')
