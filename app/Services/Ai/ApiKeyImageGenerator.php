@@ -59,7 +59,7 @@ class ApiKeyImageGenerator
         }
 
         $credential = $this->credentialFor($user, $providerKey);
-        $response = $this->postImageJsonWithRetries($providerKey, $credential->key_api, $endpoint, [
+        $response = $this->postImageJsonWithRetries($providerKey, $this->credentialKeyApi($credential, $providerKey), $endpoint, [
             'model' => $this->imageModel($providerKey, $model),
             'prompt' => $prompt,
             'response_format' => 'b64_json',
@@ -112,7 +112,7 @@ class ApiKeyImageGenerator
 
         $response = $this->postImageMultipartWithRetries(
             providerKey: $providerKey,
-            apiKey: $credential->key_api,
+            apiKey: $this->credentialKeyApi($credential, $providerKey),
             endpoint: $endpoint,
             images: $images->all(),
             payload: [
@@ -151,7 +151,7 @@ class ApiKeyImageGenerator
 
         $credential = $this->credentialFor($user, $providerKey);
 
-        $response = $this->postTextJsonWithRetries($providerKey, $credential->key_api, $endpoint, [
+        $response = $this->postTextJsonWithRetries($providerKey, $this->credentialKeyApi($credential, $providerKey), $endpoint, [
             'model' => $this->textModel($providerKey, $model),
             'messages' => [
                 [
@@ -192,6 +192,21 @@ class ApiKeyImageGenerator
         }
 
         return $credential;
+    }
+
+    private function credentialKeyApi(UserApiCredential $credential, string $providerKey): string
+    {
+        try {
+            $apiKey = $credential->key_api;
+        } catch (\Throwable) {
+            throw new RuntimeException("API key {$this->providerLabel($providerKey)} khong giai ma duoc tren server nay. Hay nhap lai key trong Admin bang APP_KEY hien tai.");
+        }
+
+        if (! is_string($apiKey) || trim($apiKey) === '') {
+            throw new RuntimeException("API key {$this->providerLabel($providerKey)} dang rong. Hay nhap lai key trong Admin.");
+        }
+
+        return $apiKey;
     }
 
     private function imageEndpoint(string $providerKey, bool $withReferences): ?string

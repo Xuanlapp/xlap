@@ -172,38 +172,62 @@ class OrnamentAmazonTwoService
             return ['ok' => false, 'message' => 'No key'];
         }
 
-        return Cache::remember("v98store-balance:{$credential->id}", now()->addSeconds(45), function () use ($credential): array {
-            $endpoint = config('services.api_key_providers.v98store.balance_endpoint', 'https://v98store.com/check-balance');
+        try {
+            return Cache::remember(
+                "v98store-balance:{$credential->id}",
+                now()->addSeconds(45),
+                fn (): array => $this->fetchV98StoreBalance($credential),
+            );
+        } catch (\Throwable) {
+            return $this->fetchV98StoreBalance($credential);
+        }
+    }
 
-            if (! is_string($endpoint) || trim($endpoint) === '') {
-                return ['ok' => false, 'message' => 'No endpoint'];
-            }
+    /**
+     * @return array{ok: bool, remain_quota?: float|int, used_quota?: float|int, name?: string|null, message?: string}
+     */
+    private function fetchV98StoreBalance(UserApiCredential $credential): array
+    {
+        $endpoint = config('services.api_key_providers.v98store.balance_endpoint', 'https://v98store.com/check-balance');
 
-            try {
-                $response = Http::timeout(10)->get(trim($endpoint), [
-                    'key' => $credential->key_api,
-                ]);
-            } catch (\Throwable) {
-                return ['ok' => false, 'message' => 'Balance unavailable'];
-            }
+        if (! is_string($endpoint) || trim($endpoint) === '') {
+            return ['ok' => false, 'message' => 'No endpoint'];
+        }
 
-            if ($response->failed()) {
-                return ['ok' => false, 'message' => 'Balance unavailable'];
-            }
+        try {
+            $apiKey = $credential->key_api;
+        } catch (\Throwable) {
+            return ['ok' => false, 'message' => 'Key decrypt error'];
+        }
 
-            $payload = $response->json();
+        if (! is_string($apiKey) || trim($apiKey) === '') {
+            return ['ok' => false, 'message' => 'Empty key'];
+        }
 
-            if (! is_array($payload)) {
-                return ['ok' => false, 'message' => 'Invalid balance'];
-            }
+        try {
+            $response = Http::timeout(10)->get(trim($endpoint), [
+                'key' => $apiKey,
+            ]);
+        } catch (\Throwable) {
+            return ['ok' => false, 'message' => 'Balance unavailable'];
+        }
 
-            return [
-                'ok' => true,
-                'remain_quota' => is_numeric($payload['remain_quota'] ?? null) ? $payload['remain_quota'] + 0 : 0,
-                'used_quota' => is_numeric($payload['used_quota'] ?? null) ? $payload['used_quota'] + 0 : 0,
-                'name' => is_string($payload['name'] ?? null) ? $payload['name'] : null,
-            ];
-        });
+        if ($response->failed()) {
+            return ['ok' => false, 'message' => 'Balance unavailable'];
+        }
+
+        $payload = $response->json();
+
+        if (! is_array($payload)) {
+            return ['ok' => false, 'message' => 'Invalid balance'];
+        }
+
+        return [
+            'ok' => true,
+            'remain_quota' => is_numeric($payload['remain_quota'] ?? null) ? $payload['remain_quota'] + 0 : 0,
+            'used_quota' => is_numeric($payload['used_quota'] ?? null) ? $payload['used_quota'] + 0 : 0,
+            'name' => is_string($payload['name'] ?? null) ? $payload['name'] : null,
+        ];
     }
 
     /**
