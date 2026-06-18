@@ -646,27 +646,22 @@
                                 const original = this.originalUrl(slot);
                                 const preview = this.imageUrl(slot);
 
-                                if (! original && ! preview) {
-                                    return null;
-                                }
-
                                 return {
-                                    src: preview || original,
-                                    original: original || preview,
+                                    src: preview || original || null,
+                                    original: original || preview || null,
                                     title: `MOCKUP ${this.slotNumber(slot)}`,
                                     editTarget: `mockup${this.slotNumber(slot)}`,
                                     prompt: this.promptForSlot(slot),
                                     canGenerate: this.promptForSlot(slot) !== '',
                                 };
                             })
-                            .filter(Boolean);
                     },
 
                     galleryIndex(slot) {
                         const current = this.originalUrl(slot);
 
                         if (! current) {
-                            return 0;
+                            return Math.max(0, this.slots.indexOf(slot));
                         }
 
                         return Math.max(0, this.gallery().findIndex((image) => image.original === current || image.src === current));
@@ -676,12 +671,12 @@
                         const src = this.imageUrl(slot);
                         const original = this.originalUrl(slot);
 
-                        if (! src && ! original) {
+                        if (! src && ! original && this.doneImageCount() < 1) {
                             window.dispatchEvent(new CustomEvent('toast', {
                                 detail: {
                                     type: 'error',
-                                    title: 'Khong co anh *',
-                                    message: `Mockup ${this.slotNumber(slot)} chua co anh.`,
+                                    title: 'Khong co anh',
+                                    message: 'Chua co mockup nao de preview.',
                                 },
                             }));
 
@@ -1090,7 +1085,7 @@
                                     $slotImageUrl = $mockupB5DisplayUrl($asset->getAttribute($slot['column']));
                                     $slotPrompt = is_string($workflow['prompts'][$slotKey] ?? null) ? trim($workflow['prompts'][$slotKey]) : '';
                                     $slotCanGenerate = ! $asset->is_approved && filled($asset->redesign) && $slotPrompt !== '';
-                                    $slotCanPreview = filled($slotImageUrl) || $slotCanGenerate;
+                                    $slotCanPreview = $psdMockupCount > 0 || filled($slotImageUrl) || $slotCanGenerate;
                                     $slotGalleryIndex = $psdMockupGalleryIndexByTarget[$slot['column']] ?? 0;
                                 @endphp
 

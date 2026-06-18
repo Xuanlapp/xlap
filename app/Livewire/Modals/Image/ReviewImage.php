@@ -72,7 +72,7 @@ class ReviewImage extends Component
 
     #[On('review-image')]
     public function open(
-        string $src,
+        ?string $src,
         ?string $original = null,
         ?string $title = null,
         array $gallery = [],
