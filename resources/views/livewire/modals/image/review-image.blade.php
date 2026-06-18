@@ -291,8 +291,8 @@
                             @if ($imagePrompt)
                                 @php
                                     $promptText = trim((string) $imagePrompt);
-                                    $promptIsLong = mb_strlen($promptText) > 150;
-                                    $promptPreview = $promptIsLong ? mb_substr($promptText, 0, 150).'...' : $promptText;
+                                    $promptIsLong = mb_strlen($promptText) > 100;
+                                    $promptPreview = $promptIsLong ? mb_substr($promptText, 0, 100).'...' : $promptText;
                                     $previewMockupSlot = match ($editTarget) {
                                         'mockup1' => 'usp',
                                         'mockup2' => 'before_after',
@@ -350,7 +350,7 @@
                                             type="button"
                                             x-on:click="promptExpanded = ! promptExpanded"
                                             class="mt-2 inline-flex cursor-pointer items-center text-xs font-bold text-blue-600 transition hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-                                            x-text="promptExpanded ? 'Thu gon' : 'Xem them'"
+                                            x-text="promptExpanded ? 'Thu gon' : 'Xem tiep'"
                                         ></button>
                                     @endif
                                 </section>

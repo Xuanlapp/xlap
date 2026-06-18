@@ -13,6 +13,7 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
+        <script src="{{ asset('js/ornament-amazon-two-mockup-b5.js') }}?v={{ filemtime(public_path('js/ornament-amazon-two-mockup-b5.js')) }}"></script>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @stack('scripts')
     </head>

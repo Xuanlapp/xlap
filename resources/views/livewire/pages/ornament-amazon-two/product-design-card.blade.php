@@ -513,18 +513,27 @@
                 ->filter(fn (string $key): bool => filled($workflow['prompts'][$key] ?? null))
                 ->values()
                 ->all();
+            $mockupB5Prompts = collect($mockupB5Slots)
+                ->mapWithKeys(fn (array $slot, string $key): array => [
+                    $key => is_string($workflow['prompts'][$key] ?? null) ? trim($workflow['prompts'][$key]) : '',
+                ])
+                ->all();
         @endphp
 
         @once
             <style>
                 [x-cloak] { display: none !important; }
             </style>
+        @endonce
+
+        @script
             <script>
                 if (! window.ornamentAmazonTwoMockupB5) {
                     window.ornamentAmazonTwoMockupB5 = function (config) {
                         return {
                     slots: config.slots || [],
                     promptSlots: config.promptSlots || [],
+                    prompts: config.prompts || {},
                     images: config.images || {},
                     slotStates: {},
                     running: false,
@@ -535,6 +544,7 @@
                     statusPollTimer: null,
                     statusMessage: '',
                     statusState: 'idle',
+                    disabledReason: config.disabledReason || '',
                     csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
 
                     init() {
@@ -624,6 +634,12 @@
                         return this.images?.[slot]?.original || this.images?.[slot]?.preview || null;
                     },
 
+                    promptForSlot(slot) {
+                        const prompt = this.prompts?.[slot] || '';
+
+                        return typeof prompt === 'string' ? prompt.trim() : '';
+                    },
+
                     gallery() {
                         return this.slots
                             .map((slot) => {
@@ -639,6 +655,8 @@
                                     original: original || preview,
                                     title: `MOCKUP ${this.slotNumber(slot)}`,
                                     editTarget: `mockup${this.slotNumber(slot)}`,
+                                    prompt: this.promptForSlot(slot),
+                                    canGenerate: this.promptForSlot(slot) !== '',
                                 };
                             })
                             .filter(Boolean);
@@ -654,7 +672,7 @@
                         return Math.max(0, this.gallery().findIndex((image) => image.original === current || image.src === current));
                     },
 
-                    previewSlot(slot) {
+                    previewSlot(dispatch, slot) {
                         const src = this.imageUrl(slot);
                         const original = this.originalUrl(slot);
 
@@ -670,21 +688,25 @@
                             return;
                         }
 
-                        if (window.Livewire && typeof window.Livewire.dispatch === 'function') {
-                            window.Livewire.dispatch('review-image', {
-                                src: src || original,
-                                original: original || src,
-                                title: `MOCKUP ${this.slotNumber(slot)}`,
-                                gallery: this.gallery(),
-                                currentIndex: this.galleryIndex(slot),
-                                action: 'ornament-amazon-two-custom-image',
-                                productSlug: 'ornament-amazon-2',
-                                assetId: config.assetId,
-                                keyword: config.keyword,
-                                editTarget: `mockup${this.slotNumber(slot)}`,
-                                providerKey: config.providerKey,
-                                imageModel: config.imageModel,
-                            });
+                        const payload = {
+                            src: src || original,
+                            original: original || src,
+                            title: `MOCKUP ${this.slotNumber(slot)}`,
+                            gallery: this.gallery(),
+                            currentIndex: this.galleryIndex(slot),
+                            action: 'ornament-amazon-two-custom-image',
+                            productSlug: 'ornament-amazon-2',
+                            assetId: config.assetId,
+                            keyword: config.keyword,
+                            editTarget: `mockup${this.slotNumber(slot)}`,
+                            providerKey: config.providerKey,
+                            imageModel: config.imageModel,
+                        };
+
+                        if (typeof dispatch === 'function') {
+                            dispatch('review-image', payload);
+                        } else if (window.Livewire && typeof window.Livewire.dispatch === 'function') {
+                            window.Livewire.dispatch('review-image', payload);
                         } else {
                             window.open(original || src, '_blank', 'noopener');
                         }
@@ -941,7 +963,7 @@
                     };
                 }
             </script>
-        @endonce
+        @endscript
 
         @php
             $generateDisabledReason = $asset->is_approved
@@ -956,6 +978,7 @@
             x-data="window.ornamentAmazonTwoMockupB5({
                 slots: @js(array_keys($mockupB5Slots)),
                 promptSlots: @js($mockupB5PromptSlots),
+                prompts: @js($mockupB5Prompts),
                 images: @js($mockupB5Images),
                 prepareUrl: @js(route('offorest.ornament-amazon-2.workflow.listing-images.prepare', ['asset' => $asset->id])),
                 statusUrl: @js(route('offorest.ornament-amazon-2.workflow.listing-images.status', ['asset' => $asset->id])),
@@ -1075,7 +1098,7 @@
                                     @if ($slotImageUrl)
                                         <button
                                             type="button"
-                                            x-on:click.prevent.stop="previewSlot(@js($slotKey))"
+                                            x-on:click.prevent.stop="previewSlot($dispatch, @js($slotKey))"
                                             class="relative h-full w-full cursor-pointer overflow-hidden transition-all duration-200 ease-out hover:bg-orange-50 hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
                                         >
                                             <img
@@ -1091,7 +1114,7 @@
                                         <button
                                             type="button"
                                             @if ($slotCanPreview)
-                                                x-on:click.prevent.stop="previewSlot(@js($slotKey))"
+                                                x-on:click.prevent.stop="previewSlot($dispatch, @js($slotKey))"
                                             @else
                                                 disabled
                                                 aria-disabled="true"
