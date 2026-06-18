@@ -136,6 +136,8 @@ class VertexImageGenerator
         $credential = VertexApiCredential::query()
             ->where('function_key', 'marketplace_listing')
             ->where('is_active', true)
+            ->orderByRaw('CASE WHEN user_id IS NULL THEN 0 ELSE 1 END')
+            ->latest('id')
             ->first();
 
         if (! $credential) {

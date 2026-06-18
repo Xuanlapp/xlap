@@ -237,7 +237,16 @@ PROMPT;
                     $query
                         ->whereNull('marketplace_listing_status')
                         ->orWhere('marketplace_listing_status', 'waiting')
-                        ->orWhere('marketplace_listing_status', 'failed');
+                        ->orWhere('marketplace_listing_status', 'failed')
+                        ->orWhere(function ($query): void {
+                            $query
+                                ->where('marketplace_listing_status', 'processing')
+                                ->where(function ($query): void {
+                                    $query
+                                        ->whereNull('marketplace_listing_started_at')
+                                        ->orWhere('marketplace_listing_started_at', '<=', $this->staleProcessingCutoff());
+                                });
+                        });
                 })
                 ->whereHas('user', function ($query): void {
                     $query
@@ -255,6 +264,13 @@ PROMPT;
 
             return $this->assets->markListingProcessing($asset, $this->marketplaceForAsset($asset));
         });
+    }
+
+    private function staleProcessingCutoff(): \DateTimeInterface
+    {
+        $minutes = max(1, (int) config('services.marketplace_listing.stale_processing_minutes', 10));
+
+        return now()->subMinutes($minutes);
     }
 
     private function generateAmazonMetadata(ProductDesignAsset $asset): ProductDesignAsset

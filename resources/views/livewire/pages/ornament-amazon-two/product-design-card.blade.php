@@ -503,7 +503,7 @@
                 ->mapWithKeys(fn (array $slot, string $key): array => [$key => [
                     'number' => $slot['number'],
                     'label' => $slot['label'],
-                    'preview' => $mockupB5DisplayUrl($asset->getAttribute($slot['column'])),
+                    'preview' => $mockupB5DisplayUrl($asset->getAttribute($slot['preview'])),
                     'original' => $mockupB5DisplayUrl($asset->getAttribute($slot['column'])),
                 ]])
                 ->all();
@@ -587,7 +587,7 @@
                         'slot' => $slot['number'],
                         'label' => $slot['label'],
                         'column' => $slot['column'],
-                        'src' => $mockupB5DisplayUrl($asset->getAttribute($slot['column'])),
+                        'src' => $mockupB5DisplayUrl($asset->getAttribute($slot['preview'])),
                         'original' => $mockupB5DisplayUrl($asset->getAttribute($slot['column'])),
                         'prompt' => is_string($workflow['prompts'][$slotKey] ?? null) ? trim($workflow['prompts'][$slotKey]) : '',
                         'canGenerate' => ! $asset->is_approved && filled($asset->redesign) && filled($workflow['prompts'][$slotKey] ?? null),
@@ -647,7 +647,7 @@
                                     $slotFallback = $asset->redesign
                                         ? ($mockupB5Ready ? 'Waiting image' : 'Need B4')
                                         : 'Need master';
-                                    $slotImageUrl = $mockupB5DisplayUrl($asset->getAttribute($slot['column']));
+                                    $slotImageUrl = $mockupB5DisplayUrl($asset->getAttribute($slot['preview']));
                                     $slotPrompt = is_string($workflow['prompts'][$slotKey] ?? null) ? trim($workflow['prompts'][$slotKey]) : '';
                                     $slotCanGenerate = ! $asset->is_approved && filled($asset->redesign) && $slotPrompt !== '';
                                     $slotCanPreview = $psdMockupCount > 0 || filled($slotImageUrl) || $slotCanGenerate;

@@ -97,11 +97,34 @@ if (! window.ornamentAmazonTwoMockupB5) {
             },
 
             imageUrl(slot) {
-                return this.images?.[slot]?.preview || this.images?.[slot]?.original || null;
+                return this.previewUrl(this.images?.[slot]?.preview || this.images?.[slot]?.original || null);
             },
 
             originalUrl(slot) {
                 return this.images?.[slot]?.original || this.images?.[slot]?.preview || null;
+            },
+
+            previewUrl(url) {
+                if (! url || typeof url !== 'string') {
+                    return null;
+                }
+
+                try {
+                    const parsed = new URL(url, window.location.origin);
+
+                    if (! parsed.hostname.includes('drive.google.com')) {
+                        return url;
+                    }
+
+                    const fileMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/);
+                    const fileId = fileMatch?.[1] || parsed.searchParams.get('id');
+
+                    return fileId
+                        ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w800`
+                        : url;
+                } catch (error) {
+                    return url;
+                }
             },
 
             promptForSlot(slot) {

@@ -101,6 +101,7 @@ return [
         'batch_size' => env('MARKETPLACE_LISTING_BATCH_SIZE', 0),
         'delay_seconds' => env('MARKETPLACE_LISTING_DELAY_SECONDS', 30),
         'lock_seconds' => env('MARKETPLACE_LISTING_LOCK_SECONDS', 21600),
+        'stale_processing_minutes' => env('MARKETPLACE_LISTING_STALE_PROCESSING_MINUTES', 10),
     ],
 
     'api_key_providers' => [
