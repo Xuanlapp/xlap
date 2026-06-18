@@ -882,8 +882,7 @@
             </div>
         </div>
 
-        <div class="grid gap-4 xl:grid-cols-[minmax(320px,420px)_1fr]">
-            <div class="space-y-4">
+        <div class="space-y-4">
                 <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <div class="mb-4 border-b border-slate-100 pb-3">
                         <h2 class="text-base font-semibold text-slate-950">Nguon crawl</h2>
@@ -1044,9 +1043,7 @@
                         </a>
                     </template>
                 </div>
-            </div>
 
-            <div class="min-w-0 space-y-4">
                 <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                     <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:justify-between">
                         <div class="flex items-start gap-4">
