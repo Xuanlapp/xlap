@@ -46,6 +46,24 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticated();
     }
 
+    public function test_users_can_authenticate_using_username(): void
+    {
+        $user = User::factory()->create(['username' => 'login_user']);
+
+        $component = Volt::test('pages.auth.login')
+            ->set('form.login', 'login_user')
+            ->set('form.password', 'password')
+            ->set('form.startedAt', now()->subSeconds(2)->timestamp);
+
+        $component->call('login');
+
+        $component
+            ->assertHasNoErrors()
+            ->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticatedAs($user);
+    }
+
     public function test_users_can_authenticate_using_the_post_login_route(): void
     {
         $user = User::factory()->create();

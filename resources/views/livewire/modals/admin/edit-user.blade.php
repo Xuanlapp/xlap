@@ -28,9 +28,14 @@
                             <h3 class="text-sm font-bold text-slate-900">Account info</h3>
                             <div class="mt-3 grid gap-2">
                                 <div class="rounded-lg bg-white px-3 py-2 shadow-sm">
-                                    <label for="editUserName" class="text-xs font-semibold text-slate-500">Ten</label>
+                                    <label for="editUserName" class="text-xs font-semibold text-slate-500">Ten user</label>
                                     <input id="editUserName" wire:model="name" type="text" class="mt-1 h-9 w-full rounded-md border-slate-200 text-sm text-slate-950 shadow-sm focus:border-cyan-500 focus:ring-cyan-500" autocomplete="name">
                                     @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="rounded-lg bg-white px-3 py-2 shadow-sm">
+                                    <label for="editUserUsername" class="text-xs font-semibold text-slate-500">Ten dang nhap</label>
+                                    <input id="editUserUsername" wire:model="username" type="text" class="mt-1 h-9 w-full rounded-md border-slate-200 text-sm text-slate-950 shadow-sm focus:border-cyan-500 focus:ring-cyan-500" autocomplete="username">
+                                    @error('username') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
                                 <div class="rounded-lg bg-white px-3 py-2 shadow-sm">
                                     <label for="editUserEmail" class="text-xs font-semibold text-slate-500">Email</label>

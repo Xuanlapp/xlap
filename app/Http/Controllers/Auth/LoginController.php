@@ -28,8 +28,6 @@ class LoginController extends Controller
         ]);
 
         $login = $request->input('login');
-        $loginField = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
-
         $security->assertCanAttempt(
             $login,
             $request->input('website'),
@@ -38,7 +36,7 @@ class LoginController extends Controller
             'cf-turnstile-response'
         );
 
-        $user = User::where($loginField, $login)->first();
+        $user = $this->userForLogin($login);
         $passwordHash = $user?->password ?? $security->dummyPasswordHash();
 
         if (! $user || ! Hash::check($request->input('password'), $passwordHash)) {
@@ -56,6 +54,24 @@ class LoginController extends Controller
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', [], false));
+    }
+
+    /**
+     * Resolve a user by email or username, with legacy name fallback.
+     */
+    private function userForLogin(string $login): ?User
+    {
+        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            return User::where('email', $login)->first();
+        }
+
+        return User::where('username', $login)
+            ->orWhere(function ($query) use ($login): void {
+                $query
+                    ->whereNull('username')
+                    ->where('name', $login);
+            })
+            ->first();
     }
 
     public function logout(Request $request)

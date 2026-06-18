@@ -42,10 +42,8 @@ class LoginForm extends Form
             'form.turnstileToken'
         );
 
-        $loginField = filter_var($this->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
-
         $security = app(LoginSecurity::class);
-        $user = User::where($loginField, $this->login)->first();
+        $user = $this->userForLogin($this->login);
         $passwordHash = $user?->password ?? $security->dummyPasswordHash();
 
         if (! $user || ! Hash::check($this->password, $passwordHash)) {
@@ -59,5 +57,23 @@ class LoginForm extends Form
         Auth::login($user, $this->remember);
 
         app(LoginSecurity::class)->clearSuccessfulAttempt($this->login);
+    }
+
+    /**
+     * Resolve a user by email or username, with legacy name fallback.
+     */
+    private function userForLogin(string $login): ?User
+    {
+        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            return User::where('email', $login)->first();
+        }
+
+        return User::where('username', $login)
+            ->orWhere(function ($query) use ($login): void {
+                $query
+                    ->whereNull('username')
+                    ->where('name', $login);
+            })
+            ->first();
     }
 }

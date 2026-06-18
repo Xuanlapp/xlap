@@ -295,6 +295,13 @@ new class extends Component
                                 </svg>
                                 <span>API Credits</span>
                             </a>
+                            <a href="{{ route('offorest.admin.mail-test') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.mail-test') ? $activeClass : $inactiveClass }}">
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.mail-test') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                    <path d="M4 6h16v12H4z" />
+                                    <path d="m4 7 8 6 8-6" />
+                                </svg>
+                                <span>Mail Test</span>
+                            </a>
                         </div>
                     </div>
                 @endif
@@ -385,6 +392,7 @@ new class extends Component
                                 <a href="{{ route('offorest.admin.users') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Users</a>
                                 <a href="{{ route('offorest.admin.logs') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Logs</a>
                                 <a href="{{ route('offorest.admin.api-credits') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">API Credits</a>
+                                <a href="{{ route('offorest.admin.mail-test') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Mail Test</a>
                             </div>
                         </div>
                     @endif

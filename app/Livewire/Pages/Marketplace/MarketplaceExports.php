@@ -441,6 +441,10 @@ class MarketplaceExports extends Component
     {
         $value = $asset->getAttribute($field);
 
+        if (in_array($field, self::IMAGE_FIELDS, true) && is_string($value)) {
+            return $this->exportImageUrl($value);
+        }
+
         if ($value instanceof \DateTimeInterface) {
             return $value->format('Y-m-d H:i:s');
         }
@@ -454,6 +458,21 @@ class MarketplaceExports extends Component
         }
 
         return is_scalar($value) ? (string) $value : '';
+    }
+
+    /**
+     * Convert Google Drive share links into direct uc?id links for marketplace exports.
+     */
+    private function exportImageUrl(string $url): string
+    {
+        $url = trim($url);
+        $fileId = $this->googleDriveFileId($url);
+
+        if ($fileId === null) {
+            return $url;
+        }
+
+        return 'https://drive.google.com/uc?id='.$fileId;
     }
 
     private function assetMarketplace(ProductDesignAsset $asset): string
@@ -598,7 +617,7 @@ class MarketplaceExports extends Component
         return collect(self::IMAGE_FIELDS)
             ->map(fn (string $field): array => [$field, $asset->getAttribute($field)])
             ->filter(fn (array $image): bool => is_string($image[1]) && trim($image[1]) !== '')
-            ->map(fn (array $image): string => $image[0].': '.$image[1])
+            ->map(fn (array $image): string => $image[0].': '.$this->exportImageUrl($image[1]))
             ->implode(PHP_EOL);
     }
 
@@ -684,6 +703,7 @@ class MarketplaceExports extends Component
             'images' => collect(self::IMAGE_FIELDS)
                 ->mapWithKeys(fn (string $field): array => [$field => $asset->getAttribute($field)])
                 ->filter(fn ($value): bool => is_string($value) && trim($value) !== '')
+                ->map(fn (string $value): string => $this->exportImageUrl($value))
                 ->all(),
         ];
     }

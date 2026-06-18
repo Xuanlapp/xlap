@@ -39,7 +39,7 @@ class UserAccessService
     }
 
     /**
-     * @param  array{name: string, email: string, password: string, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
+     * @param  array{name: string, username?: string|null, email: string, password: string, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
      */
     public function createUser(array $data): User
     {
@@ -57,12 +57,13 @@ class UserAccessService
     /**
      * Update account details and access for a managed user.
      *
-     * @param  array{name: string, email: string, password?: string|null, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
+     * @param  array{name: string, username?: string|null, email: string, password?: string|null, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
      */
     public function updateUser(User $targetUser, array $data): User
     {
         $payload = [
             'name' => $data['name'],
+            'username' => $data['username'] ?? null,
             'email' => $data['email'],
             'status' => $data['status'] ?? 'active',
             'is_admin' => (bool) ($data['is_admin'] ?? false),

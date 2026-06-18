@@ -12,6 +12,7 @@ use App\Livewire\Modals\OrnamentEtsy\AddProductDesign as OrnamentEtsyAddProductD
 use App\Livewire\Modals\Admin\EditProductBackgroundRemoval;
 use App\Livewire\Modals\ProductDesign\DeleteIdeaConfirm;
 use App\Livewire\Pages\Admin\ListUser;
+use App\Mail\Admin\UserLoginCredentialsMail;
 use App\Models\ActivityLog;
 use App\Models\ApiCreditTracker;
 use App\Models\Product;
@@ -34,6 +35,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
@@ -347,6 +349,7 @@ class OfforestProductSchemaTest extends TestCase
         Livewire::test(AddUser::class)
             ->call('openModal', 'modals.admin.add-user')
             ->set('name', 'Sticker Vertex User')
+            ->set('username', 'sticker_vertex_user')
             ->set('email', 'vertex-user@example.com')
             ->set('password', 'Password12345')
             ->set('selectedProducts', [$product->id])
@@ -381,6 +384,7 @@ class OfforestProductSchemaTest extends TestCase
         Livewire::test(AddUser::class)
             ->call('openModal', 'modals.admin.add-user')
             ->set('name', 'Any Operator')
+            ->set('username', 'any_operator')
             ->set('email', 'any-operator@example.com')
             ->set('password', 'Password12345')
             ->set('selectedProducts', [$product->id])
@@ -390,6 +394,44 @@ class OfforestProductSchemaTest extends TestCase
         $user = User::where('email', 'any-operator@example.com')->firstOrFail();
 
         $this->assertTrue($user->products()->whereKey($product->id)->exists());
+    }
+
+    public function test_admin_add_user_sends_login_credentials_mail(): void
+    {
+        Mail::fake();
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+
+        $this->actingAs($admin);
+
+        Livewire::test(AddUser::class)
+            ->call('openModal', 'modals.admin.add-user')
+            ->set('name', 'Mail Login User')
+            ->set('username', 'mail_login_user')
+            ->set('email', 'mail-login-user@example.com')
+            ->set('password', 'Password12345')
+            ->set('selectedProducts', [$product->id])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $user = User::where('email', 'mail-login-user@example.com')->firstOrFail();
+        $expectedAppUrl = rtrim((string) config('app.url'), '/');
+
+        if ($expectedAppUrl === '' || str_contains($expectedAppUrl, 'localhost') || str_contains($expectedAppUrl, '127.0.0.1')) {
+            $expectedAppUrl = 'https://xlap.tech';
+        }
+
+        Mail::assertSent(UserLoginCredentialsMail::class);
+
+        Mail::assertSent(UserLoginCredentialsMail::class, function (UserLoginCredentialsMail $mail) use ($user, $expectedAppUrl): bool {
+            return $mail->hasTo($user->email)
+                && $mail->user->getKey() === $user->getKey()
+                && $mail->user->username === 'mail_login_user'
+                && $mail->plainPassword === 'Password12345'
+                && $mail->appUrl === $expectedAppUrl
+                && $mail->loginUrl === $expectedAppUrl.'/login';
+        });
     }
 
     public function test_admin_can_toggle_product_access_without_user_name_matching_product(): void

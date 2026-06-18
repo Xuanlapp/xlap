@@ -9,6 +9,7 @@ use App\Services\User\UserAccessService;
 use App\Support\Traits\BuildsVertexCredentialPayload;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -24,6 +25,8 @@ class EditUser extends Component
     public ?int $userId = null;
 
     public string $name = '';
+
+    public string $username = '';
 
     public string $email = '';
 
@@ -88,6 +91,7 @@ class EditUser extends Component
         $this->resetValidation();
         $this->userId = $user->id;
         $this->name = $user->name;
+        $this->username = $user->username ?: Str::of($user->name)->ascii()->lower()->replaceMatches('/[^a-z0-9_-]+/', '_')->trim('_')->toString();
         $this->email = $user->email;
         $this->password = '';
         $this->status = $user->status ?: 'active';
@@ -131,6 +135,7 @@ class EditUser extends Component
 
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'alpha_dash', 'max:255', Rule::unique('users', 'username')->ignore($this->userId)],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->userId)],
             'password' => ['nullable', 'string', Password::min(12)->mixedCase()->numbers()],
             'status' => ['required', Rule::in(['active', 'inactive'])],
@@ -205,6 +210,7 @@ class EditUser extends Component
             properties: [
                 'target_user_id' => $user->id,
                 'email' => $validated['email'],
+                'username' => $validated['username'],
                 'status' => $validated['status'],
                 'is_admin' => (bool) ($validated['is_admin'] ?? false),
                 'can_generate_amazon_listing' => (bool) ($validated['can_generate_amazon_listing'] ?? false),

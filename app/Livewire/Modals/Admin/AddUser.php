@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Modals\Admin;
 
+use App\Mail\Admin\UserLoginCredentialsMail;
 use App\Models\User;
 use App\Models\UserApiCredential;
 use App\Services\Logging\ActivityLogService;
@@ -9,11 +10,14 @@ use App\Services\User\UserAccessService;
 use App\Support\Traits\BuildsVertexCredentialPayload;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Throwable;
 
 class AddUser extends Component
 {
@@ -22,6 +26,8 @@ class AddUser extends Component
     public bool $isOpen = false;
 
     public string $name = '';
+
+    public string $username = '';
 
     public string $email = '';
 
@@ -85,6 +91,7 @@ class AddUser extends Component
     {
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'alpha_dash', 'max:255', 'unique:users,username'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', Password::min(12)->mixedCase()->numbers()],
             'status' => ['required', Rule::in(['active', 'inactive'])],
@@ -115,7 +122,7 @@ class AddUser extends Component
             hasV98StoreCredential: $v98StoreCredentialPayload !== null,
         );
 
-        DB::transaction(function () use ($validated, $vertexCredentialPayload, $v98StoreCredentialPayload): void {
+        $createdUser = DB::transaction(function () use ($validated, $vertexCredentialPayload, $v98StoreCredentialPayload): User {
             $user = app(UserAccessService::class)->createUser($validated);
 
             if ($vertexCredentialPayload !== null) {
@@ -128,13 +135,18 @@ class AddUser extends Component
                     'user_id' => $user->id,
                 ]);
             }
+
+            return $user->refresh();
         });
+
+        $mailSent = $this->sendLoginCredentialsMail($createdUser, $validated['password']);
 
         app(ActivityLogService::class)->record(
             event: 'admin.user_created',
             description: 'Admin created a user account.',
             properties: [
                 'email' => $validated['email'],
+                'username' => $validated['username'],
                 'is_admin' => (bool) ($validated['is_admin'] ?? false),
                 'can_generate_amazon_listing' => (bool) ($validated['can_generate_amazon_listing'] ?? false),
                 'can_generate_etsy_listing' => (bool) ($validated['can_generate_etsy_listing'] ?? false),
@@ -145,6 +157,7 @@ class AddUser extends Component
                 'vertex_configured' => $vertexCredentialPayload !== null,
                 'v98store_mode' => $validated['v98StoreMode'],
                 'v98store_configured' => $v98StoreCredentialPayload !== null,
+                'login_credentials_mail_sent' => $mailSent,
             ],
             actor: auth()->user(),
             actorType: 'admin',
@@ -153,7 +166,12 @@ class AddUser extends Component
         $this->isOpen = false;
         $this->resetForm();
         $this->dispatch('users-updated');
-        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao user moi.');
+        $this->dispatch(
+            'toast',
+            type: $mailSent ? 'success' : 'warning',
+            title: $mailSent ? 'Successfully saved!' : 'Da tao user, mail chua gui duoc',
+            message: $mailSent ? 'Da tao user moi va gui mail thong tin dang nhap.' : 'User da tao xong nhung mail dang nhap gui that bai. Hay kiem tra cau hinh SMTP.',
+        );
     }
 
     public function render(): View
@@ -182,6 +200,7 @@ class AddUser extends Component
     {
         $this->reset([
             'name',
+            'username',
             'email',
             'password',
             'is_admin',
@@ -216,6 +235,51 @@ class AddUser extends Component
                 'can_generate_etsy_listing' => 'Moi user chi duoc chon Amazon hoac Etsy, khong duoc chon ca hai.',
             ]);
         }
+    }
+
+    /**
+     * Send the initial login credentials email to the newly created user.
+     */
+    private function sendLoginCredentialsMail(User $user, string $plainPassword): bool
+    {
+        $appUrl = $this->accountMailAppUrl();
+
+        try {
+            Mail::to($user->email)->send(new UserLoginCredentialsMail(
+                user: $user,
+                plainPassword: $plainPassword,
+                appUrl: $appUrl,
+                loginUrl: rtrim($appUrl, '/').'/login',
+            ));
+
+            return true;
+        } catch (Throwable $exception) {
+            if (app()->runningUnitTests()) {
+                throw $exception;
+            }
+
+            Log::warning('Failed to send new user login credentials mail.', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Resolve the public app URL shown in the account email.
+     */
+    private function accountMailAppUrl(): string
+    {
+        $appUrl = rtrim((string) config('app.url'), '/');
+
+        if ($appUrl === '' || str_contains($appUrl, 'localhost') || str_contains($appUrl, '127.0.0.1')) {
+            return 'https://xlap.tech';
+        }
+
+        return $appUrl;
     }
 
     /**

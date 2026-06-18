@@ -8,6 +8,7 @@ use App\Http\Controllers\OrnamentAmazonTwoWorkflowImageController;
 use App\Livewire\Pages\Admin\ActivityLogs;
 use App\Livewire\Pages\Admin\ApiCredits;
 use App\Livewire\Pages\Admin\ListUser;
+use App\Livewire\Pages\Admin\MailTest;
 use App\Livewire\Pages\Drive\DriveUploads;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
@@ -60,6 +61,10 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('admin/api-credits', ApiCredits::class)
         ->middleware('admin')
         ->name('offorest.admin.api-credits');
+
+    Route::get('admin/mail-test', MailTest::class)
+        ->middleware('admin')
+        ->name('offorest.admin.mail-test');
 
     Route::get('listing-metadata', ListingMetadataStatus::class)
         ->name('offorest.listing-metadata');
