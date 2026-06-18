@@ -115,6 +115,8 @@ return [
             'balance_endpoint' => env('V98STORE_BALANCE_ENDPOINT', 'https://v98store.com/check-balance'),
             'model' => env('V98STORE_IMAGE_MODEL', 'gpt-image-2'),
             'text_model' => env('V98STORE_TEXT_MODEL', 'gpt-5.4'),
+            'image_attempts' => (int) env('V98STORE_IMAGE_ATTEMPTS', 4),
+            'image_timeout_seconds' => (int) env('V98STORE_IMAGE_TIMEOUT_SECONDS', 300),
             'image_min_interval_ms' => (int) env('V98STORE_IMAGE_MIN_INTERVAL_MS', 0),
             'text_min_interval_ms' => (int) env('V98STORE_TEXT_MIN_INTERVAL_MS', 0),
         ],

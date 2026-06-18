@@ -154,6 +154,47 @@ class OrnamentAmazonTwoWorkflowImageController extends Controller
         }
     }
 
+    public function status(Request $request, int $asset): JsonResponse
+    {
+        try {
+            $freshAsset = app(OrnamentAmazonTwoService::class)->assetForUser($request->user(), $asset);
+            $workflow = $this->workflowData($freshAsset->id);
+            $images = [];
+
+            foreach (['usp', 'before_after', 'comparison', 'features', 'details', 'custom_guide'] as $slot) {
+                $column = $this->mockupColumn($slot);
+                $url = $column ? $freshAsset->getAttribute($column) : null;
+                $url = is_string($url) && trim($url) !== ''
+                    ? $url
+                    : ($workflow['images'][$slot]['url'] ?? null);
+
+                if (is_string($url) && trim($url) !== '') {
+                    $images[$slot] = $url;
+                }
+            }
+
+            return response()->json([
+                'ok' => true,
+                'images' => $images,
+            ]);
+        } catch (RuntimeException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        } catch (Throwable $exception) {
+            Log::error('Ornament Amazon 2 B5 status failed unexpectedly.', [
+                'asset_id' => $asset,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'ok' => false,
+                'message' => 'Loi he thong khi lay trang thai anh B5.',
+            ], 500);
+        }
+    }
+
     public function generate(Request $request, int $asset, string $slot): JsonResponse
     {
         $payload = $request->validate([

@@ -78,6 +78,10 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
         ->middleware('product:ornament-amazon-2')
         ->name('offorest.ornament-amazon-2.workflow.listing-images.prepare');
 
+    Route::get('ornament-amazon-2/workflow/{asset}/listing-images/status', [OrnamentAmazonTwoWorkflowImageController::class, 'status'])
+        ->middleware('product:ornament-amazon-2')
+        ->name('offorest.ornament-amazon-2.workflow.listing-images.status');
+
     Route::post('ornament-amazon-2/workflow/{asset}/redesign', [OrnamentAmazonTwoWorkflowImageController::class, 'redesign'])
         ->middleware('product:ornament-amazon-2')
         ->name('offorest.ornament-amazon-2.workflow.redesign');

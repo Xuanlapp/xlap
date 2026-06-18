@@ -142,9 +142,8 @@ class WorkflowActionButton extends Component
 
     private function dispatchWorkflowUpdated(int $assetId): void
     {
+        $this->dispatch("ornament-amazon-two-product-design-updated.{$assetId}")->to(ProductDesignCard::class);
         $this->dispatch('ornament-amazon-two-product-design-updated', assetId: $assetId);
-        $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
-        $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
     }
 
     private function buttonLabel(): string

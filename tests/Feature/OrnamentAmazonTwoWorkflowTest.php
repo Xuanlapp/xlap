@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Pages\OrnamentAmazonTwo\ProductDesignCard;
+use App\Livewire\Pages\OrnamentAmazonTwo\WorkflowActionButton;
 use App\Livewire\Modals\Image\ReviewImage;
 use App\Models\OrnamentAmazonTwoWorkflow;
 use App\Models\Product;
@@ -200,6 +201,53 @@ class OrnamentAmazonTwoWorkflowTest extends TestCase
         );
     }
 
+    public function test_workflow_action_button_dispatches_asset_scoped_refresh_event(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'ornament-amazon-2')->firstOrFail();
+        $user->products()->attach($product);
+
+        $asset = ProductDesignAsset::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'item_number' => 4,
+            'keyword' => 'personalized dog ornament',
+            'image_link' => 'https://example.com/source.png',
+        ]);
+
+        UserAiProvider::create([
+            'user_id' => $user->id,
+            'provider_key' => 'chatgpt',
+            'is_enabled' => true,
+            'is_default' => true,
+        ]);
+
+        Prompt::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'prompt_number' => 1,
+            'name' => 'Create Master',
+            'content' => 'Create clean master ornament.',
+        ]);
+
+        $this->mock(ApiKeyImageGenerator::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->andReturn('/storage/generated/ornament-amazon-2/redesign/master.png');
+        });
+
+        Livewire::actingAs($user)
+            ->test(WorkflowActionButton::class, [
+                'assetId' => $asset->id,
+                'action' => 'main',
+                'providerKey' => 'chatgpt',
+                'imageModel' => 'gpt-image-2',
+            ])
+            ->call('run')
+            ->assertDispatched("ornament-amazon-two-product-design-updated.{$asset->id}")
+            ->assertDispatched('ornament-amazon-two-product-design-updated', assetId: $asset->id);
+    }
+
     public function test_full_b1_to_b5_workflow_saves_refs_prompts_listing_and_aplus_outputs(): void
     {
         $user = User::factory()->create();
@@ -312,6 +360,79 @@ class OrnamentAmazonTwoWorkflowTest extends TestCase
         $this->assertSame('/storage/generated/ornament-amazon-2/workflow/aplus/pain-desktop.png', $workflow['aplus_images']['pain']['desktop']['url']);
         $this->assertSame('/storage/generated/ornament-amazon-2/workflow/aplus/pain-desktop.png', $workflowRecord->workflow_data['aplus_images']['pain']['desktop']['url']);
         $this->assertArrayNotHasKey('ornament_amazon_two_workflow', $freshAsset->data_item_add ?? []);
+    }
+
+    public function test_prompt_create_unlocks_after_same_card_refresh_without_page_reload(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'ornament-amazon-2')->firstOrFail();
+        $user->products()->attach($product);
+
+        UserAiProvider::create([
+            'user_id' => $user->id,
+            'provider_key' => 'chatgpt',
+            'is_enabled' => true,
+            'is_default' => true,
+        ]);
+
+        $asset = ProductDesignAsset::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'item_number' => 71,
+            'keyword' => 'personalized ornament',
+            'image_link' => 'https://example.com/source.png',
+            'redesign' => '/storage/generated/ornament-amazon-2/redesign/master.png',
+            'data_item_add' => ['productTitle' => 'Personalized Ornament'],
+        ]);
+
+        OrnamentAmazonTwoWorkflow::create([
+            'product_design_asset_id' => $asset->id,
+            'user_id' => $user->id,
+            'workflow_data' => [
+                'version' => 2,
+                'script' => [
+                    'audience' => 'Gift givers.',
+                    'style' => 'Warm premium Christmas.',
+                    'usp' => 'USP script.',
+                ],
+                'b2' => [
+                    'person_a_prompt' => 'Person A prompt.',
+                    'person_b_prompt' => 'Person B prompt.',
+                ],
+            ],
+        ]);
+
+        $component = Livewire::actingAs($user)
+            ->test(ProductDesignCard::class, [
+                'assetId' => $asset->id,
+                'providerKey' => 'chatgpt',
+                'imageModel' => 'gpt-image-1',
+                'textModel' => 'gpt-4.1-mini',
+            ])
+            ->assertSee('Can tao du 4. Person A/B truoc.');
+
+        OrnamentAmazonTwoWorkflow::where('product_design_asset_id', $asset->id)->update([
+            'workflow_data' => [
+                'version' => 2,
+                'script' => [
+                    'audience' => 'Gift givers.',
+                    'style' => 'Warm premium Christmas.',
+                    'usp' => 'USP script.',
+                ],
+                'b2' => [
+                    'person_a_prompt' => 'Person A prompt.',
+                    'person_b_prompt' => 'Person B prompt.',
+                    'person_a_ref' => '/storage/generated/ornament-amazon-2/workflow/refs/person-a.png',
+                    'person_b_ref' => '/storage/generated/ornament-amazon-2/workflow/refs/person-b.png',
+                ],
+            ],
+        ]);
+
+        $component
+            ->call('refreshWhenUpdated')
+            ->assertDontSee('Can tao du 4. Person A/B truoc.')
+            ->assertSee('$wire.generateWorkflowPrompts()', false)
+            ->assertSee('Writing prompt...');
     }
 
     public function test_script_generation_fails_when_provider_returns_empty_script(): void

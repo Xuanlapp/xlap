@@ -5,6 +5,7 @@ namespace App\Services\Ai;
 use App\Models\User;
 use App\Models\UserApiCredential;
 use App\Services\Image\BackgroundRemovalService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -224,21 +225,39 @@ class ApiKeyImageGenerator
     private function postImageJsonWithRetries(string $providerKey, string $apiKey, string $endpoint, array $payload): Response
     {
         $response = null;
+        $lastException = null;
+        $attempts = $this->imageAttemptCount($providerKey);
 
-        for ($attempt = 0; $attempt < 4; $attempt++) {
+        for ($attempt = 0; $attempt < $attempts; $attempt++) {
             $this->waitForApiTurn($providerKey, 'image');
             $startedAt = microtime(true);
-            $response = Http::withToken($apiKey)
-                ->timeout(120)
-                ->asJson()
-                ->post($endpoint, $payload);
-            $this->logImageProviderAttempt($providerKey, $endpoint, $attempt, $response, $startedAt);
+            try {
+                $response = Http::withToken($apiKey)
+                    ->timeout($this->imageTimeoutSeconds($providerKey))
+                    ->asJson()
+                    ->post($endpoint, $payload);
+                $this->logImageProviderAttempt($providerKey, $endpoint, $attempt, $response, $startedAt);
+            } catch (ConnectionException $exception) {
+                $lastException = $exception;
+                $this->logImageProviderConnectionFailure($providerKey, $endpoint, $attempt, $startedAt, $exception);
 
-            if (! $this->shouldRetryImageResponse($response) || $attempt === 3) {
+                if ($attempt < $attempts - 1) {
+                    sleep($this->retryDelaySeconds(null, $attempt));
+                    continue;
+                }
+
+                throw new RuntimeException("{$this->providerLabel($providerKey)} ket noi tao anh qua lau/bi ngat sau {$attempts} lan thu. Hay bam Generate lai sau it phut.");
+            }
+
+            if (! $this->shouldRetryImageResponse($response) || $attempt === $attempts - 1) {
                 return $response;
             }
 
             sleep($this->retryDelaySeconds($response, $attempt));
+        }
+
+        if ($lastException) {
+            throw new RuntimeException("{$this->providerLabel($providerKey)} ket noi tao anh qua lau/bi ngat. Hay bam Generate lai sau it phut.");
         }
 
         return $response;
@@ -251,11 +270,13 @@ class ApiKeyImageGenerator
     private function postImageMultipartWithRetries(string $providerKey, string $apiKey, string $endpoint, array $images, array $payload): Response
     {
         $response = null;
+        $lastException = null;
+        $attempts = $this->imageAttemptCount($providerKey);
 
-        for ($attempt = 0; $attempt < 4; $attempt++) {
+        for ($attempt = 0; $attempt < $attempts; $attempt++) {
             $this->waitForApiTurn($providerKey, 'image');
             $startedAt = microtime(true);
-            $request = Http::withToken($apiKey)->timeout(120);
+            $request = Http::withToken($apiKey)->timeout($this->imageTimeoutSeconds($providerKey));
 
             foreach ($images as $index => $image) {
                 $field = count($images) === 1 ? 'image' : 'image[]';
@@ -267,14 +288,30 @@ class ApiKeyImageGenerator
                 );
             }
 
-            $response = $request->post($endpoint, $payload);
-            $this->logImageProviderAttempt($providerKey, $endpoint, $attempt, $response, $startedAt);
+            try {
+                $response = $request->post($endpoint, $payload);
+                $this->logImageProviderAttempt($providerKey, $endpoint, $attempt, $response, $startedAt);
+            } catch (ConnectionException $exception) {
+                $lastException = $exception;
+                $this->logImageProviderConnectionFailure($providerKey, $endpoint, $attempt, $startedAt, $exception);
 
-            if (! $this->shouldRetryImageResponse($response) || $attempt === 3) {
+                if ($attempt < $attempts - 1) {
+                    sleep($this->retryDelaySeconds(null, $attempt));
+                    continue;
+                }
+
+                throw new RuntimeException("{$this->providerLabel($providerKey)} ket noi tao anh qua lau/bi ngat sau {$attempts} lan thu. Hay bam Generate lai sau it phut.");
+            }
+
+            if (! $this->shouldRetryImageResponse($response) || $attempt === $attempts - 1) {
                 return $response;
             }
 
             sleep($this->retryDelaySeconds($response, $attempt));
+        }
+
+        if ($lastException) {
+            throw new RuntimeException("{$this->providerLabel($providerKey)} ket noi tao anh qua lau/bi ngat. Hay bam Generate lai sau it phut.");
         }
 
         return $response;
@@ -314,9 +351,9 @@ class ApiKeyImageGenerator
         return in_array($response->status(), [408, 409, 425, 429, 500, 502, 503, 504], true);
     }
 
-    private function retryDelaySeconds(Response $response, int $attempt): int
+    private function retryDelaySeconds(?Response $response, int $attempt): int
     {
-        $retryAfter = $response->header('Retry-After');
+        $retryAfter = $response?->header('Retry-After');
 
         if (is_numeric($retryAfter)) {
             return max(1, min(30, (int) $retryAfter));
@@ -499,6 +536,27 @@ class ApiKeyImageGenerator
             'retryable' => $this->shouldRetryImageResponse($response),
             'seconds' => round(microtime(true) - $startedAt, 3),
         ]);
+    }
+
+    private function logImageProviderConnectionFailure(string $providerKey, string $endpoint, int $attempt, float $startedAt, ConnectionException $exception): void
+    {
+        Log::warning('API image provider attempt connection failed.', [
+            'provider' => $providerKey,
+            'endpoint_host' => parse_url($endpoint, PHP_URL_HOST),
+            'attempt' => $attempt + 1,
+            'seconds' => round(microtime(true) - $startedAt, 3),
+            'message' => mb_substr($exception->getMessage(), 0, 500),
+        ]);
+    }
+
+    private function imageAttemptCount(string $providerKey): int
+    {
+        return max(1, (int) config("services.api_key_providers.{$providerKey}.image_attempts", 4));
+    }
+
+    private function imageTimeoutSeconds(string $providerKey): int
+    {
+        return max(30, (int) config("services.api_key_providers.{$providerKey}.image_timeout_seconds", 120));
     }
 
     private function providerLabel(string $providerKey): string

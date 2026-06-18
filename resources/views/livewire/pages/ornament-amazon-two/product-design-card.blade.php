@@ -379,7 +379,11 @@
             </div>
         </div>
 
-        <div class="min-w-0 {{ $promptCreateDisabledReason ? 'opacity-55' : '' }}">
+        <div
+            x-data="{ promptCreating: false }"
+            x-on:ornament-amazon-two-generation-finished.window="promptCreating = false"
+            class="min-w-0 {{ $promptCreateDisabledReason ? 'opacity-55' : '' }}"
+        >
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-amber-700">5. Prompt create</x-label>
                 @if (! $asset->is_approved)
@@ -391,27 +395,46 @@
                         @endif
                         <button
                             type="button"
-                            x-on:click="@js(! (bool) $promptCreateDisabledReason) && window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started'))"
-                            wire:click="generateWorkflowPrompts"
-                            wire:loading.attr="disabled"
-                            wire:target="generateWorkflowPrompts"
-                            class="shrink-0 rounded-lg border border-transparent bg-transparent px-3 py-2 text-xs font-medium text-orange-600 transition hover:bg-orange-50 focus:outline-none focus:ring-4 focus:ring-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
+                            x-on:click="
+                                if (! @js((bool) $promptCreateDisabledReason)) {
+                                    promptCreating = true;
+                                    window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started'));
+
+                                    const promptAction = $wire.generateWorkflowPrompts();
+
+                                    if (promptAction && typeof promptAction.catch === 'function') {
+                                        promptAction.catch(() => {
+                                            promptCreating = false;
+                                            window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-finished'));
+                                        });
+                                    }
+                                }
+                            "
+                            x-bind:aria-busy="promptCreating ? 'true' : 'false'"
+                            x-bind:disabled="promptCreating || @js((bool) $promptCreateDisabledReason)"
+                            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-3 py-2 text-xs font-medium text-orange-600 transition hover:bg-orange-50 focus:outline-none focus:ring-4 focus:ring-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
                             title="{{ $promptCreateDisabledReason ?: 'Generate prompt create' }}"
                             @disabled((bool) $promptCreateDisabledReason)
                         >
-                            <span wire:loading.remove wire:target="generateWorkflowPrompts">Generate</span>
-                            <span wire:loading wire:target="generateWorkflowPrompts">Writing...</span>
+                            <span x-show="! promptCreating">Generate</span>
+                            <span x-cloak x-show="promptCreating" class="flex items-center gap-1.5">
+                                <span class="h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700"></span>
+                                <span>Writing...</span>
+                            </span>
                         </button>
                     </div>
                 @endif
             </div>
 
             <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm ring-1 ring-amber-950/[0.03]">
-                <div wire:loading.flex wire:target="generateWorkflowPrompts" class="absolute inset-0 z-10 bg-white/95 backdrop-blur-sm">
-                    <x-spinner />
+                <div x-cloak x-show="promptCreating" x-transition.opacity class="absolute inset-0 z-10 flex items-center justify-center bg-white/95 backdrop-blur-sm">
+                    <div class="flex flex-col items-center gap-2 text-center text-amber-700">
+                        <span class="h-8 w-8 animate-spin rounded-full border-4 border-amber-200 border-t-amber-700"></span>
+                        <span class="text-xs font-bold text-slate-700">Writing prompt...</span>
+                    </div>
                 </div>
 
-                <div wire:loading.class="invisible" wire:target="generateWorkflowPrompts" class="h-full w-full">
+                <div x-bind:class="promptCreating ? 'invisible' : ''" class="h-full w-full">
                     @if ($topPromptTabs->isNotEmpty())
                         <div
                             x-data="{ activePrompt: @js($topPromptTabs->keys()->first()) }"
@@ -505,14 +528,18 @@
                     images: config.images || {},
                     slotStates: {},
                     running: false,
+                    imageCount: 0,
                     doneCount: 0,
                     targetCount: 0,
                     errorCount: 0,
+                    statusPollTimer: null,
                     statusMessage: '',
                     statusState: 'idle',
                     csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
 
                     init() {
+                        this.imageCount = this.doneImageCount();
+
                         window.addEventListener('ornament-amazon-two-preview-mockup-generation-started', (event) => {
                             if (Number(event.detail?.assetId || 0) !== Number(config.assetId)) {
                                 return;
@@ -576,6 +603,7 @@
                                     preview: imageUrl,
                                     original: imageUrl,
                                 };
+                                this.imageCount = this.doneImageCount();
                             }
 
                             this.setSlotState(slot, 'done');
@@ -683,6 +711,71 @@
                         };
                     },
 
+                    mergeStatusImages(images) {
+                        if (! images || typeof images !== 'object') {
+                            return;
+                        }
+
+                        let changed = false;
+                        const nextImages = {...this.images};
+
+                        Object.entries(images).forEach(([slot, imageUrl]) => {
+                            if (! this.slots.includes(slot) || ! imageUrl) {
+                                return;
+                            }
+
+                            nextImages[slot] = {
+                                ...(nextImages[slot] || {}),
+                                preview: imageUrl,
+                                original: imageUrl,
+                            };
+
+                            if (this.slotStates[slot] !== 'done') {
+                                this.setSlotState(slot, 'done');
+                            }
+
+                            changed = true;
+                        });
+
+                        if (! changed) {
+                            return;
+                        }
+
+                        this.images = nextImages;
+                        this.imageCount = this.doneImageCount();
+                        this.doneCount = this.imageCount;
+
+                        if (this.running) {
+                            this.statusMessage = `Generating ${this.doneCount}/${this.targetCount}...`;
+                        }
+                    },
+
+                    async refreshImagesFromStatus() {
+                        if (! config.statusUrl) {
+                            return;
+                        }
+
+                        try {
+                            const data = await this.getJson(config.statusUrl);
+                            this.mergeStatusImages(data.images || {});
+                        } catch (error) {
+                            // Keep generation running; individual slot requests still report hard errors.
+                        }
+                    },
+
+                    startStatusPolling() {
+                        window.clearInterval(this.statusPollTimer);
+                        this.refreshImagesFromStatus();
+                        this.statusPollTimer = window.setInterval(() => {
+                            this.refreshImagesFromStatus();
+                        }, 5000);
+                    },
+
+                    stopStatusPolling() {
+                        window.clearInterval(this.statusPollTimer);
+                        this.statusPollTimer = null;
+                    },
+
                     slotMessage(slot, fallback) {
                         if (this.slotStates[slot] === 'generating') {
                             return 'Generating';
@@ -717,6 +810,7 @@
                         }
 
                         this.running = true;
+                        this.imageCount = 0;
                         this.doneCount = 0;
                         this.targetCount = this.promptSlots.length;
                         this.errorCount = 0;
@@ -741,6 +835,7 @@
                         try {
                             try {
                                 await this.postJson(config.prepareUrl, {});
+                                this.startStatusPolling();
                             } catch (error) {
                                 this.promptSlots.forEach((slot) => {
                                     this.setSlotState(slot, 'error');
@@ -764,14 +859,28 @@
                                     );
 
                                     const imageUrl = data.url || null;
-                                    this.images[slot] = {
-                                        ...(this.images[slot] || {}),
-                                        preview: imageUrl,
-                                        original: imageUrl,
-                                    };
-                                    this.setSlotState(slot, 'done');
-                                    this.doneCount += 1;
-                                    this.statusMessage = `Generating ${this.doneCount}/${this.targetCount}...`;
+                                    if (imageUrl) {
+                                        this.images = {
+                                            ...this.images,
+                                            [slot]: {
+                                                ...(this.images[slot] || {}),
+                                                preview: imageUrl,
+                                                original: imageUrl,
+                                            },
+                                        };
+                                    }
+
+                                    if (! imageUrl) {
+                                        this.errorCount += 1;
+                                    }
+
+                                    this.setSlotState(slot, imageUrl ? 'done' : 'error');
+                                    this.imageCount = this.doneImageCount();
+                                    this.doneCount = this.imageCount;
+                                    this.statusMessage = imageUrl
+                                        ? `Generating ${this.doneCount}/${this.targetCount}...`
+                                        : `Generate failed: ${slot}`;
+                                    this.statusState = imageUrl ? 'running' : 'error';
                                 } catch (error) {
                                     this.setSlotState(slot, 'error');
                                     this.errorCount += 1;
@@ -780,18 +889,33 @@
                                 }
                             }));
 
-                            if (window.Livewire && typeof window.Livewire.dispatch === 'function') {
-                                window.Livewire.dispatch('ornament-amazon-two-product-design-updated', { assetId: config.assetId });
-                            }
-
                             if (this.errorCount === 0) {
                                 this.statusMessage = `Done ${this.doneCount}/${this.targetCount}`;
                                 this.statusState = 'done';
                             }
                         } finally {
+                            await this.refreshImagesFromStatus();
+                            this.stopStatusPolling();
                             this.running = false;
                             window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-finished'));
                         }
+                    },
+
+                    async getJson(url) {
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                            },
+                        });
+
+                        const data = await response.json().catch(() => ({}));
+
+                        if (! response.ok || data.ok === false) {
+                            throw new Error(data.message || `HTTP ${response.status}`);
+                        }
+
+                        return data;
                     },
 
                     async postJson(url, payload) {
@@ -834,6 +958,7 @@
                 promptSlots: @js($mockupB5PromptSlots),
                 images: @js($mockupB5Images),
                 prepareUrl: @js(route('offorest.ornament-amazon-2.workflow.listing-images.prepare', ['asset' => $asset->id])),
+                statusUrl: @js(route('offorest.ornament-amazon-2.workflow.listing-images.status', ['asset' => $asset->id])),
                 generateUrlTemplate: @js(route('offorest.ornament-amazon-2.workflow.listing-images.generate', ['asset' => $asset->id, 'slot' => '__slot__'])),
                 providerKey: @js($providerKey),
                 imageModel: @js($imageModel),
@@ -854,19 +979,20 @@
                         type="button"
                         x-on:click.prevent.stop="$data.generateAll()"
                         x-bind:disabled="running || @js((bool) $generateDisabledReason)"
+                        x-effect="$el.disabled = running || Boolean(disabledReason)"
                         x-bind:aria-busy="running ? 'true' : 'false'"
                         title="{{ $generateDisabledReason ?: 'Generate all 6 mockup images' }}"
                         class="shrink-0 cursor-pointer rounded-lg border border-transparent bg-transparent px-3 py-2 text-xs font-medium text-orange-600 transition-all duration-200 ease-out hover:bg-orange-50 focus:outline-none focus:ring-4 focus:ring-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        <span
-                            x-show="running"
-                            x-cloak
-                            class="mr-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700 align-[-2px]"
-                            aria-hidden="true"
-                        ></span>
-                        <span>Generate</span>
-                        <span x-show="running" x-cloak class="ml-1 text-orange-500">...</span>
-                    </button>
+                            <span
+                                x-show="running"
+                                x-cloak
+                                class="mr-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700 align-[-2px]"
+                                aria-hidden="true"
+                            ></span>
+                            <span x-text="running ? 'Generating' : 'Generate'">Generate</span>
+                            <span x-show="running" x-cloak class="ml-1 text-orange-500">...</span>
+                        </button>
                 </div>
             </div>
 
@@ -904,17 +1030,10 @@
             @endphp
 
             <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-                <div wire:loading.flex wire:target="generateAllWorkflowImages" class="absolute inset-0 z-40 items-center justify-center bg-white/85 backdrop-blur-sm">
-                    <div class="flex flex-col items-center gap-2 text-center text-orange-600">
-                        <span class="h-8 w-8 animate-spin rounded-full border-4 border-orange-200 border-t-orange-600"></span>
-                        <span class="text-xs font-bold text-slate-700">Generating mockups...</span>
-                    </div>
-                </div>
-
                 <div class="flex h-full min-h-0 flex-col">
                     <div class="mb-2 flex items-center justify-between gap-2 px-1">
                         <span class="text-xs font-bold uppercase text-slate-600">
-                            <span>{{ $psdMockupCount }}</span>/6 MOCKUP
+                            <span x-text="imageCount">{{ $psdMockupCount }}</span>/6 MOCKUP
                         </span>
 
                         <span x-show="! running" class="text-[11px] font-medium text-slate-400">Ready</span>
@@ -956,7 +1075,7 @@
                                     @if ($slotImageUrl)
                                         <button
                                             type="button"
-                                            wire:click="$dispatch('review-image', { src: @js($slotImageUrl), original: @js($slotImageUrl), title: @js('MOCKUP '.$slot['number'].' '.$slot['label']), gallery: @js($psdMockupGallery), currentIndex: {{ $slotGalleryIndex }}, action: 'ornament-amazon-two-custom-image', productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword), editTarget: @js($slot['column']), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
+                                            x-on:click.prevent.stop="previewSlot(@js($slotKey))"
                                             class="relative h-full w-full cursor-pointer overflow-hidden transition-all duration-200 ease-out hover:bg-orange-50 hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
                                         >
                                             <img
@@ -972,7 +1091,7 @@
                                         <button
                                             type="button"
                                             @if ($slotCanPreview)
-                                                wire:click="$dispatch('review-image', { src: '', original: '', title: @js('MOCKUP '.$slot['number'].' '.$slot['label']), gallery: @js($psdMockupGallery), currentIndex: {{ $slotGalleryIndex }}, action: 'ornament-amazon-two-custom-image', productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword), editTarget: @js($slot['column']), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
+                                                x-on:click.prevent.stop="previewSlot(@js($slotKey))"
                                             @else
                                                 disabled
                                                 aria-disabled="true"
@@ -1006,9 +1125,12 @@
                                     <div
                                         x-show="isGenerating(@js($slotKey))"
                                         x-cloak
-                                        class="absolute inset-0 z-20 bg-slate-50"
+                                        class="absolute inset-0 z-20 flex items-center justify-center bg-white/90 backdrop-blur-sm"
                                     >
-                                        <x-spinner />
+                                        <div class="flex flex-col items-center gap-2 text-center text-orange-700">
+                                            <span class="h-7 w-7 animate-spin rounded-full border-4 border-orange-200 border-t-orange-700"></span>
+                                            <span class="text-[10px] font-bold uppercase tracking-wide">Generating</span>
+                                        </div>
                                     </div>
 
                                     <div

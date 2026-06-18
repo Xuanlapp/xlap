@@ -81,16 +81,19 @@ class ProductDesignCard extends Component
         $this->imageModel = $imageModel;
         $this->textModel = $textModel;
 
-        $asset = app(OrnamentAmazonTwoService::class)->assetForUser(auth()->user(), $this->assetId);
-        $this->hydrateWorkflowInputs($this->workflowData($asset));
+        $this->refreshCurrentCardState();
+    }
+
+    #[On('ornament-amazon-two-product-design-updated.{assetId}')]
+    public function refreshWhenUpdated(): void
+    {
+        $this->refreshCurrentCardState();
     }
 
     #[On('ornament-amazon-two-product-design-updated')]
-    public function refreshWhenUpdated(int $assetId): void
+    public function refreshWhenUpdatedByPayload(int $assetId): void
     {
-        if ($assetId !== $this->assetId) {
-            return;
-        }
+        $this->dispatchCardUpdated($assetId);
     }
 
     public function generateRedesign(): void
@@ -104,8 +107,7 @@ class ProductDesignCard extends Component
                 properties: ['item_number' => $asset->item_number, 'redesign' => $asset->redesign, 'provider' => $this->providerKey],
             );
 
-            $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
-            $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
+            $this->dispatchCardUpdated($asset->id);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh master.');
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'ornament.generate_redesign', ['asset_id' => $this->assetId]);
@@ -147,8 +149,7 @@ class ProductDesignCard extends Component
             );
 
             $this->reset('mainImageUpload');
-            $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
-            $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
+            $this->dispatchCardUpdated($asset->id);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da upload Main Image.');
         } catch (RuntimeException $exception) {
             $this->reset('mainImageUpload');
@@ -255,8 +256,7 @@ class ProductDesignCard extends Component
                 properties: ['item_number' => $asset->item_number, 'provider' => $this->providerKey, 'text_model' => $this->textModel],
             );
 
-            $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
-            $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
+            $this->dispatchCardUpdated($asset->id);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao workflow data va prompts.');
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'ornament_amazon_two.generate_workflow_data', ['asset_id' => $this->assetId]);
@@ -329,6 +329,7 @@ class ProductDesignCard extends Component
     {
         try {
             $asset = app(OrnamentAmazonTwoService::class)->generateWorkflowPrompts(auth()->user(), $this->assetId, $this->providerKey, $this->textModel);
+            $this->hydrateWorkflowInputs($this->workflowData($asset));
             $this->dispatchWorkflowUpdated();
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao B4 listing va A+ prompts.');
         } catch (RuntimeException $exception) {
@@ -710,7 +711,21 @@ class ProductDesignCard extends Component
 
     private function dispatchWorkflowUpdated(): void
     {
-        $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
-        $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
+        $this->refreshCurrentCardState();
+    }
+
+    private function dispatchCardUpdated(int $assetId): void
+    {
+        if ($assetId !== $this->assetId) {
+            return;
+        }
+
+        $this->refreshCurrentCardState();
+    }
+
+    private function refreshCurrentCardState(): void
+    {
+        $asset = app(OrnamentAmazonTwoService::class)->assetForUser(auth()->user(), $this->assetId);
+        $this->hydrateWorkflowInputs($this->workflowData($asset));
     }
 }
