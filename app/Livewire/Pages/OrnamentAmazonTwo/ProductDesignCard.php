@@ -466,7 +466,7 @@ class ProductDesignCard extends Component
     public function generateAllWorkflowImages(): void
     {
         try {
-            $asset = app(OrnamentAmazonTwoService::class)->generateAllWorkflowImages(
+            $asset = app(OrnamentAmazonTwoService::class)->startWorkflowImagesGeneration(
                 auth()->user(),
                 $this->assetId,
                 $this->providerKey,
@@ -480,7 +480,8 @@ class ProductDesignCard extends Component
                 properties: ['item_number' => $asset->item_number, 'provider' => $this->providerKey, 'image_model' => $this->imageModel],
             );
 
-            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao tat ca anh workflow.');
+            $this->dispatchWorkflowUpdated();
+            $this->dispatch('toast', type: 'success', title: 'Started!', message: 'Da bat dau tao mockup. Anh nao xong se hien ngay.');
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'ornament_amazon_two.generate_all_workflow_images', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
@@ -494,6 +495,43 @@ class ProductDesignCard extends Component
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao tat ca anh workflow. Hay xem log de biet chi tiet.');
         } finally {
             $this->dispatch('ornament-amazon-two-generation-finished');
+        }
+    }
+
+    /**
+     * Continue the incremental 6. Mockup generation batch by creating at most one pending image.
+     */
+    public function continueWorkflowImagesGeneration(): void
+    {
+        try {
+            $asset = app(OrnamentAmazonTwoService::class)->assetForUser(auth()->user(), $this->assetId);
+            $this->dispatchWorkflowUpdated();
+
+            $workflow = $this->workflowData($asset);
+            $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+
+            if (($batch['running'] ?? false) === true) {
+                return;
+            }
+
+            $errors = is_array($workflow['images_errors'] ?? null) ? $workflow['images_errors'] : [];
+
+            if ($errors !== []) {
+                $this->dispatch('toast', type: 'warning', title: 'Generated with missing images', message: 'Da tao mockup, nhung con '.count($errors).' anh bi loi.');
+            } else {
+                $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao tat ca anh workflow.');
+            }
+        } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ornament_amazon_two.continue_workflow_images', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ornament_amazon_two.continue_workflow_images', ['asset_id' => $this->assetId]);
+            Log::error('Ornament Amazon 2 incremental workflow image generation failed unexpectedly.', [
+                'asset_id' => $this->assetId,
+                'message' => $exception->getMessage(),
+            ]);
+
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao anh workflow. Hay xem log de biet chi tiet.');
         }
     }
 

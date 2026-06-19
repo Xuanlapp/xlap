@@ -2,6 +2,7 @@
 
 namespace App\Services\OrnamentAmazonTwo;
 
+use App\Jobs\GenerateOrnamentAmazonTwoWorkflowImage;
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
 use App\Models\OrnamentAmazonTwoWorkflow;
@@ -891,6 +892,219 @@ class OrnamentAmazonTwoService
         return $asset->refresh();
     }
 
+    /**
+     * Start an incremental listing image batch so Livewire can poll and render each finished slot.
+     */
+    public function startWorkflowImagesGeneration(
+        User $user,
+        int $assetId,
+        ?string $providerKey = null,
+        ?string $imageModel = null,
+    ): ProductDesignAsset {
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
+        $this->ensureWorkflowProductLock($asset);
+
+        $workflow = $this->workflowData($asset);
+        $promptSlots = collect(array_keys(self::WORKFLOW_IMAGE_SLOTS))
+            ->filter(fn (string $slot): bool => is_string($workflow['prompts'][$slot] ?? null) && trim($workflow['prompts'][$slot]) !== '')
+            ->values()
+            ->all();
+
+        if ($promptSlots === []) {
+            throw new RuntimeException('Chua co B4 prompt nao. Hay bam Generate B4 Listing + A+ Prompts truoc.');
+        }
+
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $this->ensureApiKeyProvider($providerKey);
+
+        foreach ($promptSlots as $slot) {
+            $previousUrl = $workflow['images'][$slot]['url'] ?? null;
+
+            if (is_string($previousUrl) && trim($previousUrl) !== '') {
+                $workflow['images'][$slot] = [
+                    'previous_url' => $previousUrl,
+                    'regenerating_at' => now()->toIso8601String(),
+                ];
+            } else {
+                unset($workflow['images'][$slot]);
+            }
+        }
+
+        unset($workflow['images_errors'], $workflow['images_errors_at']);
+        $workflow['provider'] = $providerKey;
+        $workflow['image_model'] = $imageModel;
+        $workflow['images_batch'] = [
+            'running' => true,
+            'slots' => $promptSlots,
+            'attempts' => [],
+            'slot_states' => collect($promptSlots)->mapWithKeys(fn (string $slot): array => [$slot => 'queued'])->all(),
+            'provider' => $providerKey,
+            'image_model' => $imageModel,
+            'current_slot' => null,
+            'started_at' => now()->toIso8601String(),
+        ];
+
+        $asset = $this->saveWorkflowData($asset, $workflow);
+        $this->clearWorkflowListingMockups($asset);
+
+        foreach ($promptSlots as $slot) {
+            GenerateOrnamentAmazonTwoWorkflowImage::dispatch($user->id, $asset->id, $slot, $providerKey, $imageModel);
+        }
+
+        return $asset->refresh();
+    }
+
+    /**
+     * Mark one queued workflow image slot as generating.
+     */
+    public function markWorkflowImageBatchSlotGenerating(int $assetId, string $slot, int $attempt): ProductDesignAsset
+    {
+        $asset = ProductDesignAsset::query()->findOrFail($assetId);
+        $workflow = $this->workflowData($asset);
+        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+
+        if (($batch['running'] ?? false) !== true) {
+            return $asset;
+        }
+
+        $attempts = is_array($batch['attempts'] ?? null) ? $batch['attempts'] : [];
+        $slotStates = is_array($batch['slot_states'] ?? null) ? $batch['slot_states'] : [];
+        $attempts[$slot] = max((int) ($attempts[$slot] ?? 0), $attempt);
+        $slotStates[$slot] = 'generating';
+        $batch['attempts'] = $attempts;
+        $batch['slot_states'] = $slotStates;
+        $batch['current_slot'] = $slot;
+        $batch['updated_at'] = now()->toIso8601String();
+        $workflow['images_batch'] = $batch;
+
+        return $this->saveWorkflowData($asset, $workflow);
+    }
+
+    /**
+     * Mark one workflow image slot as done or failed and finish the batch when all slots are settled.
+     */
+    public function markWorkflowImageBatchSlotFinished(int $assetId, string $slot, ?string $error = null): ProductDesignAsset
+    {
+        $asset = ProductDesignAsset::query()->findOrFail($assetId);
+        $workflow = $this->workflowData($asset);
+        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+
+        if ($batch === []) {
+            return $asset;
+        }
+
+        $slotStates = is_array($batch['slot_states'] ?? null) ? $batch['slot_states'] : [];
+        $slotStates[$slot] = $error ? 'error' : 'done';
+        $batch['slot_states'] = $slotStates;
+        $batch['current_slot'] = null;
+        $batch['updated_at'] = now()->toIso8601String();
+        $workflow['images_batch'] = $batch;
+
+        if ($error) {
+            $workflow['images_errors'][$slot] = $error;
+            $workflow['images_errors_at'] = now()->toIso8601String();
+        } else {
+            unset($workflow['images_errors'][$slot]);
+        }
+
+        $workflow = $this->finishWorkflowImageBatch(
+            $workflow,
+            collect($batch['slots'] ?? [])->filter(fn (mixed $value): bool => is_string($value))->values()->all(),
+            3,
+        );
+
+        return $this->saveWorkflowData($asset, $workflow);
+    }
+
+    /**
+     * Generate at most one pending listing image for an active incremental batch.
+     */
+    public function continueWorkflowImagesGeneration(User $user, int $assetId): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $workflow = $this->workflowData($asset);
+        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+
+        if (($batch['running'] ?? false) !== true) {
+            return $asset;
+        }
+
+        $lock = Cache::lock("ornament-amazon-two:workflow-images-batch:{$assetId}", 900);
+
+        if (! $lock->get()) {
+            return $asset;
+        }
+
+        try {
+            $asset = $this->assetForUser($user, $assetId);
+            $workflow = $this->workflowData($asset);
+            $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+
+            if (($batch['running'] ?? false) !== true) {
+                return $asset;
+            }
+
+            $maxAttempts = 3;
+            $attempts = is_array($batch['attempts'] ?? null) ? $batch['attempts'] : [];
+            $slots = collect($batch['slots'] ?? [])
+                ->filter(fn (mixed $slot): bool => is_string($slot) && array_key_exists($slot, self::WORKFLOW_IMAGE_SLOTS))
+                ->values()
+                ->all();
+            $pendingSlots = collect($slots)
+                ->filter(fn (string $slot): bool => ! filled($workflow['images'][$slot]['url'] ?? null) && ((int) ($attempts[$slot] ?? 0)) < $maxAttempts)
+                ->sortBy(fn (string $slot): int => (int) ($attempts[$slot] ?? 0))
+                ->values()
+                ->all();
+
+            if ($pendingSlots === []) {
+                $workflow = $this->finishWorkflowImageBatch($workflow, $slots, $maxAttempts);
+
+                return $this->saveWorkflowData($asset, $workflow);
+            }
+
+            $slot = $pendingSlots[0];
+            $attempts[$slot] = ((int) ($attempts[$slot] ?? 0)) + 1;
+            $workflow['images_batch'] = array_merge($batch, [
+                'attempts' => $attempts,
+                'current_slot' => $slot,
+                'updated_at' => now()->toIso8601String(),
+            ]);
+            $asset = $this->saveWorkflowData($asset, $workflow);
+
+            try {
+                $asset = $this->generateWorkflowImage(
+                    $user,
+                    $asset->id,
+                    $slot,
+                    is_string($batch['provider'] ?? null) ? $batch['provider'] : null,
+                    is_string($batch['image_model'] ?? null) ? $batch['image_model'] : null,
+                );
+
+                $workflow = $this->workflowData($asset->refresh());
+                $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+                $batch['current_slot'] = null;
+                $batch['updated_at'] = now()->toIso8601String();
+                $workflow['images_batch'] = $batch;
+                unset($workflow['images_errors'][$slot]);
+            } catch (\Throwable $exception) {
+                $workflow = $this->workflowData($asset->refresh());
+                $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+                $batch['current_slot'] = null;
+                $batch['updated_at'] = now()->toIso8601String();
+                $workflow['images_batch'] = $batch;
+                $workflow['images_errors'][$slot] = 'Round '.$attempts[$slot].': '.mb_substr($exception->getMessage(), 0, 500);
+                $workflow['images_errors_at'] = now()->toIso8601String();
+            }
+
+            $workflow = $this->finishWorkflowImageBatch($workflow, $slots, $maxAttempts);
+
+            return $this->saveWorkflowData($asset, $workflow);
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
     public function generateWorkflowAplusImage(
         User $user,
         int $assetId,
@@ -1225,6 +1439,45 @@ class OrnamentAmazonTwoService
             'mockup5' => null,
             'mockup6' => null,
         ]);
+    }
+
+    /**
+     * Mark the incremental image batch as finished when every slot is done or exhausted.
+     *
+     * @param  array<string, mixed>  $workflow
+     * @param  array<int, string>  $slots
+     * @return array<string, mixed>
+     */
+    private function finishWorkflowImageBatch(array $workflow, array $slots, int $maxAttempts): array
+    {
+        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+        $attempts = is_array($batch['attempts'] ?? null) ? $batch['attempts'] : [];
+        $unfinishedSlots = collect($slots)
+            ->filter(fn (string $slot): bool => ! filled($workflow['images'][$slot]['url'] ?? null) && ((int) ($attempts[$slot] ?? 0)) < $maxAttempts)
+            ->values()
+            ->all();
+
+        if ($unfinishedSlots !== []) {
+            return $workflow;
+        }
+
+        foreach ($slots as $slot) {
+            if (! filled($workflow['images'][$slot]['url'] ?? null)) {
+                $workflow['images_errors'][$slot] ??= 'Image was not generated after '.$maxAttempts.' rounds.';
+                $workflow['images_errors_at'] = now()->toIso8601String();
+            }
+        }
+
+        $batch['running'] = false;
+        $batch['current_slot'] = null;
+        $batch['finished_at'] = now()->toIso8601String();
+        $workflow['images_batch'] = $batch;
+
+        if (empty($workflow['images_errors'] ?? [])) {
+            unset($workflow['images_errors'], $workflow['images_errors_at']);
+        }
+
+        return $workflow;
     }
 
     /**
