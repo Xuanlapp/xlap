@@ -49,3 +49,4 @@
         <span wire:loading>{{ $loadingLabel }}</span>
     </button>
 </div>
+

@@ -333,11 +333,7 @@
                                     <span class="h-6 w-6 animate-spin rounded-full border-4 border-sky-200 border-t-sky-700"></span>
                                 </div>
                             </div>
-                            <div x-show="personGenerating" x-cloak class="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/82 backdrop-blur-sm">
-                                <div class="flex h-11 w-11 items-center justify-center rounded-full border border-sky-200 bg-sky-50 shadow-lg">
-                                    <span class="h-6 w-6 animate-spin rounded-full border-4 border-sky-200 border-t-sky-700"></span>
-                                </div>
-                            </div>
+
                             <div class="flex h-7 shrink-0 items-center justify-between gap-2">
                                 <div class="text-[10px] font-extrabold uppercase tracking-wide text-slate-600">{{ $personLabel }}</div>
                                 @if (! $asset->is_approved)
@@ -794,3 +790,4 @@
     </div>
 
 </article>
+
