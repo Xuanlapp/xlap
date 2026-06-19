@@ -1012,6 +1012,7 @@ class OrnamentAmazonTwoService
     public function saveWorkflowGallery(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
         $workflow = $this->workflowData($asset);
         $gallery = is_array($workflow['gallery'] ?? null) ? $workflow['gallery'] : [];
 
@@ -1030,6 +1031,7 @@ class OrnamentAmazonTwoService
     public function saveWorkflowFlowPayload(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
         $workflow = $this->workflowData($asset);
         $workflow['flow_payload'] = [
             'created_at' => now()->toIso8601String(),
@@ -1091,6 +1093,7 @@ class OrnamentAmazonTwoService
         ?string $imageModel = null,
     ): ProductDesignAsset {
         $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
         $errors = [];
         $maxRounds = 3;
         $workflow = $this->workflowData($asset);
@@ -1896,28 +1899,23 @@ TEXT;
             return $workflow;
         }
 
-        try {
-            $raw = $this->apiKeyGenerator->generateText(
-                user: $user,
-                providerKey: $providerKey,
-                prompt: $this->workflowPersonSuggestionPrompt($audience),
-                model: $textModel,
-            );
+        $scriptPersonA = $workflow['script']['person_a'] ?? null;
+        $scriptPersonB = $workflow['script']['person_b'] ?? null;
 
-            $suggestions = $this->parseWorkflowPersonSuggestions($raw);
+        if ($needsPersonA && is_string($scriptPersonA) && trim($scriptPersonA) !== '') {
+            $workflow['b2']['person_a_prompt'] = trim($scriptPersonA);
+        }
 
-            if ($needsPersonA && isset($suggestions['person_a'])) {
-                $workflow['b2']['person_a_prompt'] = $suggestions['person_a'];
-            }
+        if ($needsPersonB && is_string($scriptPersonB) && trim($scriptPersonB) !== '') {
+            $workflow['b2']['person_b_prompt'] = trim($scriptPersonB);
+        }
 
-            if ($needsPersonB && isset($suggestions['person_b'])) {
-                $workflow['b2']['person_b_prompt'] = $suggestions['person_b'];
-            }
-
+        if (
+            ($needsPersonA && is_string($workflow['b2']['person_a_prompt'] ?? null) && trim($workflow['b2']['person_a_prompt']) !== '')
+            || ($needsPersonB && is_string($workflow['b2']['person_b_prompt'] ?? null) && trim($workflow['b2']['person_b_prompt']) !== '')
+        ) {
             $workflow['b2']['person_prompts_generated_at'] = now()->toIso8601String();
-            $workflow['debug']['last_person_suggestion_raw'] = mb_substr($raw, 0, 6000);
-        } catch (\Throwable $exception) {
-            $workflow['debug']['person_suggestion_error'] = $exception->getMessage();
+            $workflow['debug']['person_suggestion_source'] = 'script_sections';
         }
 
         $fallbacks = $this->fallbackWorkflowPersonPrompts($audience);
@@ -2255,6 +2253,20 @@ Analyze the TARGET AUDIENCE for this product:
 3. SELF-BUYERS:
 - Who buys this for themselves?
 - Why they want a personalized version.
+
+===SECTION:PERSON_A===
+Describe GIFT RECEIVER / Person A for reference image generation.
+- 2-3 sentences.
+- Include age, gender, body type, hair color/texture, eye color, expression, clothing, pose, and setting.
+- Person A is the one who receives, wears, keeps, or uses the customized product.
+- Must fit the target audience analysis.
+
+===SECTION:PERSON_B===
+Describe GIFT GIVER / Person B for reference image generation.
+- 2-3 sentences.
+- Must be clearly different from Person A on at least 2 traits: age, gender, body type, hair color/style, clothing style, role in scene.
+- Include age, gender, body type, hair color/texture, eye color, expression, clothing, pose, and setting.
+- Person B presents the gift, stands next to the receiver, hands it over, or smiles alongside.
 
 ===SECTION:STYLE===
 Color tone for the listing set:

@@ -43,6 +43,8 @@ class ReviewImage extends Component
 
     public ?int $assetId = null;
 
+    public bool $assetApproved = false;
+
     public ?string $keyword = null;
 
     public string $customPrompt = '';
@@ -99,6 +101,7 @@ class ReviewImage extends Component
         $this->editTarget = $editTarget;
         $this->modalProviderKey = $providerKey;
         $this->modalImageModel = $imageModel;
+        $this->assetApproved = false;
         $this->customPrompt = '';
         $this->setCurrentFromGallery();
         $this->loadSourcePreviewContext();
@@ -539,6 +542,8 @@ class ReviewImage extends Component
         if (! $asset || ! $asset->is_approved) {
             return;
         }
+
+        $this->assetApproved = true;
 
         $fields = [
             'title' => 'Title',

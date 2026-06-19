@@ -314,7 +314,7 @@
                                             <h3 class="truncate text-sm font-bold text-slate-950">Prompt Create Image</h3>
                                         </div>
 
-                                        @if ($action === 'ornament-amazon-two-custom-image' && $editTarget && str_starts_with($editTarget, 'mockup'))
+                                        @if (! $assetApproved && $action === 'ornament-amazon-two-custom-image' && $editTarget && str_starts_with($editTarget, 'mockup'))
                                             <button
                                                 type="button"
                                                 x-on:click="window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started')); window.dispatchEvent(new CustomEvent('ornament-amazon-two-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($previewMockupSlot) } }))"
@@ -442,7 +442,7 @@
                                 </section>
                             @endif
 
-                            @if ($action === 'ornament-amazon-two-custom-image')
+                            @if (! $assetApproved && $action === 'ornament-amazon-two-custom-image')
                                 <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div class="mb-4 flex items-center gap-3">
                                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
@@ -507,7 +507,7 @@
                                 </section>
                             @endif
 
-                            @if ($action === 'sticker-redesign')
+                            @if (! $assetApproved && $action === 'sticker-redesign')
                                 <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div class="mb-4 flex items-center gap-3">
                                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600">

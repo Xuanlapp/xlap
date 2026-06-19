@@ -371,6 +371,10 @@ class ProductDesignCard extends Component
 
             $asset = app(OrnamentAmazonTwoService::class)->assetForUser(auth()->user(), $this->assetId);
 
+            if ($asset->is_approved) {
+                throw new RuntimeException('Item da duyet. Hay bo duyet truoc khi tao lai.');
+            }
+
             if (! $asset->redesign) {
                 throw new RuntimeException('Chua co anh 2. Create Master de gan lam person ref.');
             }

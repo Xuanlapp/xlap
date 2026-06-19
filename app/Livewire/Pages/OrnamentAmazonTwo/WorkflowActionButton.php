@@ -37,6 +37,14 @@ class WorkflowActionButton extends Component
         }
 
         try {
+            $asset = app(OrnamentAmazonTwoService::class)->assetForUser(auth()->user(), $this->assetId);
+
+            if ($asset->is_approved) {
+                $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Item da duyet. Hay bo duyet truoc khi tao lai.');
+
+                return;
+            }
+
             match ($this->action) {
                 'main' => $this->generateMainImage(),
                 'script' => $this->generateScript(),

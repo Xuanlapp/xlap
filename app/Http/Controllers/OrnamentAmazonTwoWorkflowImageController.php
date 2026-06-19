@@ -129,8 +129,10 @@ class OrnamentAmazonTwoWorkflowImageController extends Controller
     public function prepare(Request $request, int $asset): JsonResponse
     {
         try {
-            app(OrnamentAmazonTwoService::class)
-                ->prepareAllWorkflowImagesForGeneration($request->user(), $asset);
+            $service = app(OrnamentAmazonTwoService::class);
+            $this->ensureAssetCanGenerate($service, $request, $asset);
+
+            $service->prepareAllWorkflowImagesForGeneration($request->user(), $asset);
 
             return response()->json([
                 'ok' => true,
@@ -203,7 +205,10 @@ class OrnamentAmazonTwoWorkflowImageController extends Controller
         ]);
 
         try {
-            $freshAsset = app(OrnamentAmazonTwoService::class)->generateWorkflowImage(
+            $service = app(OrnamentAmazonTwoService::class);
+            $this->ensureAssetCanGenerate($service, $request, $asset);
+
+            $freshAsset = $service->generateWorkflowImage(
                 user: $request->user(),
                 assetId: $asset,
                 slot: $slot,
@@ -258,6 +263,15 @@ class OrnamentAmazonTwoWorkflowImageController extends Controller
             'custom_guide' => 'mockup6',
             default => null,
         };
+    }
+
+    private function ensureAssetCanGenerate(OrnamentAmazonTwoService $service, Request $request, int $asset): void
+    {
+        $freshAsset = $service->assetForUser($request->user(), $asset);
+
+        if ($freshAsset->is_approved) {
+            throw new RuntimeException('Item da duyet. Hay bo duyet truoc khi tao lai.');
+        }
     }
 
     /**
