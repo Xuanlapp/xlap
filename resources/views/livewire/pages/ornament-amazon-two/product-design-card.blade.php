@@ -281,10 +281,59 @@
                         @endphp
 
                         <div
-                            x-data="{ showUrl: false }"
+                            x-data="{
+                                showUrl: false,
+                                personGenerating: false,
+                                startedHandler: null,
+                                finishedHandler: null,
+                                assetId: @js($asset->id),
+                                personKey: @js($personKey),
+                                generationKey() {
+                                    return `${this.assetId}:${this.personKey}`;
+                                },
+                                init() {
+                                    window.__ornamentAmazonTwoPersonGenerating = window.__ornamentAmazonTwoPersonGenerating || {};
+                                    this.personGenerating = Boolean(window.__ornamentAmazonTwoPersonGenerating[this.generationKey()]);
+
+                                    this.startedHandler = (event) => {
+                                        if (Number(event.detail?.assetId || 0) !== Number(this.assetId) || event.detail?.action !== 'person' || event.detail?.person !== this.personKey) {
+                                            return;
+                                        }
+
+                                        window.__ornamentAmazonTwoPersonGenerating[this.generationKey()] = true;
+                                        this.personGenerating = true;
+                                    };
+
+                                    this.finishedHandler = (event) => {
+                                        if (Number(event.detail?.assetId || 0) !== Number(this.assetId) || event.detail?.action !== 'person' || event.detail?.person !== this.personKey) {
+                                            return;
+                                        }
+
+                                        delete window.__ornamentAmazonTwoPersonGenerating[this.generationKey()];
+                                        this.personGenerating = false;
+                                    };
+
+                                    window.addEventListener('ornament-amazon-two-workflow-action-started', this.startedHandler);
+                                    window.addEventListener('ornament-amazon-two-workflow-action-finished', this.finishedHandler);
+                                },
+                                destroy() {
+                                    if (this.startedHandler) {
+                                        window.removeEventListener('ornament-amazon-two-workflow-action-started', this.startedHandler);
+                                    }
+
+                                    if (this.finishedHandler) {
+                                        window.removeEventListener('ornament-amazon-two-workflow-action-finished', this.finishedHandler);
+                                    }
+                                },
+                            }"
                             class="relative flex min-h-0 flex-col rounded-lg border border-slate-200 bg-slate-50/70 p-2"
                         >
                             <div wire:loading.flex wire:target="{{ $uploadTarget }}" class="absolute inset-0 z-20 items-center justify-center rounded-lg bg-white/82 backdrop-blur-sm">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-full border border-sky-200 bg-sky-50 shadow-lg">
+                                    <span class="h-6 w-6 animate-spin rounded-full border-4 border-sky-200 border-t-sky-700"></span>
+                                </div>
+                            </div>
+                            <div x-show="personGenerating" x-cloak class="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/82 backdrop-blur-sm">
                                 <div class="flex h-11 w-11 items-center justify-center rounded-full border border-sky-200 bg-sky-50 shadow-lg">
                                     <span class="h-6 w-6 animate-spin rounded-full border-4 border-sky-200 border-t-sky-700"></span>
                                 </div>
@@ -523,6 +572,8 @@
         @once
             <style>
                 [x-cloak] { display: none !important; }
+                .ornament-mockup-slot-spinner { display: none; }
+                .ornament-mockup-slot.is-generating .ornament-mockup-slot-spinner { display: flex; }
             </style>
         @endonce
         @php
@@ -534,6 +585,8 @@
         @endphp
 
         <div
+            data-ornament-amazon-two-mockup-root
+            data-asset-id="{{ $asset->id }}"
             class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}"
             x-data="window.ornamentAmazonTwoMockupB5({
                 slots: @js(array_keys($mockupB5Slots)),
@@ -654,7 +707,10 @@
                                     $slotGalleryIndex = $psdMockupGalleryIndexByTarget[$slot['column']] ?? 0;
                                 @endphp
 
-                                <div class="relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition-all duration-200 ease-out hover:border-orange-200">
+                                <div
+                                    data-ornament-amazon-two-mockup-slot="{{ $slotKey }}"
+                                    class="ornament-mockup-slot relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition-all duration-200 ease-out hover:border-orange-200"
+                                >
                                     @if ($slotImageUrl)
                                         <button
                                             type="button"
@@ -708,7 +764,7 @@
                                     <div
                                         x-show="isGenerating(@js($slotKey))"
                                         x-cloak
-                                        class="absolute inset-0 z-20 flex items-center justify-center bg-white/90 backdrop-blur-sm"
+                                        class="ornament-mockup-slot-spinner absolute inset-0 z-20 items-center justify-center bg-white/90 backdrop-blur-sm"
                                     >
                                         <div class="flex flex-col items-center gap-2 text-center text-orange-700">
                                             <span class="h-7 w-7 animate-spin rounded-full border-4 border-orange-200 border-t-orange-700"></span>

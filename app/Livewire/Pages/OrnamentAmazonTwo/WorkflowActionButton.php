@@ -52,6 +52,7 @@ class WorkflowActionButton extends Component
                 default => throw new InvalidArgumentException('Workflow action khong hop le.'),
             };
         } finally {
+            $this->dispatch('ornament-amazon-two-workflow-action-finished', assetId: $this->assetId, action: $this->action, person: $this->person);
             $this->dispatch('ornament-amazon-two-generation-finished');
         }
     }

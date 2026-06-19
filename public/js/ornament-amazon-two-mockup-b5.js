@@ -219,6 +219,12 @@ if (! window.ornamentAmazonTwoMockupB5) {
                     ...this.slotStates,
                     [slot]: state,
                 };
+
+                document
+                    .querySelectorAll(`[data-ornament-amazon-two-mockup-root][data-asset-id="${config.assetId}"] [data-ornament-amazon-two-mockup-slot="${slot}"]`)
+                    .forEach((element) => {
+                        element.classList.toggle('is-generating', state === 'generating' || state === 'queued');
+                    });
             },
 
             mergeStatusImages(images) {

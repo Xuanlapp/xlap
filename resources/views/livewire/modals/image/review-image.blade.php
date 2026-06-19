@@ -317,7 +317,7 @@
                                         @if (! $assetApproved && $action === 'ornament-amazon-two-custom-image' && $editTarget && str_starts_with($editTarget, 'mockup'))
                                             <button
                                                 type="button"
-                                                x-on:click="window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started')); window.dispatchEvent(new CustomEvent('ornament-amazon-two-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($previewMockupSlot) } }))"
+                                                x-on:click="document.querySelectorAll(`[data-ornament-amazon-two-mockup-root][data-asset-id='${@js($assetId)}'] [data-ornament-amazon-two-mockup-slot='${@js($previewMockupSlot)}']`).forEach((element) => element.classList.add('is-generating')); window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started')); window.dispatchEvent(new CustomEvent('ornament-amazon-two-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($previewMockupSlot) } }))"
                                                 wire:click="generateOrnamentAmazonTwoMockupImage"
                                                 wire:loading.attr="disabled"
                                                 wire:target="generateOrnamentAmazonTwoMockupImage"
@@ -443,6 +443,17 @@
                             @endif
 
                             @if (! $assetApproved && $action === 'ornament-amazon-two-custom-image')
+                                @php
+                                    $activePreviewMockupSlot = match ($editTarget) {
+                                        'mockup1' => 'usp',
+                                        'mockup2' => 'before_after',
+                                        'mockup3' => 'comparison',
+                                        'mockup4' => 'features',
+                                        'mockup5' => 'details',
+                                        'mockup6' => 'custom_guide',
+                                        default => null,
+                                    };
+                                @endphp
                                 <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div class="mb-4 flex items-center gap-3">
                                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
@@ -492,6 +503,7 @@
                                         </div>
                                         <button
                                             type="button"
+                                            x-on:click="document.querySelectorAll(`[data-ornament-amazon-two-mockup-root][data-asset-id='${@js($assetId)}'] [data-ornament-amazon-two-mockup-slot='${@js($activePreviewMockupSlot)}']`).forEach((element) => element.classList.add('is-generating')); window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started')); window.dispatchEvent(new CustomEvent('ornament-amazon-two-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($activePreviewMockupSlot) } }))"
                                             wire:click="generateOrnamentAmazonTwoMockupImage"
                                             wire:loading.attr="disabled"
                                             wire:target="generateOrnamentAmazonTwoMockupImage"

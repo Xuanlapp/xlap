@@ -648,12 +648,35 @@ class OrnamentAmazonTwoService
         ?string $providerKey = null,
         ?string $imageModel = null,
     ): ProductDesignAsset {
-        $asset = $this->assetForUser($user, $assetId);
-        $this->ensureNotApproved($asset);
-
         if (! in_array($person, ['a', 'b'], true)) {
             throw new InvalidArgumentException('Person slot khong hop le.');
         }
+
+        $lock = Cache::lock("ornament-amazon-two:workflow-person:{$assetId}:{$person}", 600);
+
+        if (! $lock->get()) {
+            throw new RuntimeException('Person '.strtoupper($person).' dang duoc tao. Hay doi ket qua truoc khi bam lai.');
+        }
+
+        try {
+            return $this->generateWorkflowPersonLocked($user, $assetId, $person, $providerKey, $imageModel);
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
+    /**
+     * Generate one Person reference after the per-person duplicate request lock is acquired.
+     */
+    private function generateWorkflowPersonLocked(
+        User $user,
+        int $assetId,
+        string $person,
+        ?string $providerKey = null,
+        ?string $imageModel = null,
+    ): ProductDesignAsset {
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
 
         $workflow = $this->workflowData($asset);
         $prompt = $workflow['b2']["person_{$person}_prompt"] ?? null;
@@ -769,6 +792,29 @@ class OrnamentAmazonTwoService
             throw new InvalidArgumentException('Slot anh workflow khong hop le.');
         }
 
+        $lock = Cache::lock("ornament-amazon-two:workflow-image:{$assetId}:{$slot}", 600);
+
+        if (! $lock->get()) {
+            throw new RuntimeException('Mockup nay dang duoc tao. Hay doi ket qua truoc khi bam lai.');
+        }
+
+        try {
+            return $this->generateWorkflowImageLocked($user, $assetId, $slot, $providerKey, $imageModel);
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
+    /**
+     * Generate one workflow image after the per-slot duplicate request lock is acquired.
+     */
+    private function generateWorkflowImageLocked(
+        User $user,
+        int $assetId,
+        string $slot,
+        ?string $providerKey = null,
+        ?string $imageModel = null,
+    ): ProductDesignAsset {
         $asset = $this->assetForUser($user, $assetId);
         $this->ensureNotApproved($asset);
 
