@@ -802,10 +802,10 @@ class OrnamentAmazonTwoService
             throw new InvalidArgumentException('Slot anh workflow khong hop le.');
         }
 
-        $lock = Cache::lock("ornament-amazon-two:workflow-image:{$assetId}:{$slot}", 600);
+        $lock = Cache::lock("ornament-amazon-two:workflow-image:{$assetId}:{$slot}", 180);
 
         if (! $lock->get()) {
-            throw new RuntimeException('Mockup nay dang duoc tao. Hay doi ket qua truoc khi bam lai.');
+            throw new RuntimeException('Mockup nay dang duoc tao hoac request truoc do chua giai phong xong. Hay doi 1-3 phut roi bam lai.');
         }
 
         try {
@@ -2901,3 +2901,4 @@ PROMPT
         return $content;
     }
 }
+
