@@ -435,6 +435,81 @@ class OrnamentAmazonTwoWorkflowTest extends TestCase
             ->assertSee('Writing prompt...');
     }
 
+    public function test_person_a_and_b_json_endpoints_merge_refs_independently(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'ornament-amazon-2')->firstOrFail();
+        $user->products()->attach($product);
+
+        UserAiProvider::create([
+            'user_id' => $user->id,
+            'provider_key' => 'chatgpt',
+            'is_enabled' => true,
+            'is_default' => true,
+        ]);
+
+        $asset = ProductDesignAsset::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'item_number' => 72,
+            'keyword' => 'personalized ornament',
+            'image_link' => 'https://example.com/source.png',
+            'redesign' => '/storage/generated/ornament-amazon-2/redesign/master.png',
+            'data_item_add' => ['productTitle' => 'Personalized Ornament'],
+        ]);
+
+        OrnamentAmazonTwoWorkflow::create([
+            'product_design_asset_id' => $asset->id,
+            'user_id' => $user->id,
+            'workflow_data' => [
+                'version' => 2,
+                'script' => ['audience' => 'Gift givers.'],
+                'b2' => [
+                    'person_a_prompt' => 'Person A prompt.',
+                    'person_b_prompt' => 'Person B prompt.',
+                ],
+            ],
+        ]);
+
+        $this->mock(ApiKeyImageGenerator::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('generateFromPrompt')
+                ->twice()
+                ->andReturn(
+                    '/storage/generated/ornament-amazon-2/workflow/refs/person-a.png',
+                    '/storage/generated/ornament-amazon-2/workflow/refs/person-b.png',
+                );
+        });
+
+        $this->actingAs($user)
+            ->postJson(route('offorest.ornament-amazon-2.workflow.person', ['asset' => $asset->id, 'person' => 'a']), [
+                'provider_key' => 'chatgpt',
+                'image_model' => 'gpt-image-1',
+            ])
+            ->assertOk()
+            ->assertJson([
+                'ok' => true,
+                'person' => 'a',
+                'url' => '/storage/generated/ornament-amazon-2/workflow/refs/person-a.png',
+            ]);
+
+        $this->actingAs($user)
+            ->postJson(route('offorest.ornament-amazon-2.workflow.person', ['asset' => $asset->id, 'person' => 'b']), [
+                'provider_key' => 'chatgpt',
+                'image_model' => 'gpt-image-1',
+            ])
+            ->assertOk()
+            ->assertJson([
+                'ok' => true,
+                'person' => 'b',
+                'url' => '/storage/generated/ornament-amazon-2/workflow/refs/person-b.png',
+            ]);
+
+        $workflow = OrnamentAmazonTwoWorkflow::where('product_design_asset_id', $asset->id)->firstOrFail()->workflow_data;
+
+        $this->assertSame('/storage/generated/ornament-amazon-2/workflow/refs/person-a.png', $workflow['b2']['person_a_ref']);
+        $this->assertSame('/storage/generated/ornament-amazon-2/workflow/refs/person-b.png', $workflow['b2']['person_b_ref']);
+    }
+
     public function test_script_generation_fails_when_provider_returns_empty_script(): void
     {
         $user = User::factory()->create();

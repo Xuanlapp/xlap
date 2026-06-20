@@ -481,7 +481,7 @@ class ProductDesignCard extends Component
             );
 
             $this->dispatchWorkflowUpdated();
-            $this->dispatch('toast', type: 'success', title: 'Started!', message: 'Da bat dau tao mockup. Anh nao xong se hien ngay.');
+            $this->dispatch('toast', type: 'success', title: 'Started!', message: 'Da bat dau tao 6 mockup. Anh nao xong se hien ngay.');
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'ornament_amazon_two.generate_all_workflow_images', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());

@@ -697,10 +697,19 @@ class OrnamentAmazonTwoService
             model: $imageModel,
         );
 
-        $workflow['b2']["person_{$person}_ref"] = $imageUrl;
-        $workflow['b2']["person_{$person}_generated_at"] = now()->toIso8601String();
+        $saveLock = Cache::lock("ornament-amazon-two:workflow-save:{$assetId}", 30);
 
-        return $this->saveWorkflowData($asset, $workflow);
+        try {
+            $saveLock->block(10);
+
+            $workflow = $this->workflowData($asset->refresh());
+            $workflow['b2']["person_{$person}_ref"] = $imageUrl;
+            $workflow['b2']["person_{$person}_generated_at"] = now()->toIso8601String();
+
+            return $this->saveWorkflowData($asset, $workflow);
+        } finally {
+            optional($saveLock)->release();
+        }
     }
 
     /**
@@ -843,17 +852,26 @@ class OrnamentAmazonTwoService
             model: $imageModel,
         );
 
-        $workflow = $this->workflowData($asset->refresh());
-        $workflow['provider'] = $providerKey;
-        $workflow['image_model'] = $imageModel;
-        $workflow['images'][$slot] = [
-            'url' => $imageUrl,
-            'model' => $imageModel,
-            'provider' => $providerKey,
-            'generated_at' => now()->toIso8601String(),
-        ];
+        $saveLock = Cache::lock("ornament-amazon-two:workflow-save:{$assetId}", 30);
 
-        return $this->saveWorkflowData($asset, $workflow);
+        try {
+            $saveLock->block(10);
+
+            $workflow = $this->workflowData($asset->refresh());
+            $workflow['provider'] = $providerKey;
+            $workflow['image_model'] = $imageModel;
+            $workflow['images'][$slot] = [
+                'url' => $imageUrl,
+                'model' => $imageModel,
+                'provider' => $providerKey,
+                'generated_at' => now()->toIso8601String(),
+            ];
+            unset($workflow['images_errors'][$slot]);
+
+            return $this->saveWorkflowData($asset, $workflow);
+        } finally {
+            optional($saveLock)->release();
+        }
     }
 
     public function prepareAllWorkflowImagesForGeneration(User $user, int $assetId): ProductDesignAsset

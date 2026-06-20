@@ -1,4 +1,4 @@
-if (! window.ornamentAmazonTwoMockupB5) {
+﻿if (! window.ornamentAmazonTwoMockupB5) {
     window.ornamentAmazonTwoMockupB5 = function (config) {
         return {
             slots: config.slots || [],
@@ -6,90 +6,17 @@ if (! window.ornamentAmazonTwoMockupB5) {
             prompts: config.prompts || {},
             images: config.images || {},
             slotStates: {},
+            slotErrors: {},
             running: false,
-            imageCount: 0,
             doneCount: 0,
             targetCount: 0,
             errorCount: 0,
-            statusPollTimer: null,
             statusMessage: '',
-            statusState: 'idle',
             disabledReason: config.disabledReason || '',
             csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
 
             init() {
-                this.imageCount = this.doneImageCount();
-
-                window.addEventListener('ornament-amazon-two-preview-mockup-generation-started', (event) => {
-                    if (Number(event.detail?.assetId || 0) !== Number(config.assetId)) {
-                        return;
-                    }
-
-                    const slot = event.detail?.slot;
-
-                    if (! slot || ! this.slots.includes(slot)) {
-                        return;
-                    }
-
-                    this.setSlotState(slot, 'generating');
-                    this.images[slot] = {
-                        ...(this.images[slot] || {}),
-                        preview: null,
-                        original: null,
-                    };
-                    this.statusMessage = `Generating mockup ${this.slotNumber(slot)}...`;
-                    this.statusState = 'running';
-
-                    window.clearTimeout(this.images[slot]?.timeoutId);
-                    const timeoutId = window.setTimeout(() => {
-                        if (this.slotStates[slot] === 'generating') {
-                            this.setSlotState(slot, 'error');
-                            this.statusMessage = `Generate failed: ${slot}`;
-                            this.statusState = 'error';
-                        }
-                    }, 10 * 60 * 1000);
-
-                    this.images[slot] = {
-                        ...(this.images[slot] || {}),
-                        timeoutId,
-                    };
-                });
-
-                window.addEventListener('ornament-amazon-two-preview-mockup-generation-finished', (event) => {
-                    if (Number(event.detail?.assetId || 0) !== Number(config.assetId)) {
-                        return;
-                    }
-
-                    const slot = event.detail?.slot;
-
-                    if (! slot || ! this.slots.includes(slot)) {
-                        return;
-                    }
-
-                    window.clearTimeout(this.images[slot]?.timeoutId);
-
-                    if (event.detail?.ok === false) {
-                        this.setSlotState(slot, 'error');
-                        this.statusMessage = event.detail?.message || `Generate failed: ${slot}`;
-                        this.statusState = 'error';
-                        return;
-                    }
-
-                    const imageUrl = event.detail?.url || null;
-
-                    if (imageUrl) {
-                        this.images[slot] = {
-                            ...(this.images[slot] || {}),
-                            preview: imageUrl,
-                            original: imageUrl,
-                        };
-                        this.imageCount = this.doneImageCount();
-                    }
-
-                    this.setSlotState(slot, 'done');
-                    this.statusMessage = `Done mockup ${this.slotNumber(slot)}`;
-                    this.statusState = 'done';
-                });
+                this.doneCount = this.doneImageCount();
             },
 
             doneImageCount() {
@@ -134,20 +61,19 @@ if (! window.ornamentAmazonTwoMockupB5) {
             },
 
             gallery() {
-                return this.slots
-                    .map((slot) => {
-                        const original = this.originalUrl(slot);
-                        const preview = this.imageUrl(slot);
+                return this.slots.map((slot) => {
+                    const original = this.originalUrl(slot);
+                    const preview = this.imageUrl(slot);
 
-                        return {
-                            src: preview || original || null,
-                            original: original || preview || null,
-                            title: `MOCKUP ${this.slotNumber(slot)}`,
-                            editTarget: `mockup${this.slotNumber(slot)}`,
-                            prompt: this.promptForSlot(slot),
-                            canGenerate: this.promptForSlot(slot) !== '',
-                        };
-                    })
+                    return {
+                        src: preview || original || '',
+                        original: original || preview || '',
+                        title: `MOCKUP ${this.slotNumber(slot)}`,
+                        editTarget: `mockup${this.slotNumber(slot)}`,
+                        prompt: this.promptForSlot(slot),
+                        canGenerate: this.promptForSlot(slot) !== '',
+                    };
+                });
             },
 
             galleryIndex(slot) {
@@ -195,7 +121,7 @@ if (! window.ornamentAmazonTwoMockupB5) {
                     dispatch('review-image', payload);
                 } else if (window.Livewire && typeof window.Livewire.dispatch === 'function') {
                     window.Livewire.dispatch('review-image', payload);
-                } else {
+                } else if (original || src) {
                     window.open(original || src, '_blank', 'noopener');
                 }
             },
@@ -204,101 +130,16 @@ if (! window.ornamentAmazonTwoMockupB5) {
                 return this.images?.[slot]?.number || this.slots.indexOf(slot) + 1;
             },
 
-            isGenerating(slot) {
-                return this.slotStates[slot] === 'generating'
-                    || (
-                        this.running
-                        && this.promptSlots.includes(slot)
-                        && this.slotStates[slot] !== 'done'
-                        && this.slotStates[slot] !== 'error'
-                    );
-            },
-
             setSlotState(slot, state) {
                 this.slotStates = {
                     ...this.slotStates,
                     [slot]: state,
                 };
-
-                document
-                    .querySelectorAll(`[data-ornament-amazon-two-mockup-root][data-asset-id="${config.assetId}"] [data-ornament-amazon-two-mockup-slot="${slot}"]`)
-                    .forEach((element) => {
-                        element.classList.toggle('is-generating', state === 'generating' || state === 'queued');
-                    });
-            },
-
-            mergeStatusImages(images) {
-                if (! images || typeof images !== 'object') {
-                    return;
-                }
-
-                let changed = false;
-                const nextImages = {...this.images};
-
-                Object.entries(images).forEach(([slot, imageUrl]) => {
-                    if (! this.slots.includes(slot) || ! imageUrl) {
-                        return;
-                    }
-
-                    nextImages[slot] = {
-                        ...(nextImages[slot] || {}),
-                        preview: imageUrl,
-                        original: imageUrl,
-                    };
-
-                    if (this.slotStates[slot] !== 'done') {
-                        this.setSlotState(slot, 'done');
-                    }
-
-                    changed = true;
-                });
-
-                if (! changed) {
-                    return;
-                }
-
-                this.images = nextImages;
-                this.imageCount = this.doneImageCount();
-                this.doneCount = this.imageCount;
-
-                if (this.running) {
-                    this.statusMessage = `Generating ${this.doneCount}/${this.targetCount}...`;
-                }
-            },
-
-            async refreshImagesFromStatus() {
-                if (! config.statusUrl) {
-                    return;
-                }
-
-                try {
-                    const data = await this.getJson(config.statusUrl);
-                    this.mergeStatusImages(data.images || {});
-                } catch (error) {
-                    // Slot requests still report hard errors.
-                }
-            },
-
-            startStatusPolling() {
-                window.clearInterval(this.statusPollTimer);
-                this.refreshImagesFromStatus();
-                this.statusPollTimer = window.setInterval(() => {
-                    this.refreshImagesFromStatus();
-                }, 5000);
-            },
-
-            stopStatusPolling() {
-                window.clearInterval(this.statusPollTimer);
-                this.statusPollTimer = null;
             },
 
             slotMessage(slot, fallback) {
                 if (this.slotStates[slot] === 'generating') {
                     return 'Generating';
-                }
-
-                if (this.slotStates[slot] === 'queued') {
-                    return 'Queued';
                 }
 
                 if (this.slotStates[slot] === 'error') {
@@ -308,130 +149,107 @@ if (! window.ornamentAmazonTwoMockupB5) {
                 return fallback;
             },
 
+            slotError(slot) {
+                return this.slotErrors?.[slot] || '';
+            },
+
             async generateAll() {
                 if (this.running) {
                     return;
                 }
 
-                if (config.disabledReason) {
-                    this.statusMessage = config.disabledReason;
-                    this.statusState = 'error';
+                if (this.disabledReason) {
+                    this.statusMessage = this.disabledReason;
                     return;
                 }
 
                 if (! this.promptSlots.length) {
                     this.statusMessage = 'Can tao B4 prompt truoc.';
-                    this.statusState = 'error';
                     return;
                 }
 
                 this.running = true;
-                this.imageCount = 0;
                 this.doneCount = 0;
-                this.targetCount = this.promptSlots.length;
                 this.errorCount = 0;
+                this.targetCount = this.promptSlots.length;
+                this.slotErrors = {};
                 this.statusMessage = `Generating 0/${this.targetCount}...`;
-                this.statusState = 'running';
+
                 this.slots.forEach((slot) => {
                     if (this.promptSlots.includes(slot)) {
                         this.setSlotState(slot, 'generating');
-                        this.images[slot] = {
-                            ...(this.images[slot] || {}),
-                            preview: null,
-                            original: null,
-                        };
                     } else {
                         this.setSlotState(slot, 'missing');
                     }
                 });
+
                 window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started'));
-                await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-                await new Promise((resolve) => requestAnimationFrame(() => resolve()));
 
                 try {
                     try {
                         await this.postJson(config.prepareUrl, {});
-                        this.startStatusPolling();
                     } catch (error) {
                         this.promptSlots.forEach((slot) => {
                             this.setSlotState(slot, 'error');
+                            this.slotErrors = {
+                                ...this.slotErrors,
+                                [slot]: error.message || 'Khong the chuan bi tao mockup.',
+                            };
                         });
                         this.errorCount = this.promptSlots.length;
+                        this.doneCount = this.promptSlots.length;
                         this.statusMessage = error.message || 'Khong the chuan bi tao mockup.';
-                        this.statusState = 'error';
-
                         return;
                     }
 
-                    await Promise.all(this.promptSlots.map(async (slot) => {
-                        try {
-                            this.setSlotState(slot, 'generating');
-                            const data = await this.postJson(
-                                config.generateUrlTemplate.replace('__slot__', encodeURIComponent(slot)),
-                                {
-                                    provider_key: config.providerKey,
-                                    image_model: config.imageModel,
-                                },
-                            );
+                    await Promise.all(this.promptSlots.map((slot) => this.generateSlot(slot)));
 
-                            const imageUrl = data.url || null;
-                            if (imageUrl) {
-                                this.images = {
-                                    ...this.images,
-                                    [slot]: {
-                                        ...(this.images[slot] || {}),
-                                        preview: imageUrl,
-                                        original: imageUrl,
-                                    },
-                                };
-                            }
-
-                            if (! imageUrl) {
-                                this.errorCount += 1;
-                            }
-
-                            this.setSlotState(slot, imageUrl ? 'done' : 'error');
-                            this.imageCount = this.doneImageCount();
-                            this.doneCount = this.imageCount;
-                            this.statusMessage = imageUrl
-                                ? `Generating ${this.doneCount}/${this.targetCount}...`
-                                : `Generate failed: ${slot}`;
-                            this.statusState = imageUrl ? 'running' : 'error';
-                        } catch (error) {
-                            this.setSlotState(slot, 'error');
-                            this.errorCount += 1;
-                            this.statusMessage = error.message || `Generate failed: ${slot}`;
-                            this.statusState = 'error';
-                        }
-                    }));
-
-                    if (this.errorCount === 0) {
-                        this.statusMessage = `Done ${this.doneCount}/${this.targetCount}`;
-                        this.statusState = 'done';
-                    }
+                    this.statusMessage = this.errorCount === 0
+                        ? `All done! ${this.doneImageCount()} images generated.`
+                        : `Done ${this.doneCount}/${this.targetCount}, ${this.errorCount} failed`;
                 } finally {
-                    await this.refreshImagesFromStatus();
-                    this.stopStatusPolling();
                     this.running = false;
                     window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-finished'));
                 }
             },
 
-            async getJson(url) {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                    },
-                });
+            async generateSlot(slot) {
+                try {
+                    this.setSlotState(slot, 'generating');
+                    const data = await this.postJson(
+                        config.generateUrlTemplate.replace('__slot__', encodeURIComponent(slot)),
+                        {
+                            provider_key: config.providerKey,
+                            image_model: config.imageModel,
+                        },
+                    );
 
-                const data = await response.json().catch(() => ({}));
+                    const imageUrl = data.url || null;
 
-                if (! response.ok || data.ok === false) {
-                    throw new Error(data.message || `HTTP ${response.status}`);
+                    if (! imageUrl) {
+                        throw new Error('API khong tra ve anh.');
+                    }
+
+                    this.images = {
+                        ...this.images,
+                        [slot]: {
+                            ...(this.images[slot] || {}),
+                            preview: imageUrl,
+                            original: imageUrl,
+                        },
+                    };
+                    this.setSlotState(slot, 'done');
+                } catch (error) {
+                    this.errorCount += 1;
+                    this.slotErrors = {
+                        ...this.slotErrors,
+                        [slot]: error.message || `Generate failed: ${slot}`,
+                    };
+                    this.setSlotState(slot, 'error');
+                } finally {
+                    this.doneCount += 1;
+                    this.statusMessage = `Generating ${this.doneCount}/${this.targetCount}...`;
                 }
-
-                return data;
             },
 
             async postJson(url, payload) {
@@ -456,3 +274,4 @@ if (! window.ornamentAmazonTwoMockupB5) {
         };
     };
 }
+
