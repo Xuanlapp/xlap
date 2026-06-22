@@ -1,4 +1,4 @@
-<section
+﻿<section
     class="min-h-[calc(100vh-4rem)] bg-[#f4f6fb] px-4 py-6 text-slate-950 sm:px-6 lg:px-8"
     x-data="{
         targetProducts: @js($targetProducts),
@@ -54,6 +54,7 @@
         perPage: 25,
         crawlFiltersOpen: false,
         filtersOpen: false,
+        fbaRuleOpen: true,
         selectedKeys: [],
         hiddenKeys: [],
         approvalOpen: false,
@@ -277,43 +278,46 @@
 
             for (const batch of cerebroResult?.batches || []) {
                 const normalizedRows = [];
+                const sheetRows = Array.isArray(batch.sheetRows) ? batch.sheetRows : [];
 
-                for (const row of Array.isArray(batch.sheetRows) ? batch.sheetRows : []) {
-                    normalizedRows.push({
-                        keywordPhrase: row.keywordPhrase || row['Keyword Phrase'] || '',
-                        searchVolume: row.searchVolume || row['Search Volume'] || '',
-                        keywordSales: row.keywordSales || row['Keyword Sales'] || '',
-                        titleDensity: row.titleDensity || row['Title Density'] || '',
-                        sourceSheet: row.sourceSheet || 'Table',
-                        raw: row,
-                    });
-                }
-
-                for (const sheet of batch.excelData?.sheets || []) {
-                    const matrix = Array.isArray(sheet.matrix) ? sheet.matrix : [];
-                    if (matrix.length < 2) {
-                        continue;
-                    }
-
-                    const headers = matrix[0].map((header) => String(header || '').trim());
-                    const keywordIndex = headers.indexOf('Keyword Phrase');
-                    const volumeIndex = headers.indexOf('Search Volume');
-                    const salesIndex = headers.indexOf('Keyword Sales');
-                    const densityIndex = headers.indexOf('Title Density');
-
-                    if ([keywordIndex, volumeIndex, salesIndex, densityIndex].some((index) => index < 0)) {
-                        continue;
-                    }
-
-                    for (const row of matrix.slice(1)) {
+                if (sheetRows.length > 0) {
+                    for (const row of sheetRows) {
                         normalizedRows.push({
-                            keywordPhrase: row[keywordIndex] || '',
-                            searchVolume: row[volumeIndex] || '',
-                            keywordSales: row[salesIndex] || '',
-                            titleDensity: row[densityIndex] || '',
-                            sourceSheet: sheet.name || 'Table',
+                            keywordPhrase: row.keywordPhrase || row['Keyword Phrase'] || '',
+                            searchVolume: row.searchVolume || row['Search Volume'] || '',
+                            keywordSales: row.keywordSales || row['Keyword Sales'] || '',
+                            titleDensity: row.titleDensity || row['Title Density'] || '',
+                            sourceSheet: row.sourceSheet || 'Table',
                             raw: row,
                         });
+                    }
+                } else {
+                    for (const sheet of batch.excelData?.sheets || []) {
+                        const matrix = Array.isArray(sheet.matrix) ? sheet.matrix : [];
+                        if (matrix.length < 2) {
+                            continue;
+                        }
+
+                        const headers = matrix[0].map((header) => String(header || '').trim());
+                        const keywordIndex = headers.indexOf('Keyword Phrase');
+                        const volumeIndex = headers.indexOf('Search Volume');
+                        const salesIndex = headers.indexOf('Keyword Sales');
+                        const densityIndex = headers.indexOf('Title Density');
+
+                        if ([keywordIndex, volumeIndex, salesIndex, densityIndex].some((index) => index < 0)) {
+                            continue;
+                        }
+
+                        for (const row of matrix.slice(1)) {
+                            normalizedRows.push({
+                                keywordPhrase: row[keywordIndex] || '',
+                                searchVolume: row[volumeIndex] || '',
+                                keywordSales: row[salesIndex] || '',
+                                titleDensity: row[densityIndex] || '',
+                                sourceSheet: sheet.name || 'Table',
+                                raw: row,
+                            });
+                        }
                     }
                 }
 
@@ -571,14 +575,16 @@
 
             localStorage.setItem(this.fbaRuleStorageKey, JSON.stringify(rule));
 
-            if (this.cerebroResult) {
-                this.cerebroSheets = this.buildCerebroSheets(this.cerebroResult);
-                this.cerebroRows = [...this.cerebroSheets.FBA, ...this.cerebroSheets.FBM];
-                this.products = this.applyCrawlFilters(this.cerebroRows);
-                this.productsFound = this.products.length;
-                this.currentPage = 1;
-                this.persistTabState();
+            if (this.running || this.checking || !this.cerebroResult) {
+                return;
             }
+
+            this.cerebroSheets = this.buildCerebroSheets(this.cerebroResult);
+            this.cerebroRows = [...this.cerebroSheets.FBA, ...this.cerebroSheets.FBM];
+            this.products = this.applyCrawlFilters(this.cerebroRows);
+            this.productsFound = this.products.length;
+            this.currentPage = 1;
+            this.persistTabState();
         },
 
         resetFbaRule() {
@@ -1402,7 +1408,7 @@
                         <div class="mt-8 space-y-9">
                             <div>
                                 <label for="filter_keyword_phrase" class="block text-lg font-medium text-slate-950">Keyword Phrase</label>
-                                <x-input id="filter_keyword_phrase" x-model.debounce.250ms="columnFilters.product" x-on:input="currentPage = 1" class="mt-4 block h-16 w-full rounded-md border-slate-900 px-5 text-lg text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900" placeholder="Nhập từ khóa..." />
+                                <x-input id="filter_keyword_phrase" x-model.debounce.250ms="columnFilters.product" x-on:input="currentPage = 1" class="mt-4 block h-16 w-full rounded-md border-slate-900 px-5 text-lg text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900" placeholder="Nháº­p tá»« khÃ³a..." />
                             </div>
 
                             <div class="grid gap-8 md:grid-cols-3">
@@ -1578,6 +1584,9 @@
         @include('livewire.modals.idea-amazon.duye-idea-modal')
     </div>
 </section>
+
+
+
 
 
 

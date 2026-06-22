@@ -45,6 +45,34 @@ let activeRun = null;
 const AMAZON_JOB_KEY = 'amazon_vsdt_jobs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function stopActiveRunBecauseOwnerTabClosedOrReloaded(reason) {
+  if (!activeRun || activeRun.stopped) return;
+  activeRun.stopped = true;
+  activeRun.stopReason = reason || 'Owner tab was closed or reloaded.';
+  sendPopup({
+    type: 'VSDT_STOPPED',
+    result: {
+      ...(activeRun.result || {}),
+      stopReason: activeRun.stopReason
+    }
+  });
+}
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (!activeRun?.ownerTabId) return;
+  if (tabId === activeRun.ownerTabId) {
+    stopActiveRunBecauseOwnerTabClosedOrReloaded('Owner tab was closed.');
+  }
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (!activeRun?.ownerTabId) return;
+  if (tabId !== activeRun.ownerTabId) return;
+  if (changeInfo.status === 'loading') {
+    stopActiveRunBecauseOwnerTabClosedOrReloaded('Owner tab was reloaded.');
+  }
+});
+
 async function storageGet(key, fallback) {
   const data = await chrome.storage.local.get(key);
   return data[key] ?? fallback;
@@ -81,7 +109,20 @@ function sendPopup(message) {
       vsdtLastResult: message.result,
       vsdtIsRunning: false
     }).catch(() => {});
-    updateAmazonJob(requestId, { status: message.type === 'VSDT_DONE' ? 'finished' : 'stopped', statusText: message.type === 'VSDT_DONE' ? 'Done. Full JSON is ready.' : 'Stopped.', isRunning: false, result: message.result || null }).catch(() => {});
+    const finalResult = message.result || null;
+    updateAmazonJob(requestId, {
+      status: message.type === 'VSDT_DONE' ? 'finished' : 'stopped',
+      statusText: message.type === 'VSDT_DONE' ? 'Done. Full JSON is ready.' : 'Stopped.',
+      isRunning: false,
+      result: finalResult,
+      cerebro: finalResult?.cerebro || null,
+      keywords: finalResult?.keywords || [],
+      directAsins: finalResult?.directAsins || [],
+      createdAt: finalResult?.createdAt || null,
+      runCerebro: finalResult?.runCerebro ?? null,
+      sellerSearch: finalResult?.sellerSearch || null,
+      topPerSeller: finalResult?.topPerSeller || null
+    }).catch(() => {});
   }
 
   if (message.type === 'VSDT_ERROR') {
@@ -90,7 +131,21 @@ function sendPopup(message) {
       vsdtLastResult: message.result || null,
       vsdtIsRunning: false
     }).catch(() => {});
-    updateAmazonJob(requestId, { status: 'failed', statusText: message.error || 'Unknown error.', isRunning: false, result: message.result || null, error: message.error || 'Unknown error.' }).catch(() => {});
+    const failedResult = message.result || null;
+    updateAmazonJob(requestId, {
+      status: 'failed',
+      statusText: message.error || 'Unknown error.',
+      isRunning: false,
+      result: failedResult,
+      cerebro: failedResult?.cerebro || null,
+      keywords: failedResult?.keywords || [],
+      directAsins: failedResult?.directAsins || [],
+      createdAt: failedResult?.createdAt || null,
+      runCerebro: failedResult?.runCerebro ?? null,
+      sellerSearch: failedResult?.sellerSearch || null,
+      topPerSeller: failedResult?.topPerSeller || null,
+      error: message.error || 'Unknown error.'
+    }).catch(() => {});
   }
 
   chrome.runtime.sendMessage(message).catch(() => {});
@@ -100,7 +155,14 @@ function sendPopup(message) {
       'http://xlap.com.vn/*',
       'https://xlap.com.vn/*',
       'http://www.xlap.com.vn/*',
-      'https://www.xlap.com.vn/*'
+      'https://www.xlap.com.vn/*',
+      'http://xlap.tech/*',
+      'https://xlap.tech/*',
+      'http://www.xlap.tech/*',
+      'https://www.xlap.tech/*',
+      'http://localhost/*',
+      'https://localhost/*',
+      'http://127.0.0.1/*'
     ]
   }).then((tabs) => {
     for (const tab of tabs) {
@@ -968,6 +1030,48 @@ function classifySheetRow(keywordPhrase, searchVolume, keywordSales, titleDensit
   return 'FBM';
 }
 
+function extractKeywordRowsFromExcelData(excelData) {
+  const rows = [];
+  const seen = new Set();
+
+  for (const sheet of excelData?.sheets || []) {
+    const matrix = Array.isArray(sheet?.matrix) ? sheet.matrix : [];
+    if (matrix.length === 0) continue;
+
+    const headers = matrix[0].map((value) => normalizeHeaderText(value).toLowerCase());
+    const keywordIndex = headers.findIndex((value) => value === 'keyword phrase');
+    const searchVolumeIndex = headers.findIndex((value) => value === 'search volume');
+    const keywordSalesIndex = headers.findIndex((value) => value === 'keyword sales');
+    const titleDensityIndex = headers.findIndex((value) => value === 'title density');
+
+    if (keywordIndex === -1) continue;
+
+    for (const row of matrix.slice(1)) {
+      const keywordPhrase = normalizeHeaderText(row[keywordIndex]);
+      if (!keywordPhrase) continue;
+
+      const searchVolume = searchVolumeIndex >= 0 ? normalizeHeaderText(row[searchVolumeIndex]) : '';
+      const keywordSales = keywordSalesIndex >= 0 ? normalizeHeaderText(row[keywordSalesIndex]) : '';
+      const titleDensity = titleDensityIndex >= 0 ? normalizeHeaderText(row[titleDensityIndex]) : '';
+
+      if (!searchVolume && !keywordSales && !titleDensity) continue;
+
+      const key = `${keywordPhrase}|${searchVolume}|${keywordSales}|${titleDensity}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      rows.push({
+        sourceSheet: classifySheetRow(keywordPhrase, searchVolume, keywordSales, titleDensity),
+        keywordPhrase,
+        searchVolume,
+        keywordSales,
+        titleDensity
+      });
+    }
+  }
+
+  return rows;
+}
 function extractCerebroSheetRows() {
   const keywordCells = [
     ...document.querySelectorAll('[data-testid="table-cell-keywordPhrase"]'),
@@ -1234,6 +1338,8 @@ async function collectVSDT(payload) {
   const run = {
     requestId: payload.requestId || `amazon_${Date.now()}`,
     stopped: false,
+    stopReason: null,
+    ownerTabId: payload.ownerTabId || null,
     tabId: null,
     result: {
       requestId: payload.requestId || null,
@@ -1345,7 +1451,7 @@ async function collectVSDT(payload) {
     }
 
     if (run.stopped) {
-      sendPopup({ type: 'VSDT_STOPPED', result: run.result });
+      sendPopup({ type: 'VSDT_STOPPED', result: { ...run.result, stopReason: run.stopReason || null } });
     } else {
       sendPopup({ type: 'VSDT_DONE', result: run.result });
     }
@@ -1366,6 +1472,8 @@ async function collectVSDT(payload) {
 async function collectCerebroTest(payload) {
   const run = {
     stopped: false,
+    stopReason: null,
+    ownerTabId: payload.ownerTabId || null,
     tabId: null,
     result: {
       requestId: payload.requestId || null,
@@ -1385,7 +1493,7 @@ async function collectCerebroTest(payload) {
     await runCerebroPipeline(tab.id, payload, run.result, run, payload.asins);
 
     if (run.stopped) {
-      sendPopup({ type: 'VSDT_STOPPED', result: run.result });
+      sendPopup({ type: 'VSDT_STOPPED', result: { ...run.result, stopReason: run.stopReason || null } });
     } else {
       sendPopup({ type: 'VSDT_DONE', result: run.result });
     }
@@ -1403,7 +1511,7 @@ async function collectCerebroTest(payload) {
   }
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+function handleAmazonRuntimeMessage(message, sender, sendResponse) {
   if (message.type === 'AMAZON_BRIDGE_HEALTH') {
     sendResponse({ ok: true, status: activeRun ? 'running' : 'idle', hasActiveRun: Boolean(activeRun) });
     return true;
@@ -1428,7 +1536,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       topPerSeller: Math.max(1, Math.min(20, Number(incomingPayload.topPerSeller) || 5)),
       runCerebro: incomingPayload.runCerebro !== false,
       heliumAccountId: String(incomingPayload.heliumAccountId || '').trim(),
-      requestId: String(message.requestId || incomingPayload.requestId || `amazon_${Date.now()}`)
+      requestId: String(message.requestId || incomingPayload.requestId || `amazon_${Date.now()}`),
+      ownerTabId: sender?.tab?.id || null
     };
 
     chrome.storage.local.set({
@@ -1444,7 +1553,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'AMAZON_GET_JOB') {
     getAmazonJob(message.requestId).then((job) => {
-      sendResponse({ ok: Boolean(job), requestId: message.requestId, job });
+      const result = job?.result || job || null;
+      sendResponse({
+        ok: Boolean(job),
+        requestId: message.requestId,
+        job,
+        result,
+        cerebro: result?.cerebro || job?.cerebro || null,
+        keywords: result?.keywords || job?.keywords || [],
+        status: job?.status || null,
+        statusText: job?.statusText || ''
+      });
     }).catch((error) => {
       sendResponse({ ok: false, requestId: message.requestId, error: error.message || String(error) });
     });
@@ -1464,7 +1583,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         .map((item) => String(item).trim().toUpperCase())
         .filter((item) => /^[A-Z0-9]{10}$/.test(item)))],
       heliumAccountId: String(incomingPayload.heliumAccountId || '').trim(),
-      requestId: String(message.requestId || incomingPayload.requestId || `amazon_${Date.now()}`)
+      requestId: String(message.requestId || incomingPayload.requestId || `amazon_${Date.now()}`),
+      ownerTabId: sender?.tab?.id || null
     };
 
     chrome.storage.local.set({
@@ -1486,32 +1606,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   return false;
-});
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+chrome.runtime.onMessage.addListener(handleAmazonRuntimeMessage);
+chrome.runtime.onMessageExternal.addListener(handleAmazonRuntimeMessage);
 
 })();
+
+
+
+
+
+
+
+
+
+
 
 
