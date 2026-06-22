@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\GoogleDriveOAuthController;
 use App\Http\Controllers\IdeaEtsyExtensionDownloadController;
+use App\Http\Controllers\IdeaAmazonExtensionDownloadController;
 use App\Http\Controllers\ImagePreviewController;
 use App\Http\Controllers\OrnamentAmazonTwoWorkflowImageController;
 use App\Livewire\Pages\Admin\ActivityLogs;
@@ -78,6 +79,10 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('idea-etsy/extension/download', IdeaEtsyExtensionDownloadController::class)
         ->middleware('product:idea-etsy')
         ->name('offorest.idea-etsy.extension.download');
+
+    Route::get('idea-amazon/extension/download', IdeaAmazonExtensionDownloadController::class)
+        ->middleware('product:idea-amazon')
+        ->name('offorest.idea-amazon.extension.download');
 
     Route::post('ornament-amazon-2/workflow/{asset}/listing-images/prepare', [OrnamentAmazonTwoWorkflowImageController::class, 'prepare'])
         ->middleware('product:ornament-amazon-2')

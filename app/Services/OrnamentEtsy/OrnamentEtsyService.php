@@ -14,7 +14,6 @@ use App\Services\Product\ProductDriveUploadQueueService;
 use App\Services\Vertex\VertexImageGenerator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -281,9 +280,6 @@ class OrnamentEtsyService
             throw new InvalidArgumentException('Keyword khong duoc qua '.self::MAX_KEYWORD_LENGTH.' ky tu.');
         }
 
-        if (! Str::contains(Str::lower($keyword), 'ornament')) {
-            throw new InvalidArgumentException("Keyword phai chua tu 'ornament' cho trang {$this->product()->name}.");
-        }
 
         return $keyword;
     }
@@ -300,7 +296,7 @@ class OrnamentEtsyService
             throw new InvalidArgumentException('Link anh khong duoc qua '.self::MAX_IMAGE_LINK_LENGTH.' ky tu.');
         }
 
-        if (! filter_var($imageLink, FILTER_VALIDATE_URL)) {
+        if (! str_starts_with($imageLink, '/storage/') && ! filter_var($imageLink, FILTER_VALIDATE_URL)) {
             throw new InvalidArgumentException('Link anh khong hop le.');
         }
 
@@ -318,3 +314,6 @@ class OrnamentEtsyService
         return $content;
     }
 }
+
+
+

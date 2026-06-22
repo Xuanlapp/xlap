@@ -1,14 +1,18 @@
-﻿* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
-  min-width: 430px;
+  min-width: 380px;
   background: #f6f7f9;
   color: #202124;
   font: 13px/1.4 Arial, sans-serif;
 }
 
-.app { padding: 14px; }
+.app {
+  padding: 14px;
+}
 
 header {
   display: flex;
@@ -32,8 +36,10 @@ header {
   border-radius: 6px;
 }
 
-h1 { margin: 0; font-size: 18px; }
-p { margin: 2px 0 0; color: #57606a; font-size: 11px; }
+h1 {
+  margin: 0;
+  font-size: 18px;
+}
 
 .pill {
   border: 1px solid #d0d7de;
@@ -44,32 +50,6 @@ p { margin: 2px 0 0; color: #57606a; font-size: 11px; }
   white-space: nowrap;
 }
 
-.pill.running { border-color: #1f6feb; color: #1f6feb; }
-.pill.error { border-color: #d1242f; color: #d1242f; }
-
-.tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  margin: 12px 0;
-}
-
-.tab {
-  background: #fff;
-  color: #202124;
-  border: 1px solid #c9d1d9;
-}
-
-.tab.active {
-  background: #1f6feb;
-  color: #fff;
-  border-color: #1f6feb;
-}
-
-.panel { display: none; }
-.panel.active { display: block; }
-.hidden { display: none; }
-
 label {
   display: grid;
   gap: 5px;
@@ -77,34 +57,24 @@ label {
   font-weight: 700;
 }
 
-input, textarea {
+input {
   width: 100%;
+  height: 34px;
   border: 1px solid #c9d1d9;
   border-radius: 6px;
-  padding: 8px 9px;
+  padding: 0 9px;
   background: #fff;
   color: #202124;
-  font: inherit;
-}
-
-input { height: 34px; }
-textarea { min-height: 96px; resize: vertical; }
-
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
 }
 
 .actions {
   display: flex;
   gap: 8px;
   margin: 12px 0;
-  flex-wrap: wrap;
 }
 
 button {
-  min-height: 34px;
+  height: 34px;
   border: 0;
   border-radius: 6px;
   padding: 0 12px;
@@ -155,16 +125,11 @@ button:disabled {
 pre {
   max-height: 260px;
   overflow: auto;
-  margin: 8px 0 0;
+  margin: 0;
   border: 1px solid #d0d7de;
   border-radius: 6px;
   padding: 10px;
   background: #fff;
   color: #24292f;
   font-size: 11px;
-}
-
-.status {
-  max-height: 90px;
-  color: #57606a;
 }

@@ -40,7 +40,7 @@ new class extends Component
     $inactiveClass = 'text-slate-600 hover:bg-slate-100 hover:text-slate-950';
     $iconClass = 'h-5 w-5 shrink-0';
     $pageProducts = $products->whereIn('slug', ['ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker']);
-    $ideaProducts = $products->whereIn('slug', ['ytrends', 'idea-etsy']);
+    $ideaProducts = $products->whereIn('slug', ['ytrends', 'idea-etsy', 'idea-amazon']);
     $avatarPalettes = [
         'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600',
         'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600',
@@ -188,7 +188,7 @@ new class extends Component
                                         <path d="M4 19V5" />
                                         <path d="M4 19h16" />
                                         <path d="m7 14 4-4 3 3 5-6" />
-                                    @elseif ($product->slug === 'idea-etsy')
+                                    @elseif (in_array($product->slug, ['idea-etsy', 'idea-amazon'], true))
                                         <path d="M4 6h16" />
                                         <path d="M4 12h16" />
                                         <path d="M4 18h7" />

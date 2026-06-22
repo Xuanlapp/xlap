@@ -11,6 +11,7 @@ use App\Livewire\Pages\Redesign\Index as RedesignPage;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\YTrends\Index as YTrendsPage;
 use App\Livewire\Pages\IdeaEtsy\IdeaEtsy as IdeaEtsyPage;
+use App\Livewire\Pages\IdeaAmazon\IdeaAmazon as IdeaAmazonPage;
 
 class ProductRegistry
 {
@@ -110,6 +111,16 @@ class ProductRegistry
                 'path' => 'idea-etsy',
                 'component' => IdeaEtsyPage::class,
                 'sort_order' => 60,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Idea Amazon',
+                'slug' => 'idea-amazon',
+                'description' => 'Research and approve Amazon product ideas.',
+                'route_name' => 'offorest.products.idea-amazon',
+                'path' => 'idea-amazon',
+                'component' => IdeaAmazonPage::class,
+                'sort_order' => 61,
                 'is_active' => true,
             ],
         ];

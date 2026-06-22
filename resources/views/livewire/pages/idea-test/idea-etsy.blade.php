@@ -1,4 +1,4 @@
-<section
+﻿<section
     class="min-h-[calc(100vh-4rem)] bg-[#f4f6fb] px-4 py-6 text-slate-950 sm:px-6 lg:px-8"
     x-data="{
         targetProducts: @js($targetProducts),
@@ -60,8 +60,11 @@
         approvalConfirmMessage: '',
         pollTimer: null,
         superSpyUrl: 'https://chromewebstore.google.com/detail/super-spy-heyetsycom-web/pdfilhlaihhdainkmnhfjplcnlpoojhn',
+        stateStorageKey: 'idea_etsy_tab_state',
 
         init() {
+            this.restoreTabState();
+
             window.addEventListener('message', (event) => {
                 if (event.source !== window) {
                     return;
@@ -95,9 +98,11 @@
 
             window.addEventListener('beforeunload', (event) => {
                 if (!this.running && this.products.length === 0) {
+                    this.clearTabState();
                     return;
                 }
 
+                this.clearTabState();
                 event.preventDefault();
                 event.returnValue = 'Neu reload trang, du lieu Idea Etsy da search hien tai se bi mat.';
             });
@@ -115,6 +120,69 @@
                     this.statusText = 'Chua thay Etsy Crawler Bridge. Hay cai/load extension mot lan tren Chrome nay, sau do refresh trang.';
                 }
             }, 1500);
+        },
+
+        persistTabState() {
+            try {
+                sessionStorage.setItem(this.stateStorageKey, JSON.stringify({
+                    keyword: this.keyword,
+                    maxPageNum: this.maxPageNum,
+                    requestId: this.requestId,
+                    status: this.status,
+                    statusText: this.statusText,
+                    pagesCompleted: this.pagesCompleted,
+                    productsFound: this.productsFound,
+                    heyEtsyReady: this.heyEtsyReady,
+                    heyEtsyReason: this.heyEtsyReason,
+                    products: this.products,
+                    errors: this.errors,
+                    filterText: this.filterText,
+                    columnFilters: this.columnFilters,
+                    sortKey: this.sortKey,
+                    sortDirection: this.sortDirection,
+                    currentPage: this.currentPage,
+                    perPage: this.perPage,
+                    selectedTags: this.selectedTags,
+                    selectedKeys: this.selectedKeys,
+                    hiddenKeys: this.hiddenKeys,
+                }));
+            } catch (error) {
+                // ignore storage errors
+            }
+        },
+
+        restoreTabState() {
+            try {
+                const raw = sessionStorage.getItem(this.stateStorageKey);
+                if (!raw) return;
+                const state = JSON.parse(raw);
+                this.keyword = state.keyword || this.keyword;
+                this.maxPageNum = Number(state.maxPageNum || this.maxPageNum);
+                this.requestId = state.requestId || null;
+                this.status = state.status || this.status;
+                this.statusText = state.statusText || this.statusText;
+                this.pagesCompleted = Number(state.pagesCompleted || 0);
+                this.productsFound = Number(state.productsFound || 0);
+                this.heyEtsyReady = state.heyEtsyReady ?? null;
+                this.heyEtsyReason = state.heyEtsyReason ?? null;
+                this.products = Array.isArray(state.products) ? state.products : [];
+                this.errors = Array.isArray(state.errors) ? state.errors : [];
+                this.filterText = state.filterText || '';
+                this.columnFilters = state.columnFilters || this.columnFilters;
+                this.sortKey = state.sortKey || this.sortKey;
+                this.sortDirection = state.sortDirection || this.sortDirection;
+                this.currentPage = Number(state.currentPage || 1);
+                this.perPage = Number(state.perPage || this.perPage);
+                this.selectedTags = Array.isArray(state.selectedTags) ? state.selectedTags : [];
+                this.selectedKeys = Array.isArray(state.selectedKeys) ? state.selectedKeys : [];
+                this.hiddenKeys = Array.isArray(state.hiddenKeys) ? state.hiddenKeys : [];
+            } catch (error) {
+                sessionStorage.removeItem(this.stateStorageKey);
+            }
+        },
+
+        clearTabState() {
+            sessionStorage.removeItem(this.stateStorageKey);
         },
 
         toast(type, title, message) {
@@ -798,6 +866,7 @@
                 this.status = 'failed';
                 this.statusText = error.message || 'Co loi khi chay Idea Etsy.';
                 this.errors = [{ reason: this.statusText }];
+                this.persistTabState();
                 this.toast('error', 'Idea Etsy failed', this.statusText);
             }
         },
@@ -1401,3 +1470,4 @@
         @include('livewire.modals.idea-etsy.duye-idea-modal')
     </div>
 </section>
+
