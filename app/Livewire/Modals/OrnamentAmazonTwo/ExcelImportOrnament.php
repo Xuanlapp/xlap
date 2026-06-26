@@ -412,6 +412,7 @@ class ExcelImportOrnament extends Component
         $strings = [];
 
         foreach ($xml->xpath('//a:si') ?: [] as $si) {
+            $si->registerXPathNamespace('a', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
             $parts = [];
 
             foreach ($si->xpath('.//a:t') ?: [] as $textNode) {
@@ -488,7 +489,10 @@ class ExcelImportOrnament extends Component
         foreach ($xml->xpath('//a:sheetData/a:row') ?: [] as $row) {
             $values = [];
 
+            $row->registerXPathNamespace('a', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+
             foreach ($row->xpath('a:c') ?: [] as $cell) {
+                $cell->registerXPathNamespace('a', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
                 $cellType = (string) $cell['t'];
                 $valueNode = $cell->xpath('a:v');
                 $value = is_array($valueNode) && isset($valueNode[0]) ? (string) $valueNode[0] : '';
