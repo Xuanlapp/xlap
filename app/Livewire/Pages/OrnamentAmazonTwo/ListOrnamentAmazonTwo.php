@@ -126,11 +126,13 @@ class ListOrnamentAmazonTwo extends Component
     {
         $providerOptions ??= app(OrnamentAmazonTwoService::class)->providerOptionsForUser(auth()->user());
 
-        if ($providerKey && array_key_exists($providerKey, $providerOptions)) {
+        $providerKey = \Illuminate\Support\Str::lower(trim((string) $providerKey));
+
+        if ($providerKey !== '' && array_key_exists($providerKey, $providerOptions)) {
             return $providerKey;
         }
 
-        $defaultProviderKey = auth()->user()?->activeAiProviderKey();
+        $defaultProviderKey = \Illuminate\Support\Str::lower(trim((string) auth()->user()?->activeAiProviderKey()));
 
         return $defaultProviderKey && array_key_exists($defaultProviderKey, $providerOptions)
             ? $defaultProviderKey

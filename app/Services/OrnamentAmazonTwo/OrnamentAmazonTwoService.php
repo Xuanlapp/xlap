@@ -128,6 +128,8 @@ class OrnamentAmazonTwoService
 
         return $user->enabledAiProviders()
             ->pluck('provider_key')
+            ->map(fn (string $providerKey): string => Str::lower(trim($providerKey)))
+            ->unique()
             ->filter(fn (string $providerKey): bool => in_array($providerKey, $allowedProviderKeys, true))
             ->filter(fn (string $providerKey): bool => array_key_exists($providerKey, $providerOptions))
             ->mapWithKeys(fn (string $providerKey): array => [
@@ -2210,18 +2212,20 @@ PROMPT;
 
     private function normalizeProviderKey(User $user, ?string $providerKey): string
     {
-        $providerKey = trim((string) ($providerKey ?: $user->activeAiProviderKey() ?: 'vertex'));
-        $enabledProviderKeys = $user->enabledAiProviders()->pluck('provider_key')->all();
+        $allowedProviderKeys = array_keys($this->providerOptionsForUser($user));
+        $candidate = Str::lower(trim((string) ($providerKey ?: $user->activeAiProviderKey() ?: '')));
 
-        if (! in_array($providerKey, $enabledProviderKeys, true)) {
-            throw new RuntimeException('Tai khoan nay chua duoc cap provider '.$providerKey.'.');
+        if ($candidate !== '' && in_array($candidate, $allowedProviderKeys, true)) {
+            return $candidate;
         }
 
-        if (! array_key_exists($providerKey, config('ai_providers.providers', []))) {
-            throw new RuntimeException('Provider '.$providerKey.' khong hop le.');
+        $fallback = $allowedProviderKeys[0] ?? null;
+
+        if (is_string($fallback) && $fallback !== '') {
+            return $fallback;
         }
 
-        return $providerKey;
+        throw new RuntimeException('Tai khoan nay chua duoc cap provider ChatGPT hoac v98Store.');
     }
 
     private function ensureApiKeyProvider(string $providerKey): void
