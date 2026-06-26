@@ -359,94 +359,158 @@ class ExcelImportOrnament extends Component
 
     private function readFirstSheetRows(string $path): array
     {
-        $script = <<<'PY'
-import json
-import pathlib
-import sys
-import xml.etree.ElementTree as ET
-import zipfile
-
-source = pathlib.Path(sys.argv[1])
-ns = {'a': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
-
-with zipfile.ZipFile(source) as archive:
-    shared_strings = []
-    if 'xl/sharedStrings.xml' in archive.namelist():
-        root = ET.fromstring(archive.read('xl/sharedStrings.xml'))
-        for si in root.findall('a:si', ns):
-            text = ''.join((node.text or '') for node in si.iterfind('.//a:t', ns))
-            shared_strings.append(text)
-
-    workbook = ET.fromstring(archive.read('xl/workbook.xml'))
-    rels = ET.fromstring(archive.read('xl/_rels/workbook.xml.rels'))
-    rel_map = {rel.attrib['Id']: rel.attrib['Target'] for rel in rels}
-    sheets = workbook.findall('a:sheets/a:sheet', ns)
-    if not sheets:
-        print('[]')
-        raise SystemExit(0)
-
-    rel_id = sheets[0].attrib.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id', '')
-    target = rel_map.get(rel_id) or 'worksheets/sheet1.xml'
-    worksheet_path = 'xl/' + target.lstrip('/')
-    sheet_root = ET.fromstring(archive.read(worksheet_path))
-
-    rows = []
-    for row in sheet_root.findall('.//a:sheetData/a:row', ns):
-        values = []
-        for cell in row.findall('a:c', ns):
-            cell_type = cell.attrib.get('t', '')
-            value = cell.find('a:v', ns)
-            if cell_type == 'inlineStr':
-                inline_text = cell.find('a:is/a:t', ns)
-                values.append(inline_text.text if inline_text is not None and inline_text.text is not None else '')
-            elif cell_type == 's' and value is not None and value.text is not None:
-                values.append(shared_strings[int(value.text)])
-            else:
-                values.append(value.text if value is not None and value.text is not None else '')
-        rows.append(values)
-
-print(json.dumps(rows, ensure_ascii=True))
-PY;
-
-        $scriptPath = storage_path('app/tmp/excel-reader-'.Str::random(16).'.py');
-        File::ensureDirectoryExists(dirname($scriptPath));
-        File::put($scriptPath, $script);
-
-        if (! function_exists('exec')) {
-            File::delete($scriptPath);
-
-            throw new RuntimeException('Server has disabled exec(), so .xlsx import cannot be read here. Please export this file as .csv and upload again, or enable exec/python on the server.');
+        if (! class_exists(\ZipArchive::class)) {
+            throw new RuntimeException('Server is missing ZipArchive, so .xlsx import cannot be read here. Please install php-zip or export this file as .csv and upload again.');
         }
 
-        try {
-            $pythonBinary = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-            $command = $pythonBinary.' '.escapeshellarg($scriptPath).' '.escapeshellarg($path).' 2>&1';
-            $output = [];
-            $code = 0;
-            \exec($command, $output, $code);
-        } finally {
-            File::delete($scriptPath);
-        }
+        $zip = new \ZipArchive();
 
-        if ($code !== 0) {
+        if ($zip->open($path) !== true) {
             throw new RuntimeException('Unable to open this .xlsx file. Please open it in Excel and Save As .xlsx, or export as .csv.');
         }
 
-        $json = trim(implode(PHP_EOL, $output));
+        try {
+            $sharedStrings = $this->readSharedStringsFromZip($zip);
+            $worksheetPath = $this->firstWorksheetPathFromZip($zip);
+            $worksheetXml = $worksheetPath ? $zip->getFromName($worksheetPath) : false;
+        } finally {
+            $zip->close();
+        }
 
-        if ($json === '') {
+        if (! is_string($worksheetXml) || trim($worksheetXml) === '') {
             throw new RuntimeException('Spreadsheet has no readable worksheet.');
         }
 
-        $rows = json_decode($json, true);
+        $rows = $this->parseWorksheetRows($worksheetXml, $sharedStrings);
 
-        if (! is_array($rows)) {
+        if ($rows === []) {
             throw new RuntimeException('Spreadsheet data could not be parsed.');
         }
 
-        return array_values(array_map(function (mixed $row): array {
-            return is_array($row) ? array_map(static fn (mixed $value): string => trim((string) $value), $row) : [];
-        }, $rows));
+        return $rows;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function readSharedStringsFromZip(\ZipArchive $zip): array
+    {
+        $sharedStringsXml = $zip->getFromName('xl/sharedStrings.xml');
+
+        if (! is_string($sharedStringsXml) || trim($sharedStringsXml) === '') {
+            return [];
+        }
+
+        $xml = simplexml_load_string($sharedStringsXml);
+
+        if (! $xml) {
+            return [];
+        }
+
+        $xml->registerXPathNamespace('a', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+
+        $strings = [];
+
+        foreach ($xml->xpath('//a:si') ?: [] as $si) {
+            $parts = [];
+
+            foreach ($si->xpath('.//a:t') ?: [] as $textNode) {
+                $parts[] = (string) $textNode;
+            }
+
+            $strings[] = implode('', $parts);
+        }
+
+        return $strings;
+    }
+
+    private function firstWorksheetPathFromZip(\ZipArchive $zip): ?string
+    {
+        $workbookXml = $zip->getFromName('xl/workbook.xml');
+        $relsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
+
+        if (! is_string($workbookXml) || trim($workbookXml) === '' || ! is_string($relsXml) || trim($relsXml) === '') {
+            return null;
+        }
+
+        $workbook = simplexml_load_string($workbookXml);
+        $rels = simplexml_load_string($relsXml);
+
+        if (! $workbook || ! $rels) {
+            return null;
+        }
+
+        $workbook->registerXPathNamespace('a', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $workbook->registerXPathNamespace('r', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+        $rels->registerXPathNamespace('rel', 'http://schemas.openxmlformats.org/package/2006/relationships');
+
+        $sheets = $workbook->xpath('//a:sheets/a:sheet');
+
+        if (! is_array($sheets) || $sheets === []) {
+            return null;
+        }
+
+        $firstSheet = $sheets[0];
+        $relId = (string) $firstSheet->attributes('r', true)['id'];
+
+        if ($relId === '') {
+            return 'xl/worksheets/sheet1.xml';
+        }
+
+        foreach ($rels->xpath('//rel:Relationship') ?: [] as $relation) {
+            if ((string) $relation['Id'] !== $relId) {
+                continue;
+            }
+
+            $target = ltrim((string) $relation['Target'], '/');
+
+            return str_starts_with($target, 'xl/') ? $target : 'xl/'.$target;
+        }
+
+        return 'xl/worksheets/sheet1.xml';
+    }
+
+    /**
+     * @param  array<int, string>  $sharedStrings
+     * @return array<int, array<int, string>>
+     */
+    private function parseWorksheetRows(string $worksheetXml, array $sharedStrings): array
+    {
+        $xml = simplexml_load_string($worksheetXml);
+
+        if (! $xml) {
+            return [];
+        }
+
+        $xml->registerXPathNamespace('a', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $rows = [];
+
+        foreach ($xml->xpath('//a:sheetData/a:row') ?: [] as $row) {
+            $values = [];
+
+            foreach ($row->xpath('a:c') ?: [] as $cell) {
+                $cellType = (string) $cell['t'];
+                $valueNode = $cell->xpath('a:v');
+                $value = is_array($valueNode) && isset($valueNode[0]) ? (string) $valueNode[0] : '';
+
+                if ($cellType === 'inlineStr') {
+                    $inlineTextNode = $cell->xpath('a:is/a:t');
+                    $values[] = is_array($inlineTextNode) && isset($inlineTextNode[0]) ? trim((string) $inlineTextNode[0]) : '';
+                    continue;
+                }
+
+                if ($cellType === 's' && $value !== '') {
+                    $values[] = trim((string) ($sharedStrings[(int) $value] ?? ''));
+                    continue;
+                }
+
+                $values[] = trim($value);
+            }
+
+            $rows[] = $values;
+        }
+
+        return $rows;
     }
 
     private function headerIndexes(array $header): array
