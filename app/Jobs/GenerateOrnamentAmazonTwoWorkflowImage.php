@@ -41,8 +41,19 @@ class GenerateOrnamentAmazonTwoWorkflowImage implements ShouldQueue
         $service->markWorkflowImageBatchSlotGenerating($this->assetId, $this->slot, $this->attempts());
 
         $user = User::findOrFail($this->userId);
-        $service->generateWorkflowImage($user, $this->assetId, $this->slot, $this->providerKey, $this->imageModel);
-        $service->markWorkflowImageBatchSlotFinished($this->assetId, $this->slot);
+
+        try {
+            $service->generateWorkflowImage($user, $this->assetId, $this->slot, $this->providerKey, $this->imageModel);
+            $service->markWorkflowImageBatchSlotFinished($this->assetId, $this->slot);
+        } catch (\RuntimeException $exception) {
+            if (str_contains($exception->getMessage(), 'Mockup nay dang duoc tao hoac request truoc do chua giai phong xong')) {
+                $this->release(15);
+
+                return;
+            }
+
+            throw $exception;
+        }
     }
 
     /**

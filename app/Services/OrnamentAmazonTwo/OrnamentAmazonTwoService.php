@@ -2,7 +2,9 @@
 
 namespace App\Services\OrnamentAmazonTwo;
 
+use App\Jobs\RunOrnamentAmazonTwoAutomation;
 use App\Jobs\GenerateOrnamentAmazonTwoWorkflowImage;
+use App\Models\DataOrnamentAmazon;
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
 use App\Models\OrnamentAmazonTwoWorkflow;
@@ -28,6 +30,7 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 use JsonException;
 use RuntimeException;
+use Throwable;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use ZipArchive;
 
@@ -890,22 +893,18 @@ class OrnamentAmazonTwoService
             throw new RuntimeException('Chua co B4 prompt nao. Hay bam Generate B4 Listing + A+ Prompts truoc.');
         }
 
-        foreach ($promptSlots as $slot) {
-            $previousUrl = $workflow['images'][$slot]['url'] ?? null;
+        $missingSlots = $this->missingWorkflowImageSlots($asset, $workflow, $promptSlots);
 
-            if (is_string($previousUrl) && trim($previousUrl) !== '') {
-                $workflow['images'][$slot] = [
-                    'previous_url' => $previousUrl,
-                    'regenerating_at' => now()->toIso8601String(),
-                ];
-            } else {
-                unset($workflow['images'][$slot]);
-            }
+        foreach ($missingSlots as $slot) {
+            unset($workflow['images'][$slot]);
         }
 
         unset($workflow['images_errors'], $workflow['images_errors_at']);
         $asset = $this->saveWorkflowData($asset, $workflow);
-        $this->clearWorkflowListingMockups($asset);
+
+        if ($missingSlots !== []) {
+            $this->clearWorkflowListingMockups($asset, $missingSlots);
+        }
 
         return $asset->refresh();
     }
@@ -936,27 +935,25 @@ class OrnamentAmazonTwoService
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
 
-        foreach ($promptSlots as $slot) {
-            $previousUrl = $workflow['images'][$slot]['url'] ?? null;
+        $missingSlots = $this->missingWorkflowImageSlots($asset, $workflow, $promptSlots);
 
-            if (is_string($previousUrl) && trim($previousUrl) !== '') {
-                $workflow['images'][$slot] = [
-                    'previous_url' => $previousUrl,
-                    'regenerating_at' => now()->toIso8601String(),
-                ];
-            } else {
-                unset($workflow['images'][$slot]);
-            }
+        foreach ($missingSlots as $slot) {
+            unset($workflow['images'][$slot]);
         }
 
         unset($workflow['images_errors'], $workflow['images_errors_at']);
         $workflow['provider'] = $providerKey;
         $workflow['image_model'] = $imageModel;
+
+        if ($missingSlots === []) {
+            return $asset->refresh();
+        }
+
         $workflow['images_batch'] = [
             'running' => true,
-            'slots' => $promptSlots,
+            'slots' => $missingSlots,
             'attempts' => [],
-            'slot_states' => collect($promptSlots)->mapWithKeys(fn (string $slot): array => [$slot => 'queued'])->all(),
+            'slot_states' => collect($missingSlots)->mapWithKeys(fn (string $slot): array => [$slot => 'queued'])->all(),
             'provider' => $providerKey,
             'image_model' => $imageModel,
             'current_slot' => null,
@@ -964,9 +961,8 @@ class OrnamentAmazonTwoService
         ];
 
         $asset = $this->saveWorkflowData($asset, $workflow);
-        $this->clearWorkflowListingMockups($asset);
 
-        foreach ($promptSlots as $slot) {
+        foreach ($missingSlots as $slot) {
             GenerateOrnamentAmazonTwoWorkflowImage::dispatch($user->id, $asset->id, $slot, $providerKey, $imageModel);
         }
 
@@ -976,6 +972,30 @@ class OrnamentAmazonTwoService
     /**
      * Mark one queued workflow image slot as generating.
      */
+    /**
+     * Return image slots that are still missing in persisted workflow state.
+     *
+     * @param  array<string, mixed>  $workflow
+     * @param  array<int, string>  $promptSlots
+     * @return array<int, string>
+     */
+    private function missingWorkflowImageSlots(ProductDesignAsset $asset, array $workflow, array $promptSlots): array
+    {
+        $freshAsset = $asset->fresh();
+        $freshWorkflow = $this->workflowData($freshAsset);
+
+        return collect($promptSlots)
+            ->filter(function (string $slot) use ($freshAsset, $freshWorkflow, $workflow): bool {
+                $column = $this->workflowListingMockupColumn($slot);
+
+                return ! filled($freshAsset->{$column} ?? null)
+                    && ! filled($freshWorkflow['images'][$slot]['url'] ?? null)
+                    && ! filled($workflow['images'][$slot]['url'] ?? null);
+            })
+            ->values()
+            ->all();
+    }
+
     public function markWorkflowImageBatchSlotGenerating(int $assetId, string $slot, int $attempt): ProductDesignAsset
     {
         $asset = ProductDesignAsset::query()->findOrFail($assetId);
@@ -1032,7 +1052,9 @@ class OrnamentAmazonTwoService
             3,
         );
 
-        return $this->saveWorkflowData($asset, $workflow);
+        $asset = $this->saveWorkflowData($asset, $workflow);
+
+        return $this->finalizeMockupAutomationIfReady($asset);
     }
 
     /**
@@ -1447,16 +1469,18 @@ class OrnamentAmazonTwoService
         return $asset;
     }
 
-    private function clearWorkflowListingMockups(ProductDesignAsset $asset): void
+    private function clearWorkflowListingMockups(ProductDesignAsset $asset, ?array $slots = null): void
     {
-        $asset->update([
-            'mockup1' => null,
-            'mockup2' => null,
-            'mockup3' => null,
-            'mockup4' => null,
-            'mockup5' => null,
-            'mockup6' => null,
-        ]);
+        $updates = [];
+
+        foreach (($slots ?? array_keys(self::WORKFLOW_IMAGE_SLOTS)) as $slot) {
+            $column = $this->workflowListingMockupColumn($slot);
+            $updates[$column] = null;
+        }
+
+        if ($updates !== []) {
+            $asset->update($updates);
+        }
     }
 
     /**
@@ -1532,11 +1556,557 @@ class OrnamentAmazonTwoService
             throw new RuntimeException('Can co it nhat mot anh mockup hoac lifestyle truoc khi duyet.');
         }
 
-        $asset = $this->assets->setApproval($asset, ! $asset->is_approved);
+        if ($asset->is_approved) {
+            $asset = $this->assets->setApproval($asset, false);
+            $this->driveUploadQueue->syncForAsset($asset);
 
+            return $asset;
+        }
+
+        $this->startAutomation($user, $asset->id);
+
+        return $asset;
+    }
+
+    public function confirmApproval(User $user, int $assetId): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $automation = $this->automationForAsset($asset);
+
+        if (($automation?->workflow_status ?? null) !== 'completed') {
+            throw new RuntimeException('Can hoan tat 6/6 Mockup truoc khi duyet.');
+        }
+
+        if (! $this->hasAllWorkflowMockupImages($asset)) {
+            throw new RuntimeException('Can du 6/6 mockup trong database truoc khi duyet.');
+        }
+
+        if (! $asset->hasApprovableOutput()) {
+            throw new RuntimeException('Can co output hop le truoc khi duyet.');
+        }
+
+        $asset = $this->assets->setApproval($asset, true);
         $this->driveUploadQueue->syncForAsset($asset);
 
         return $asset;
+    }
+
+    public function startAutomation(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null, bool $dispatch = true): DataOrnamentAmazon
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $currentAutomation = $this->automationForAsset($asset);
+
+        if (($currentAutomation?->workflow_status ?? null) === 'running') {
+            if ($this->hasAllWorkflowMockupImages($asset)) {
+                return $this->completeAutomation($asset);
+            }
+
+            throw new RuntimeException('Automation dang chay cho item nay.');
+        }
+
+        if (! filled($asset->redesign)) {
+            throw new RuntimeException('Can co 2. Main Image truoc khi chay automation.');
+        }
+
+        $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
+        $sourceLink = is_string($sourceData['link'] ?? null) ? $sourceData['link'] : null;
+
+        $record = $this->upsertAutomationRecord($asset, [
+            'workflow_status' => 'running',
+            'workflow_step_key' => 'script',
+            'workflow_step_label' => '3. Script',
+            'workflow_step_number' => 3,
+            'workflow_total_steps' => 6,
+            'source_platform' => 'ornament-amazon-2',
+            'source_link' => $sourceLink,
+            'source_image_link' => $asset->image_link,
+            'main_image_link' => $asset->redesign,
+            'input_data' => [
+                'keyword' => $asset->keyword,
+                'product_link' => $sourceLink,
+                'main_image_link' => $asset->redesign,
+            ],
+            'step_data' => $this->automationDefaultSteps(),
+            'step_errors' => null,
+            'last_error' => null,
+            'workflow_started_at' => now(),
+            'workflow_paused_at' => null,
+            'workflow_completed_at' => null,
+        ]);
+
+        if ($dispatch) {
+            RunOrnamentAmazonTwoAutomation::dispatch($user->id, $asset->id, $providerKey, $imageModel, $textModel)
+                ->onQueue('default');
+        }
+
+        return $record;
+    }
+
+    public function runAutomationPipeline(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
+
+        $providerKey ??= $this->normalizeProviderKey($user, $providerKey);
+        $this->ensureApiKeyProvider($providerKey);
+
+        $record = $this->automationForAsset($asset) ?: $this->startAutomation($user, $assetId, $providerKey, $imageModel, $textModel, false);
+        $asset = $asset->refresh();
+
+        foreach ($this->automationPipelineSteps() as $step) {
+            $this->markAutomationStepRunning($asset, $step, $record->step_data ?? []);
+
+            try {
+                match ($step) {
+                    'script' => $asset = $this->generateWorkflowScript($user, $asset->id, $providerKey, $textModel),
+                    'person_a' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'a', $providerKey, $imageModel),
+                    'person_b' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'b', $providerKey, $imageModel),
+                    'prompt' => $asset = $this->generateWorkflowPrompts($user, $asset->id, $providerKey, $textModel),
+                    'mockup' => $asset = $this->startWorkflowImagesGeneration($user, $asset->id, $providerKey, $imageModel),
+                    default => null,
+                };
+
+                if ($step === 'mockup') {
+                    return;
+                }
+
+                $this->markAutomationStepFinished($asset, $step);
+            } catch (Throwable $exception) {
+                $this->markAutomationStepFinished($asset, $step, mb_substr($exception->getMessage(), 0, 1000));
+                return;
+            }
+        }
+
+        $this->completeAutomation($asset->fresh());
+    }
+
+    public function automationForUser(User $user, int $assetId): ?DataOrnamentAmazon
+    {
+        return $this->automationForAsset($this->assetForUser($user, $assetId));
+    }
+
+    public function retryAutomation(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): DataOrnamentAmazon
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $record = $this->automationForAsset($asset);
+
+        if (! $record) {
+            return $this->startAutomation($user, $assetId, $providerKey, $imageModel, $textModel);
+        }
+
+        if (($record->workflow_status ?? null) === 'running') {
+            throw new RuntimeException('Automation dang chay cho item nay.');
+        }
+
+        if ($this->hasAllWorkflowMockupImages($asset)) {
+            return $this->completeAutomation($asset);
+        }
+
+        $step = is_string($record->workflow_step_key) && $record->workflow_step_key !== ''
+            ? $record->workflow_step_key
+            : 'script';
+
+        $steps = is_array($record->step_data) ? $record->step_data : $this->automationDefaultSteps();
+
+        if (isset($steps[$step])) {
+            $steps[$step]['status'] = 'waiting';
+            $steps[$step]['finished_at'] = null;
+            $steps[$step]['error_message'] = null;
+        }
+
+        $updated = $this->upsertAutomationRecord($asset, [
+            'workflow_status' => 'running',
+            'workflow_step_key' => $step,
+            'workflow_step_label' => $this->automationStepLabel($step),
+            'workflow_step_number' => $this->automationStepNumber($step),
+            'step_data' => $steps,
+            'step_errors' => null,
+            'last_error' => null,
+            'status' => 'running',
+            'current_step' => $step,
+            'current_step_number' => $this->automationStepNumber($step),
+            'paused_at' => null,
+            'workflow_paused_at' => null,
+        ]);
+
+        RunOrnamentAmazonTwoAutomation::dispatch($user->id, $asset->id, $providerKey, $imageModel, $textModel, $step)
+            ->onQueue('default');
+
+        return $updated;
+    }
+
+    public function automationPipelineSteps(): array
+    {
+        return ['script', 'person_a', 'person_b', 'prompt', 'mockup'];
+    }
+
+    public function automationDefaultSteps(): array
+    {
+        return collect($this->automationPipelineSteps())->mapWithKeys(fn (string $step): array => [$step => [
+            'status' => 'waiting',
+            'started_at' => null,
+            'finished_at' => null,
+            'error_message' => null,
+        ]])->all();
+    }
+
+    public function automationStepLabel(string $step): string
+    {
+        return match ($step) {
+            'script' => '3. Script',
+            'person_a' => '4. Person A',
+            'person_b' => '4. Person B',
+            'prompt' => '5. Prompt create',
+            'mockup' => '6. Mockup',
+            default => $step,
+        };
+    }
+
+    public function automationStepNumber(string $step): int
+    {
+        return match ($step) {
+            'script' => 3,
+            'person_a', 'person_b' => 4,
+            'prompt' => 5,
+            'mockup' => 6,
+            default => 0,
+        };
+    }
+
+    private function upsertAutomationRecord(ProductDesignAsset $asset, array $attributes): DataOrnamentAmazon
+    {
+        if (! Schema::hasTable('data_ornament_amazon')) {
+            throw new RuntimeException('Chua co bang data_ornament_amazon. Hay chay migrate truoc.');
+        }
+
+        $base = [
+            'product_design_asset_id' => $asset->id,
+            'user_id' => $asset->user_id,
+            'product_slug' => 'ornament-amazon-2',
+            'workflow_name' => 'ornament-amazon-two-automation',
+            'workflow_status' => 'waiting',
+            'workflow_step_key' => null,
+            'workflow_step_label' => null,
+            'workflow_step_number' => 0,
+            'workflow_total_steps' => 6,
+            'provider_key' => $attributes['provider_key'] ?? null,
+            'text_model' => $attributes['text_model'] ?? null,
+            'image_model' => $attributes['image_model'] ?? null,
+            'source_platform' => $attributes['source_platform'] ?? null,
+            'source_link' => $attributes['source_link'] ?? null,
+            'source_image_link' => $attributes['source_image_link'] ?? null,
+            'main_image_link' => $attributes['main_image_link'] ?? null,
+            'input_data' => $attributes['input_data'] ?? null,
+            'step_data' => $attributes['step_data'] ?? null,
+            'step_errors' => $attributes['step_errors'] ?? null,
+            'last_error' => $attributes['last_error'] ?? null,
+            'workflow_started_at' => $attributes['workflow_started_at'] ?? null,
+            'workflow_paused_at' => $attributes['workflow_paused_at'] ?? null,
+            'workflow_completed_at' => $attributes['workflow_completed_at'] ?? null,
+            'started_at' => $attributes['workflow_started_at'] ?? null,
+            'paused_at' => $attributes['workflow_paused_at'] ?? null,
+            'completed_at' => $attributes['workflow_completed_at'] ?? null,
+            'status' => $attributes['workflow_status'] ?? 'waiting',
+        ];
+
+        $columns = Schema::getColumnListing('data_ornament_amazon');
+        $payload = collect(array_merge($base, $attributes))
+            ->only($columns)
+            ->all();
+
+        return DataOrnamentAmazon::query()->updateOrCreate(
+            ['product_design_asset_id' => $asset->id],
+            $payload,
+        );
+    }
+
+    public function markAutomationStepRunning(ProductDesignAsset $asset, string $step, ?array $stepData = null): DataOrnamentAmazon
+    {
+        $steps = $stepData ?: $this->automationDefaultSteps();
+        $steps[$step] = [
+            'status' => 'running',
+            'started_at' => now()->toIso8601String(),
+            'finished_at' => null,
+            'error_message' => null,
+        ];
+
+        return $this->upsertAutomationRecord($asset, [
+            'workflow_status' => 'running',
+            'workflow_step_key' => $step,
+            'workflow_step_label' => $this->automationStepLabel($step),
+            'workflow_step_number' => $this->automationStepNumber($step),
+            'step_data' => $steps,
+            'status' => 'running',
+            'current_step' => $step,
+            'current_step_number' => $this->automationStepNumber($step),
+        ]);
+    }
+
+    public function markAutomationStepFinished(ProductDesignAsset $asset, string $step, ?string $error = null): DataOrnamentAmazon
+    {
+        $record = $this->automationForAsset($asset);
+        $steps = is_array($record?->step_data) ? $record->step_data : $this->automationDefaultSteps();
+        $steps[$step] = [
+            'status' => $error ? 'failed' : 'done',
+            'started_at' => $steps[$step]['started_at'] ?? now()->toIso8601String(),
+            'finished_at' => now()->toIso8601String(),
+            'error_message' => $error,
+        ];
+
+        return $this->upsertAutomationRecord($asset, [
+            'workflow_status' => $error ? 'failed' : 'running',
+            'workflow_step_key' => $error ? $step : null,
+            'workflow_step_label' => $error ? $this->automationStepLabel($step) : null,
+            'workflow_step_number' => $this->automationStepNumber($step),
+            'step_data' => $steps,
+            'step_errors' => $error ? [$step => $error] : null,
+            'last_error' => $error,
+            'status' => $error ? 'paused' : 'running',
+            'current_step' => $error ? $step : null,
+            'current_step_number' => $this->automationStepNumber($step),
+            'paused_at' => $error ? now() : null,
+            'workflow_paused_at' => $error ? now() : null,
+        ]);
+    }
+
+    public function completeAutomation(ProductDesignAsset $asset): DataOrnamentAmazon
+    {
+        $asset = $asset->fresh();
+
+        return $this->upsertAutomationRecord($asset, [
+            'workflow_status' => 'completed',
+            'workflow_step_key' => null,
+            'workflow_step_label' => null,
+            'workflow_step_number' => 6,
+            'workflow_total_steps' => 6,
+            'step_errors' => null,
+            'last_error' => null,
+            'status' => 'completed',
+            'current_step' => null,
+            'current_step_number' => 6,
+            'completed_at' => now(),
+            'workflow_completed_at' => now(),
+        ]);
+    }
+
+    private function finalizeMockupAutomationIfReady(ProductDesignAsset $asset): ProductDesignAsset
+    {
+        $asset = $asset->fresh();
+        $automation = $this->automationForAsset($asset);
+
+        if (! $automation || ($automation->workflow_status ?? null) !== 'running') {
+            return $asset;
+        }
+
+        $workflow = $this->workflowData($asset);
+        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+
+        if ($this->hasAllWorkflowMockupImages($asset, $workflow)) {
+            $this->markWorkflowImageBatchSlotFinished($asset->id, 'mockup');
+            $this->completeAutomation($asset);
+
+            return $asset->fresh();
+        }
+
+        if (($batch['running'] ?? false) === true) {
+            return $asset;
+        }
+
+        if (! empty($workflow['images_errors'] ?? [])) {
+            $this->markAutomationStepFinished($asset, 'mockup', collect($workflow['images_errors'])->flatten()->filter(fn (mixed $value): bool => is_string($value) && trim($value) !== '')->first() ?: 'Mockup dang co loi.');
+
+            return $asset->fresh();
+        }
+
+        $this->markAutomationStepFinished($asset, 'mockup', $this->missingWorkflowMockupMessage($asset, $workflow));
+
+        return $asset->fresh();
+    }
+
+    public function automationForAsset(ProductDesignAsset $asset): ?DataOrnamentAmazon
+    {
+        if (! Schema::hasTable('data_ornament_amazon')) {
+            return null;
+        }
+
+        $record = DataOrnamentAmazon::query()->where('product_design_asset_id', $asset->id)->first();
+
+        if (! $record) {
+            return null;
+        }
+
+        if (($record->workflow_status ?? null) !== 'completed' && $this->hasAllWorkflowMockupImages($asset)) {
+            return $this->completeAutomation($asset);
+        }
+
+        return $record;
+    }
+
+    public function resumeAutomationStep(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $record = $this->automationForAsset($asset);
+
+        if (! $record) {
+            return;
+        }
+
+        $step = is_string($record->workflow_step_key) && $record->workflow_step_key !== ''
+            ? $record->workflow_step_key
+            : 'script';
+
+        $this->runAutomationStep($user, $assetId, $step, $providerKey, $imageModel, $textModel);
+    }
+
+    public function runAutomationStep(User $user, int $assetId, string $step, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $automation = $this->automationForAsset($asset) ?: $this->startAutomation($user, $assetId, $providerKey, $imageModel, $textModel, false);
+
+        if (($automation->workflow_status ?? null) === 'completed') {
+            return;
+        }
+
+        if ($this->automationStepHasOutput($asset, $step)) {
+            $this->markAutomationStepFinished($asset, $step);
+            $this->dispatchNextAutomationStep($user, $asset, $step, $providerKey, $imageModel, $textModel);
+
+            return;
+        }
+
+        $this->markAutomationStepRunning($asset, $step, $automation->step_data ?? []);
+
+        try {
+            match ($step) {
+                'script' => $asset = $this->generateWorkflowScript($user, $asset->id, $providerKey, $textModel),
+                'person_a' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'a', $providerKey, $imageModel),
+                'person_b' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'b', $providerKey, $imageModel),
+                'prompt' => $asset = $this->generateWorkflowPrompts($user, $asset->id, $providerKey, $textModel),
+                'mockup' => $asset = $this->startWorkflowImagesGeneration($user, $asset->id, $providerKey, $imageModel),
+                default => throw new RuntimeException('Workflow step khong hop le.'),
+            };
+        } catch (Throwable $exception) {
+            $this->markAutomationStepFinished($asset, $step, mb_substr($exception->getMessage(), 0, 1000));
+            return;
+        }
+
+        if ($step === 'mockup') {
+            return;
+        }
+
+        $this->markAutomationStepFinished($asset, $step);
+        $this->dispatchNextAutomationStep($user, $asset, $step, $providerKey, $imageModel, $textModel);
+    }
+
+    private function dispatchNextAutomationStep(User $user, ProductDesignAsset $asset, string $step, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void
+    {
+        if ($step === 'mockup') {
+            return;
+        }
+
+        $nextStep = $this->nextAutomationStep($step);
+
+        while ($nextStep && $this->automationStepHasOutput($asset->fresh(), $nextStep)) {
+            $this->markAutomationStepFinished($asset->fresh(), $nextStep);
+
+            if ($nextStep === 'mockup') {
+                $freshAsset = $asset->fresh();
+                $workflow = $this->workflowData($freshAsset);
+
+                if (! $this->hasAllWorkflowMockupImages($freshAsset, $workflow)) {
+                    $this->markAutomationStepFinished($freshAsset, 'mockup', $this->missingWorkflowMockupMessage($freshAsset, $workflow));
+
+                    return;
+                }
+
+                $this->completeAutomation($freshAsset);
+
+                return;
+            }
+
+            $nextStep = $this->nextAutomationStep($nextStep);
+        }
+
+        if (! $nextStep) {
+            return;
+        }
+
+        $this->upsertAutomationRecord($asset->fresh(), [
+            'workflow_status' => 'running',
+            'workflow_step_key' => $nextStep,
+            'workflow_step_label' => $this->automationStepLabel($nextStep),
+            'workflow_step_number' => $this->automationStepNumber($nextStep),
+            'status' => 'running',
+            'current_step' => $nextStep,
+            'current_step_number' => $this->automationStepNumber($nextStep),
+            'paused_at' => null,
+            'workflow_paused_at' => null,
+        ]);
+
+        RunOrnamentAmazonTwoAutomation::dispatch($user->id, $asset->id, $providerKey, $imageModel, $textModel, $nextStep)
+            ->onQueue('default');
+    }
+
+    private function nextAutomationStep(string $step): ?string
+    {
+        return match ($step) {
+            'script' => 'person_a',
+            'person_a' => 'person_b',
+            'person_b' => 'prompt',
+            'prompt' => 'mockup',
+            default => null,
+        };
+    }
+
+    private function hasAllWorkflowMockupImages(ProductDesignAsset $asset, ?array $workflow = null): bool
+    {
+        $freshAsset = $asset->fresh();
+        $workflow ??= $this->workflowData($freshAsset);
+
+        return collect(array_keys(self::WORKFLOW_IMAGE_SLOTS))
+            ->every(function (string $slot) use ($freshAsset, $workflow): bool {
+                $column = $this->workflowListingMockupColumn($slot);
+
+                return filled($freshAsset->{$column} ?? null)
+                    || filled($workflow['images'][$slot]['url'] ?? null);
+            });
+    }
+
+    private function missingWorkflowMockupMessage(ProductDesignAsset $asset, ?array $workflow = null): string
+    {
+        $freshAsset = $asset->fresh();
+        $workflow ??= $this->workflowData($freshAsset);
+        $missingSlots = collect(self::WORKFLOW_IMAGE_SLOTS)
+            ->filter(function (array $slot, string $key) use ($freshAsset, $workflow): bool {
+                $column = $this->workflowListingMockupColumn($key);
+
+                return ! filled($freshAsset->{$column} ?? null)
+                    && ! filled($workflow['images'][$key]['url'] ?? null);
+            })
+            ->map(fn (array $slot): string => 'Mockup '.$slot['number'])
+            ->values()
+            ->all();
+
+        if ($missingSlots === []) {
+            return 'Can du 6/6 mockup truoc khi duyet.';
+        }
+
+        return 'Chua du 6/6 mockup. Thieu: '.implode(', ', $missingSlots).'. Hay bam Retry de tao lai.';
+    }
+
+    private function automationStepHasOutput(ProductDesignAsset $asset, string $step): bool
+    {
+        $freshAsset = $asset->fresh();
+        $workflow = $this->workflowData($freshAsset);
+
+        return match ($step) {
+            'script' => ! empty($workflow['script']) && is_array($workflow['script']),
+            'person_a' => filled($workflow['b2']['person_a_ref'] ?? null),
+            'person_b' => filled($workflow['b2']['person_b_ref'] ?? null),
+            'prompt' => ! empty($workflow['prompts']) && is_array($workflow['prompts']),
+            'mockup' => $this->hasAllWorkflowMockupImages($freshAsset, $workflow),
+            default => false,
+        };
     }
 
     /**
@@ -2901,4 +3471,5 @@ PROMPT
         return $content;
     }
 }
+
 

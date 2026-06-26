@@ -58,7 +58,7 @@ class ProductRegistry
                 'slug' => 'ornament',
                 'description' => 'Create Amazon ornament-ready artwork.',
                 'route_name' => 'offorest.products.ornament',
-                'path' => 'ornament',
+                'path' => 'ornament-ornament',
                 'component' => ListOrnamentAmazon::class,
                 'sort_order' => 35,
                 'is_active' => true,

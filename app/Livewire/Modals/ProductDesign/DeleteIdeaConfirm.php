@@ -80,6 +80,9 @@ class DeleteIdeaConfirm extends Component
         }
 
         try {
+            $deletingAssetId = $this->assetId;
+            $deletingProductSlug = $this->productSlug;
+            $this->dispatch('product-design-hide-now', assetId: $deletingAssetId, productSlug: $deletingProductSlug);
             $asset = $this->deleteAssetForProduct();
             $this->recordDeletion($asset);
             $this->dispatchRefreshEvents();

@@ -36,14 +36,16 @@
 
     <div class="space-y-5">
         @forelse ($assets as $asset)
-            <livewire:pages.ornament-amazon-two.product-design-card
-                :asset-id="$asset->id"
-                :active-psd-template-name="$activePsdTemplateName"
-                :provider-key="$providerKey"
-                :image-model="$imageModel"
-                :text-model="$textModel"
-                :key="'ornament-'.$status.'-product-design-card-'.$asset->id.'-'.$providerKey.'-'.$imageModel.'-'.$textModel"
-            />
+            <div wire:key="ornament-{{ $status }}-asset-{{ $asset->id }}">
+                <livewire:pages.ornament-amazon-two.product-design-card
+                    :asset-id="$asset->id"
+                    :active-psd-template-name="$activePsdTemplateName"
+                    :provider-key="$providerKey"
+                    :image-model="$imageModel"
+                    :text-model="$textModel"
+                    :key="'ornament-'.$status.'-product-design-card-'.$asset->id.'-'.$providerKey.'-'.$imageModel.'-'.$textModel"
+                />
+            </div>
         @empty
             <div class="rounded-lg border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
                 <p class="text-base font-bold text-slate-800">Khong co item trong tab nay</p>

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Livewire\Pages\OrnamentAmazonTwo;
+namespace App\Livewire\Pages\OrnamentAmazon;
 
 use App\Livewire\Concerns\ReportsUserActionErrors;
 use App\Services\Logging\ActivityLogService;
-use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
+use App\Services\OrnamentAmazon\OrnamentAmazonService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -37,15 +37,7 @@ class WorkflowActionButton extends Component
         }
 
         try {
-            $service = app(OrnamentAmazonTwoService::class);
-            $asset = $service->assetForUser(auth()->user(), $this->assetId);
-            $automation = $service->automationForUser(auth()->user(), $this->assetId);
-
-            if (($automation?->workflow_status ?? null) === 'running') {
-                $this->dispatch('toast', type: 'error', title: 'Action blocked!', message: 'Item dang auto chay. Hay doi workflow hoan tat.');
-
-                return;
-            }
+            $asset = app(OrnamentAmazonService::class)->assetForUser(auth()->user(), $this->assetId);
 
             if ($asset->is_approved) {
                 $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Item da duyet. Hay bo duyet truoc khi tao lai.');
@@ -60,14 +52,14 @@ class WorkflowActionButton extends Component
                 default => throw new InvalidArgumentException('Workflow action khong hop le.'),
             };
         } finally {
-            $this->dispatch('ornament-amazon-two-workflow-action-finished', assetId: $this->assetId, action: $this->action, person: $this->person);
-            $this->dispatch('ornament-amazon-two-generation-finished');
+            $this->dispatch('ornament-amazon-workflow-action-finished', assetId: $this->assetId, action: $this->action, person: $this->person);
+            $this->dispatch('ornament-amazon-generation-finished');
         }
     }
 
     public function render(): View
     {
-        return view('livewire.pages.ornament-amazon-two.workflow-action-button', [
+        return view('livewire.pages.ornament-amazon.workflow-action-button', [
             'label' => $this->buttonLabel(),
             'loadingLabel' => $this->loadingLabel(),
             'buttonClass' => $this->buttonClass(),
@@ -78,7 +70,7 @@ class WorkflowActionButton extends Component
     private function generateMainImage(): void
     {
         try {
-            $asset = app(OrnamentAmazonTwoService::class)->generateRedesign(
+            $asset = app(OrnamentAmazonService::class)->generateRedesign(
                 auth()->user(),
                 $this->assetId,
                 $this->providerKey,
@@ -111,7 +103,7 @@ class WorkflowActionButton extends Component
     private function generateScript(): void
     {
         try {
-            $asset = app(OrnamentAmazonTwoService::class)->generateWorkflowScript(
+            $asset = app(OrnamentAmazonService::class)->generateWorkflowScript(
                 auth()->user(),
                 $this->assetId,
                 $this->providerKey,
@@ -121,10 +113,10 @@ class WorkflowActionButton extends Component
             $this->dispatchWorkflowUpdated($asset->id);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao B1 script.');
         } catch (RuntimeException $exception) {
-            $this->reportUserActionError($exception, 'ornament_amazon_two.generate_workflow_script', ['asset_id' => $this->assetId]);
+            $this->reportUserActionError($exception, 'ornament_amazon.generate_workflow_script', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         } catch (Throwable $exception) {
-            $this->reportUserActionError($exception, 'ornament_amazon_two.generate_workflow_script', ['asset_id' => $this->assetId]);
+            $this->reportUserActionError($exception, 'ornament_amazon.generate_workflow_script', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao B1 script.');
         }
     }
@@ -138,7 +130,7 @@ class WorkflowActionButton extends Component
         }
 
         try {
-            $asset = app(OrnamentAmazonTwoService::class)->generateWorkflowPerson(
+            $asset = app(OrnamentAmazonService::class)->generateWorkflowPerson(
                 auth()->user(),
                 $this->assetId,
                 $person,
@@ -149,18 +141,18 @@ class WorkflowActionButton extends Component
             $this->dispatchWorkflowUpdated($asset->id);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao Person '.strtoupper($person).' ref.');
         } catch (RuntimeException $exception) {
-            $this->reportUserActionError($exception, 'ornament_amazon_two.generate_person', ['asset_id' => $this->assetId, 'person' => $person]);
+            $this->reportUserActionError($exception, 'ornament_amazon.generate_person', ['asset_id' => $this->assetId, 'person' => $person]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         } catch (Throwable $exception) {
-            $this->reportUserActionError($exception, 'ornament_amazon_two.generate_person', ['asset_id' => $this->assetId, 'person' => $person]);
+            $this->reportUserActionError($exception, 'ornament_amazon.generate_person', ['asset_id' => $this->assetId, 'person' => $person]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao person ref.');
         }
     }
 
     private function dispatchWorkflowUpdated(int $assetId): void
     {
-        $this->dispatch("ornament-amazon-two-product-design-updated.{$assetId}")->to(ProductDesignCard::class);
-        $this->dispatch('ornament-amazon-two-product-design-updated', assetId: $assetId);
+        $this->dispatch("ornament-amazon-product-design-updated.{$assetId}")->to(ProductDesignCard::class);
+        $this->dispatch('ornament-amazon-product-design-updated', assetId: $assetId);
     }
 
     private function buttonLabel(): string

@@ -1,4 +1,4 @@
-﻿# ðŸ—ï¸ Project Architecture
+# ðŸ—ï¸ Project Architecture
 
 **Má»¥c Ä‘Ã­ch:** ÄÃ¢y lÃ  tree chuáº©n cá»§a project. Khi cáº§n hiá»ƒu structure hiá»‡n táº¡i, Ä‘á»c file nÃ y trÆ°á»›c.
 
@@ -249,6 +249,11 @@ extensions/etsy-crawler-extension/bridge.js
 
 ## Livewire UI Rules
 
+## Product Workflow Docs
+
+- Ornament Amazon automation workflow is documented in `docs/ornament-amazon-automation.md`.
+- When editing Ornament Amazon automation, update both `docs/memory.md` and `docs/ornament-amazon-automation.md`.
+
 - Full-page Livewire components must render one root element only.
 - For full-page components, prefer `return view(...)->layout('layouts.app')` in the Livewire class instead of wrapping the Blade file in `<x-app-layout>`.
 - Keep long lists split into parent page + child item components. Example: `ListSticker` mounts `ProductDesignCard` for each item.
@@ -310,3 +315,7 @@ npm run dev
 ```
 
 If `php artisan view:cache` fails on Windows with `Access is denied` in `bootstrap/cache`, close processes locking the app files or rerun the terminal with proper permissions. `view:clear` is enough after normal Blade edits during development.
+
+### Ornament Amazon pages
+- `ornament` and `ornament-amazon-2` must stay separate product flows.
+- Prefer event-driven Livewire updates for add/delete refresh instead of browser reloads.

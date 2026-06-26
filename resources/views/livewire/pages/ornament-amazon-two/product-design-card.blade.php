@@ -1,4 +1,37 @@
-﻿<article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+<article @if(in_array(($automation?->workflow_status ?? null), ['running', 'failed'], true)) wire:poll.3s="refreshWhenUpdated" @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+    @php
+        $automationRunning = (($automation?->workflow_status ?? null) === 'running');
+        $automationFailed = (($automation?->workflow_status ?? null) === 'failed');
+        $automationSteps = [
+            'script' => '3. Script',
+            'person_a' => '4. Person A',
+            'person_b' => '4. Person B',
+            'prompt' => '5. Prompt create',
+            'mockup' => '6. Mockup',
+        ];
+        $automationStepData = is_array($automation?->step_data ?? null) ? $automation->step_data : [];
+        $currentAutomationStep = $automation?->workflow_step_key;
+        $dbMockupCount = collect([$asset->mockup1, $asset->mockup2, $asset->mockup3, $asset->mockup4, $asset->mockup5, $asset->mockup6])
+            ->filter(fn ($value) => filled($value))
+            ->count();
+        $hasAllDbMockups = ($dbMockupCount === 6);
+        $scriptReady = !empty($workflow['script']) && is_array($workflow['script'] ?? null);
+
+        if (! $currentAutomationStep && ($automationRunning || $automationFailed)) {
+            foreach ($automationSteps as $stepKey => $stepLabel) {
+                if (($automationStepData[$stepKey]['status'] ?? null) !== 'done') {
+                    $currentAutomationStep = $stepKey;
+                    break;
+                }
+            }
+        }
+
+        $currentAutomationLabel = $currentAutomationStep ? ($automationSteps[$currentAutomationStep] ?? $automation?->workflow_step_label) : ($automation?->workflow_step_label ?: 'Dang chay');
+        $canShowAuto = ! $asset->is_approved && $asset->redesign && ! $scriptReady && ! $automationRunning && ! $automationFailed && (($automation?->workflow_status ?? null) !== 'completed');
+        $canShowContinue = ! $asset->is_approved && $asset->redesign && $automationFailed && in_array($currentAutomationStep, ['person_a', 'person_b', 'prompt'], true);
+        $canShowRetry = ! $asset->is_approved && $asset->redesign && $automationFailed && $currentAutomationStep === 'mockup' && $dbMockupCount < 6;
+        $canShowApprove = ! $asset->is_approved && (($automation?->workflow_status ?? null) === 'completed') && $asset->redesign && $hasAllDbMockups;
+    @endphp
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
             <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
@@ -8,27 +41,66 @@
                 API: {{ $providerLabel }}
             </span>
 
-            <h2 class="min-w-0 truncate text-lg font-bold text-slate-950">
-                {{ $asset->keyword ?: 'Ornament item' }}
-            </h2>
-
-            @if (! $asset->is_approved && ! $asset->redesign)
-                <x-button
-                    color="slate"
-                    variant="ghost"
-                    size="xs"
-                    type="button"
-                    wire:click="$dispatch('openModal', { component: 'modals.ornament-amazon-two.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
-                >
-                    Edit item
-                </x-button>
-            @endif
-
-            @if ($asset->is_approved)
+            @if ($automationRunning)
+                <x-badge color="cyan">
+                    Auto: {{ $currentAutomationLabel }}
+                </x-badge>
+            @elseif (($automation?->workflow_status ?? null) === 'failed')
+                <x-badge color="rose">
+                    Loi: {{ $automation->workflow_step_label ?: 'Workflow' }}
+                </x-badge>
+            @elseif ($asset->is_approved)
                 <x-badge color="green">
                     Da duyet
                 </x-badge>
-            @elseif ($asset->hasApprovableOutput())
+            @endif
+
+            @if ($canShowApprove)
+                <x-button
+                    color="cyan"
+                    variant="solid"
+                    size="xs"
+                    type="button"
+                    wire:click="confirmApproval"
+                    wire:loading.attr="disabled"
+                    wire:target="confirmApproval"
+                >
+                    <span wire:loading.remove wire:target="confirmApproval">
+                        Duyet
+                    </span>
+                    <span wire:loading wire:target="confirmApproval">Saving...</span>
+                </x-button>
+            @elseif ($canShowRetry)
+                <x-button
+                    color="rose"
+                    variant="solid"
+                    size="xs"
+                    type="button"
+                    wire:click="retryAutomation"
+                    wire:loading.attr="disabled"
+                    wire:target="retryAutomation"
+                >
+                    <span wire:loading.remove wire:target="retryAutomation">
+                        Retry
+                    </span>
+                    <span wire:loading wire:target="retryAutomation">Saving...</span>
+                </x-button>
+            @elseif ($canShowContinue)
+                <x-button
+                    color="amber"
+                    variant="solid"
+                    size="xs"
+                    type="button"
+                    wire:click="continueAutomation"
+                    wire:loading.attr="disabled"
+                    wire:target="continueAutomation"
+                >
+                    <span wire:loading.remove wire:target="continueAutomation">
+                        Continue
+                    </span>
+                    <span wire:loading wire:target="continueAutomation">Saving...</span>
+                </x-button>
+            @elseif ($canShowAuto)
                 <x-button
                     color="cyan"
                     variant="solid"
@@ -39,11 +111,15 @@
                     wire:target="toggleApproval"
                 >
                     <span wire:loading.remove wire:target="toggleApproval">
-                        Duyet
+                        Auto
                     </span>
                     <span wire:loading wire:target="toggleApproval">Saving...</span>
                 </x-button>
             @endif
+
+            <h2 class="min-w-0 truncate text-lg font-bold text-slate-950">
+                {{ $asset->keyword ?: 'Ornament item' }}
+            </h2>
         </div>
 
         <button
@@ -54,6 +130,69 @@
             Delete
         </button>
     </div>
+
+    @if ($automationRunning || $automationFailed)
+        <div class="mb-4 rounded-2xl border {{ (($automation?->workflow_status ?? null) === 'failed') ? 'border-rose-100 bg-rose-50/70' : 'border-cyan-100 bg-cyan-50/70' }} px-4 py-3 shadow-sm">
+            <div class="flex items-start gap-3">
+                <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full {{ (($automation?->workflow_status ?? null) === 'failed') ? 'bg-rose-500 shadow-rose-500/25' : 'bg-cyan-500 shadow-cyan-500/25' }} text-white shadow-sm">
+                    @if ($automationFailed)
+                        <span class="text-sm font-black">!</span>
+                    @else
+                        <span class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                    @endif
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="text-sm font-bold text-cyan-950">Đang xử lý tự động</h3>
+                        <span class="rounded-full bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-cyan-700 shadow-sm">
+                            {{ $currentAutomationLabel }}
+                        </span>
+                    </div>
+                    <p class="mt-1 text-xs font-medium leading-5 text-cyan-900/80">
+                        Vui lòng không tắt trang. Hệ thống đang chạy từng bước và sẽ tự cập nhật khi xong.
+                    </p>
+
+                    <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                        @foreach ($automationSteps as $stepKey => $stepLabel)
+                            <div class="flex items-center gap-2 rounded-xl border border-white/80 bg-white px-3 py-2 text-xs shadow-sm">
+                                @if ($currentAutomationStep === $stepKey)
+                                    <span class="h-2.5 w-2.5 animate-pulse rounded-full bg-cyan-500"></span>
+                                @elseif (($automation?->step_data[$stepKey]['status'] ?? null) === 'done')
+                                    <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                                @elseif (($automation?->step_data[$stepKey]['status'] ?? null) === 'failed')
+                                    <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                                @else
+                                    <span class="h-2.5 w-2.5 rounded-full bg-slate-300"></span>
+                                @endif
+                                <span class="font-semibold {{ $currentAutomationStep === $stepKey ? 'text-cyan-900' : 'text-slate-600' }}">{{ $stepLabel }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    @if ($automationFailed)
+                        <div class="mt-3 rounded-xl border border-rose-200 bg-white px-4 py-3">
+                            <div class="text-xs font-bold uppercase tracking-wide text-rose-600">Loi tai step</div>
+                            <div class="mt-2 text-sm font-semibold text-rose-900">{{ $currentAutomationLabel ?: 'Unknown step' }}</div>
+                            <div class="mt-1 text-xs leading-5 text-rose-700">{{ $automation->last_error ?: 'Khong co thong diep loi.' }}</div>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                @if (($automation?->workflow_step_key ?? null) === 'mockup')
+                                    <x-button color="rose" variant="solid" size="xs" type="button" wire:click="retryAutomation" wire:loading.attr="disabled" wire:target="retryAutomation">
+                                        <span wire:loading.remove wire:target="retryAutomation">Retry</span>
+                                        <span wire:loading wire:target="retryAutomation">Retrying...</span>
+                                    </x-button>
+                                @else
+                                    <x-button color="cyan" variant="solid" size="xs" type="button" wire:click="continueAutomation" wire:loading.attr="disabled" wire:target="continueAutomation">
+                                        <span wire:loading.remove wire:target="continueAutomation">Continue</span>
+                                        <span wire:loading wire:target="continueAutomation">Continuing...</span>
+                                    </x-button>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
 
     @php
         $topWorkflowScript = collect($workflow['script'] ?? [])->filter();
@@ -173,6 +312,7 @@
                                 action="main"
                                 :provider-key="$providerKey"
                                 :image-model="$imageModel"
+                                :disabled="$automationRunning"
                                 :key="'ornament-amazon-two-main-action-'.$asset->id.'-'.$providerKey.'-'.$imageModel"
                             />
                         @endif
@@ -208,6 +348,7 @@
                         action="script"
                         :provider-key="$providerKey"
                         :text-model="$textModel"
+                        :disabled="$automationRunning"
                         :key="'ornament-amazon-two-script-action-'.$asset->id.'-'.$providerKey.'-'.$textModel"
                     />
                 @endif
@@ -496,22 +637,23 @@
                                     x-show="! refUrl || refUrl === @js($refValue)"
                                     class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
                                 >
-                                    <img src="{{ $refValue }}" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain">
+                                    <img src="{{ $refValue }}" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
+                                </button>
+                            @elseif (true)
+                                <button
+                                    type="button"
+                                    x-cloak
+                                    x-show="refUrl && refUrl !== @js($refValue)"
+                                    x-on:click="$dispatch('review-image', { src: refUrl, original: refUrl, title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                    class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
+                                >
+                                    <img x-bind:src="refUrl" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
                                 </button>
                             @endif
 
-                            <button
-                                type="button"
-                                x-cloak
-                                x-show="refUrl && refUrl !== @js($refValue)"
-                                x-on:click="$dispatch('review-image', { src: refUrl, original: refUrl, title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
-                                class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
-                            >
-                                <img x-bind:src="refUrl" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain">
-                            </button>
-
                             <div
-                                x-show="! refUrl"
+                                x-cloak
+                                x-show="! refUrl && @js(! filled($refValue))"
                                 class="mt-2 flex min-h-0 flex-1 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white px-2 text-center text-[11px] font-semibold text-slate-400"
                             >
                                 <span x-show="! errorMessage">No ref attached</span>
@@ -666,6 +808,21 @@
                     ? 'Can tao anh Create Master truoc.'
                     : ($mockupB5PromptSlots === [] ? 'Can tao B4 prompt truoc.' : null));
             $mockupCreateDisabled = (bool) $generateDisabledReason;
+            $mockupBatch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+            $mockupBatchStates = is_array($mockupBatch['slot_states'] ?? null) ? $mockupBatch['slot_states'] : [];
+            $mockupBatchRunning = ($mockupBatch['running'] ?? false) === true;
+            $mockupBatchErrors = is_array($workflow['images_errors'] ?? null) ? $workflow['images_errors'] : [];
+            $mockupDoneCount = collect($mockupB5Images)
+                ->filter(fn (array $image): bool => filled($image['original'] ?? null) || filled($image['preview'] ?? null))
+                ->count();
+            $mockupErrorCount = collect($mockupBatchErrors)->filter(fn (mixed $error): bool => is_string($error) && trim($error) !== '')->count();
+            $mockupStatusMessage = null;
+
+            if ($mockupBatchRunning) {
+                $mockupStatusMessage = 'Dang tao '.$mockupDoneCount.'/'.max(count($mockupB5PromptSlots), 1).' mockup...';
+            } elseif ($mockupErrorCount > 0) {
+                $mockupStatusMessage = 'Co '.$mockupErrorCount.' mockup dang loi. Ban co the retry.';
+            }
         @endphp
 
         @once
@@ -687,13 +844,13 @@
                 promptSlots: @js($mockupB5PromptSlots),
                 prompts: @js($mockupB5Prompts),
                 images: @js($mockupB5Images),
-                slotStates: {},
-                slotErrors: {},
-                running: false,
-                doneCount: 0,
-                targetCount: 0,
-                errorCount: 0,
-                statusMessage: '',
+                slotStates: @js($mockupBatchStates),
+                slotErrors: @js($mockupBatchErrors),
+                running: @js($mockupBatchRunning),
+                doneCount: @js($mockupDoneCount),
+                targetCount: @js(count($mockupB5PromptSlots)),
+                errorCount: @js($mockupErrorCount),
+                statusMessage: @js($mockupStatusMessage),
                 disabledReason: @js($generateDisabledReason),
                 providerKey: @js($providerKey),
                 imageModel: @js($imageModel),
@@ -702,6 +859,8 @@
                 csrfToken: document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '',
                 init() {
                     this.doneCount = this.doneImageCount();
+                    this.targetCount = this.promptSlots.length;
+                    this.syncStatesFromImages();
                 },
                 doneImageCount() {
                     return this.slots.filter((slot) => this.originalUrl(slot)).length;
@@ -738,6 +897,18 @@
                 },
                 setSlotState(slot, state) {
                     this.slotStates = { ...this.slotStates, [slot]: state };
+                },
+                syncStatesFromImages() {
+                    this.slots.forEach((slot) => {
+                        if (this.originalUrl(slot)) {
+                            this.setSlotState(slot, this.slotStates?.[slot] === 'generating' ? 'generating' : 'done');
+                            return;
+                        }
+
+                        if (! this.slotStates?.[slot]) {
+                            this.setSlotState(slot, this.promptForSlot(slot) ? 'waiting' : 'missing');
+                        }
+                    });
                 },
                 slotMessage(slot, fallback) {
                     if (this.slotStates[slot] === 'generating') return 'Generating';

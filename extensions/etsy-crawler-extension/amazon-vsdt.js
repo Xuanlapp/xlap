@@ -11,35 +11,65 @@ const CEREBRO_BATCH_SIZE = 10;
 const CEREBRO_FILTERS = [
   {
     name: 'Word Count Min',
-    selector: '[data-testid="wordcount-min"] input',
+    selectors: [
+      '[data-testid="wordcount-min"] input',
+      '.sc-blmEgr.sc-cewOZc.TpBaI:nth-of-type(11)',
+      'input[name="wordCountMin"]'
+    ],
     value: '3'
   },
   {
     name: 'Search Volume Min',
-    selector: '[data-testid="searchvolume-min"] input',
+    selectors: [
+      '[data-testid="searchvolume-min"] input',
+      'input[data-testid="searchvolume"][placeholder="Min"]',
+      'input[name="searchVolumeMin"]'
+    ],
     value: '200'
   },
   {
     name: 'Title Density Min',
-    selector: '[data-testid="titledensity-min"] input',
+    selectors: [
+      '[data-testid="titledensity-min"] input',
+      'input[data-testid="titledensity"][placeholder="Min"]',
+      'input[name="titleDensityMin"]'
+    ],
     value: '0'
   },
   {
     name: 'Title Density Max',
-    selector: '[data-testid="titledensity-max"] input',
+    selectors: [
+      '[data-testid="titledensity-max"] input',
+      'input[data-testid="titledensity"][placeholder="Max"]',
+      'input[name="titleDensityMax"]'
+    ],
     value: '6'
   },
   {
     name: 'Exclude Keywords',
-    selector: 'input[name="exclude"]',
+    selectors: [
+      'input[name="exclude"]',
+      'input[label="Exclude Keywords"][placeholder="Ex: red dress"]'
+    ],
     value: 'decals, book, pack, books, sheet, sheets, packs, stickers'
   },
   {
     name: 'Phrases Containing',
-    selector: 'input[name="phrase"]',
+    selectors: [
+      'input[name="phrase"]',
+      'input[name="phrase"][placeholder="Ex: red dress"]'
+    ],
     value: 'sticker'
   }
 ];
+
+function getFilterSelectors(filter) {
+  return Array.isArray(filter?.selectors) && filter.selectors.length > 0
+    ? filter.selectors
+    : filter?.selector
+      ? [filter.selector]
+      : [];
+}
 
 let activeRun = null;
 const AMAZON_JOB_KEY = 'amazon_vsdt_jobs';
@@ -341,6 +371,20 @@ async function setReactInputInTab(tabId, selector, value) {
   await sleep(400);
 }
 
+async function resolveExistingSelector(tabId, selectors) {
+  for (const selector of selectors || []) {
+    const exists = await runInTab(
+      tabId,
+      (sel) => Boolean(document.querySelector(sel)),
+      [selector]
+    ).catch(() => false);
+
+    if (exists) return selector;
+  }
+
+  return null;
+}
+
 async function pasteAsinsIntoCerebro(tabId, selector, asins) {
   const asinText = asins.join('\n');
 
@@ -483,8 +527,9 @@ async function openCerebroFilterPanel(tabId, timeoutMs = 120000) {
           const text = textOf(clickable);
           let score = 0;
 
-          if (/show\s+filters?/i.test(text)) score += 100;
-          if (clickable.getAttribute('data-testid') === 'showMoreButton' && /show\s+filters?/i.test(text)) score += 120;
+          if (/show\s+filters?/i.test(text)) score += 160;
+          if (clickable.getAttribute('data-testid') === 'showMoreButton') score += 220;
+          if (clickable.getAttribute('data-testid') === 'showfilters') score += 180;
           if (/\bfilters?\b/i.test(text)) score += 60;
           if (/advanced\s+filters?/i.test(text)) score += 50;
           if (/filter/i.test(clickable.getAttribute('data-testid') || '')) score += 45;
@@ -498,6 +543,8 @@ async function openCerebroFilterPanel(tabId, timeoutMs = 120000) {
         }
 
         const selectors = [
+          'button[data-testid="showMoreButton"]',
+          '[data-testid="showMoreButton"]',
           'button[data-testid="showfilters"]',
           'button[data-testid="show-filters"]',
           'button[data-testid="filter-toggle"]',
@@ -594,7 +641,11 @@ async function openCerebroFilterPanel(tabId, timeoutMs = 120000) {
 
 async function applyCerebroFilters(tabId, maximumAttempts = 8) {
   await openCerebroFilterPanel(tabId);
-  await waitForSelectorInTab(tabId, '[data-testid="wordcount-min"] input', 120000);
+  const firstFilterSelector = await resolveExistingSelector(tabId, getFilterSelectors(CEREBRO_FILTERS[0]));
+  if (!firstFilterSelector) {
+    throw new Error(`Could not find first Cerebro filter input for ${CEREBRO_FILTERS[0].name}.`);
+  }
+  await waitForSelectorInTab(tabId, firstFilterSelector, 120000);
 
   const anyRadioSelector = 'input[name="include"][value="any"]';
   await waitForSelectorInTab(tabId, anyRadioSelector, 30000);
@@ -612,9 +663,12 @@ async function applyCerebroFilters(tabId, maximumAttempts = 8) {
 
   for (let attempt = 1; attempt <= maximumAttempts; attempt++) {
     for (const filter of CEREBRO_FILTERS) {
-      const currentValue = await getInputValueInTab(tabId, filter.selector).catch(() => '');
+      const selector = await resolveExistingSelector(tabId, getFilterSelectors(filter));
+      if (!selector) continue;
+
+      const currentValue = await getInputValueInTab(tabId, selector).catch(() => '');
       if (currentValue !== filter.value) {
-        await setReactInputInTab(tabId, filter.selector, filter.value);
+        await setReactInputInTab(tabId, selector, filter.value);
       }
     }
 
@@ -622,7 +676,17 @@ async function applyCerebroFilters(tabId, maximumAttempts = 8) {
 
     const incorrectFilters = [];
     for (const filter of CEREBRO_FILTERS) {
-      const currentValue = await getInputValueInTab(tabId, filter.selector).catch(() => '');
+      const selector = await resolveExistingSelector(tabId, getFilterSelectors(filter));
+      if (!selector) {
+        incorrectFilters.push({
+          name: filter.name,
+          expected: filter.value,
+          current: '[selector not found]'
+        });
+        continue;
+      }
+
+      const currentValue = await getInputValueInTab(tabId, selector).catch(() => '');
       if (currentValue !== filter.value) {
         incorrectFilters.push({
           name: filter.name,

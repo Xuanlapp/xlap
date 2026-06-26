@@ -146,6 +146,17 @@ Financial Health:
 - **Auth:** Laravel Sanctum / Session-based
 - **Queue:** Redis (for async tasks)
 
+## Ornament Amazon Automation Notes
+
+- `Ornament Amazon` đã tách riêng khỏi `Ornament Amazon 2` và dùng route `/offorest/ornament-ornament`.
+- Automation state được lưu riêng trong bảng `data_ornament_amazon` để không làm nặng `product_design_assets`.
+- Quy trình automation hiện tại: `2. Main Image` → `3. Script` → `4. Person A` → `4. Person B` → `5. Prompt create` → `6. Mockup`.
+- Trạng thái step có 4 loại: `wait`, `running`, `done`, `error`.
+- Catalog trên trang Ornament Amazon hiển thị log theo từng item/step để user theo dõi.
+- Khi step lỗi, automation pause và user có thể bấm tiếp tục để chạy tiếp từ step kế.
+- Automation dùng queue, nên cần worker `php artisan queue:work` hoặc môi trường tự chạy worker nền.
+- Ảnh output vẫn lưu theo cơ chế hiện tại của `product_design_assets`, chỉ state/log automation chuyển sang bảng riêng.
+
 ### Frontend
 - **UI Framework:** Tailwind CSS
 - **JS Framework:** Alpine.js (lightweight interactivity)
@@ -336,3 +347,28 @@ php artisan route:cache           # Cache routes
 **Last Updated:** May 29, 2026  
 **Version:** 1.0  
 **Status:** Active
+
+## Ornament Amazon separation
+- `Ornament Amazon` keeps its own route slug `ornament-ornament` via `app/Support/ProductRegistry.php`.
+- `DeleteIdeaConfirm` now treats Ornament Amazon as the `ornament` product slug only and does not trigger the extra hard-refresh path that caused 404 regressions.
+- Ornament Amazon add/delete refreshes should stay event-driven like `Ornament Amazon 2`, while remaining independent for later workflow changes.
+## Ornament Amazon 2 Automation Notes
+
+- `Ornament Amazon 2` uses `data_ornament_amazon` for approval automation state, with `product_slug = ornament-amazon-2` and `workflow_name = ornament-amazon-two-automation`.
+- Clicking `Duyet` starts the queued automation instead of doing all work inside the Livewire request.
+- Queue job: `App\Jobs\RunOrnamentAmazonTwoAutomation`.
+- Step order: `3. Script` -> `4. Person A` -> `4. Person B` -> `5. Prompt create` -> `6. Mockup` -> completed.
+- Step state is stored in `step_data`; errors are stored in `step_errors` and `last_error`.
+- If one item fails, only that item stops; other queued items continue.
+- Item should only be considered fully approved after automation completes successfully.
+- Related doc: `docs/ornament-amazon-two-automation.md`.
+- Step `6. Mockup` now dispatches all slot jobs in parallel; each slot updates its own state and automation completes only after the batch finishes successfully.
+
+- Only 6/6 mockup allows final approval; if any slot is still missing, the item stays failed at 6. Mockup so the user can retry.
+- Retry at 6. Mockup must use persisted DB truth: keep existing mockup1..mockup6 outputs, clear/re-dispatch only missing slots, and never delete already successful mockups.
+
+
+
+
+- Ornament Amazon 2 card button logic: Auto when script is empty, Continue when automation stops at Person A/B or Prompt create, Retry when mockup fails and DB still misses slots, Duyet only after automation completed and all 6 mockups exist in DB.
+

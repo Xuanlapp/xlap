@@ -21,6 +21,12 @@ class OrnamentAmazonStatusPanel extends Component
 
     public ?string $activePsdTemplateName = null;
 
+    public ?string $providerKey = null;
+
+    public ?string $imageModel = null;
+
+    public ?string $textModel = null;
+
     /**
      * @var array{all?: int, unapproved?: int, approved?: int}
      */
@@ -29,11 +35,21 @@ class OrnamentAmazonStatusPanel extends Component
     /**
      * @param array{all?: int, unapproved?: int, approved?: int} $statusCounts
      */
-    public function mount(string $status, int $perPage, ?string $activePsdTemplateName = null, array $statusCounts = []): void
-    {
+    public function mount(
+        string $status,
+        int $perPage,
+        ?string $activePsdTemplateName = null,
+        ?string $providerKey = null,
+        ?string $imageModel = null,
+        ?string $textModel = null,
+        array $statusCounts = [],
+    ): void {
         $this->status = in_array($status, self::STATUS_OPTIONS, true) ? $status : 'all';
         $this->perPage = $perPage;
         $this->activePsdTemplateName = $activePsdTemplateName;
+        $this->providerKey = $providerKey;
+        $this->imageModel = $imageModel;
+        $this->textModel = $textModel;
         $this->statusCounts = $statusCounts;
     }
 
@@ -59,19 +75,22 @@ class OrnamentAmazonStatusPanel extends Component
 
     public function render(): View
     {
+        $assets = app(OrnamentAmazonService::class)->paginatedAssetsForUser(
+            auth()->user(),
+            $this->perPage,
+            $this->status,
+            $this->pageName(),
+        );
+
         return view('livewire.pages.ornament-amazon.ornament-amazon-status-panel', [
-            'assets' => app(OrnamentAmazonService::class)->paginatedAssetsForUser(
-                auth()->user(),
-                $this->perPage,
-                $this->status,
-                $this->pageName(),
-            ),
+            'assets' => $assets,
             'pageName' => $this->pageName(),
         ]);
     }
 
     private function pageName(): string
     {
-        return "ornament_{$this->status}_page";
+        return "ornament_amazon_{$this->status}_page";
     }
+
 }

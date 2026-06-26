@@ -1,4 +1,30 @@
-<div>
+﻿<div>
+    @php
+        $catalogSteps = [
+            'script' => '3. Script',
+            'person_a' => '4. Person A',
+            'person_b' => '4. Person B',
+            'prompt' => '5. Prompt',
+            'mockup' => '6. Mockup',
+        ];
+        $stepBadgeClass = function (?string $state): string {
+            return match ($state) {
+                'done' => 'border-emerald-200 bg-emerald-50 text-emerald-700',
+                'running' => 'border-blue-200 bg-blue-50 text-blue-700',
+                'failed' => 'border-rose-200 bg-rose-50 text-rose-700',
+                default => 'border-slate-200 bg-slate-50 text-slate-500',
+            };
+        };
+        $stepLabel = function (?string $state): string {
+            return match ($state) {
+                'done' => 'Done',
+                'running' => 'Running',
+                'failed' => 'Error',
+                default => 'Wait',
+            };
+        };
+    @endphp
+
     <div class="mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div class="flex gap-1 overflow-x-auto" role="tablist" aria-label="Loc ornament theo trang thai">
             @foreach ([
@@ -39,7 +65,10 @@
             <livewire:pages.ornament-amazon.product-design-card
                 :asset-id="$asset->id"
                 :active-psd-template-name="$activePsdTemplateName"
-                :key="'ornament-'.$status.'-product-design-card-'.$asset->id"
+                :provider-key="$providerKey"
+                :image-model="$imageModel"
+                :text-model="$textModel"
+                :key="'ornament-'.$status.'-product-design-card-'.$asset->id.'-'.$providerKey.'-'.$imageModel.'-'.$textModel"
             />
         @empty
             <div class="rounded-lg border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
@@ -50,3 +79,4 @@
 
     <x-offorest.pagination :paginator="$assets" :page-name="$pageName" class="mt-6 rounded-lg border border-slate-200 shadow-sm" />
 </div>
+

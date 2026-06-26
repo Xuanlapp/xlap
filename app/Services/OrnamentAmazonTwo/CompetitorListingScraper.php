@@ -26,7 +26,7 @@ class CompetitorListingScraper
      *     images: array<int, string>
      * }
      */
-    public function scrape(string $url): array
+    public function scrape(string $url, bool $requireImages = true): array
     {
         $url = trim($url);
 
@@ -51,7 +51,7 @@ class CompetitorListingScraper
             throw new RuntimeException('Khong doc duoc PRODUCT TITLE tu link nay.');
         }
 
-        if ($images === []) {
+        if ($requireImages && $images === []) {
             throw new RuntimeException('Khong tim thay anh listing tu link nay.');
         }
 

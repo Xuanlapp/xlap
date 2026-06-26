@@ -37,6 +37,7 @@
             </div>
 
             <livewire:modals.image.review-image />
+            <livewire:modals.ornament-amazon.review-image />
             <x-toast />
         </div>
     </body>

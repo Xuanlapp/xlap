@@ -245,6 +245,15 @@ new class extends Component
                             </svg>
                             <span>Listing</span>
                         </a>
+                        <a href="{{ route('offorest.ornament-amazon.catalog') }}" class="{{ $navItemClass }} {{ request()->routeIs('offorest.ornament-amazon.catalog') ? $activeClass : $inactiveClass }}">
+                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.ornament-amazon.catalog') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <path d="M4 5h16" />
+                                <path d="M4 10h16" />
+                                <path d="M4 15h10" />
+                                <path d="m16 17 2 2 4-4" />
+                            </svg>
+                            <span>Ornament Catalog</span>
+                        </a>
                         <a href="{{ route('offorest.drive-uploads') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.drive-uploads') ? $activeClass : $inactiveClass }}">
                             <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.drive-uploads') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M12 3v12" />
@@ -381,6 +390,7 @@ new class extends Component
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Catalog</p>
                         <div class="mt-3 space-y-3">
                             <a href="{{ route('offorest.listing-metadata') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Listing</a>
+                            <a href="{{ route('offorest.ornament-amazon.catalog') }}" x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Ornament Catalog</a>
                             <a href="{{ route('offorest.drive-uploads') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Uploads</a>
                             <a href="{{ route('offorest.exports') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Export</a>
                         </div>

@@ -10,6 +10,7 @@
     'editTarget' => null,
     'providerKey' => null,
     'imageModel' => null,
+    'imageClass' => 'object-cover',
 ])
 
 <div
@@ -21,8 +22,8 @@
             <button
                 type="button"
                 x-show="! failed"
-                wire:click="$dispatch('review-image', { src: @js($src), original: @js($original ?: $src), title: @js($alt), assetId: @js($assetId), productSlug: @js($productSlug), keyword: @js($keyword), action: @js($action), editTarget: @js($editTarget), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
-                class="h-full w-full cursor-zoom-in"
+                wire:click="$dispatch('{{ $productSlug === 'ornament' ? 'review-image-ornament' : 'review-image' }}', { src: @js($src), original: @js($original ?: $src), title: @js($alt), assetId: @js($assetId), productSlug: @js($productSlug), keyword: @js($keyword), action: @js($action), editTarget: @js($editTarget), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
+                class="flex h-full w-full cursor-zoom-in items-center justify-center"
             >
                 <img
                     x-on:error="failed = true"
@@ -31,7 +32,7 @@
                     loading="lazy"
                     decoding="async"
                     fetchpriority="low"
-                    class="h-full w-full object-cover"
+                    class="h-full w-full {{ $imageClass }}"
                 >
             </button>
         @else
@@ -43,7 +44,7 @@
                 loading="lazy"
                 decoding="async"
                 fetchpriority="low"
-                class="h-full w-full object-cover"
+                class="h-full w-full {{ $imageClass }}"
             >
         @endif
         <a

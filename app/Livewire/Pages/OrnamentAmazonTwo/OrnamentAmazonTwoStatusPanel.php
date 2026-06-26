@@ -33,6 +33,11 @@ class OrnamentAmazonTwoStatusPanel extends Component
     public array $statusCounts = [];
 
     /**
+     * @var array<int, int>
+     */
+    public array $hiddenAssetIds = [];
+
+    /**
      * @param array{all?: int, unapproved?: int, approved?: int} $statusCounts
      */
     public function mount(
@@ -68,6 +73,19 @@ class OrnamentAmazonTwoStatusPanel extends Component
             ->activeOrnamentTemplateForUser(auth()->user())?->name;
     }
 
+
+    #[On('product-design-hide-now')]
+    public function hideAssetNow(int $assetId, string $productSlug): void
+    {
+        if ($productSlug !== 'ornament-amazon-2') {
+            return;
+        }
+
+        if (! in_array($assetId, $this->hiddenAssetIds, true)) {
+            $this->hiddenAssetIds[] = $assetId;
+        }
+    }
+
     public function placeholder(): View
     {
         return view('livewire.pages.ornament-amazon-two.ornament-amazon-two-status-panel-placeholder');
@@ -75,13 +93,21 @@ class OrnamentAmazonTwoStatusPanel extends Component
 
     public function render(): View
     {
+        $assets = app(OrnamentAmazonTwoService::class)->paginatedAssetsForUser(
+            auth()->user(),
+            $this->perPage,
+            $this->status,
+            $this->pageName(),
+        );
+
+        if ($this->hiddenAssetIds !== []) {
+            $assets->setCollection(
+                $assets->getCollection()->reject(fn ($asset) => in_array($asset->id, $this->hiddenAssetIds, true))->values()
+            );
+        }
+
         return view('livewire.pages.ornament-amazon-two.ornament-amazon-two-status-panel', [
-            'assets' => app(OrnamentAmazonTwoService::class)->paginatedAssetsForUser(
-                auth()->user(),
-                $this->perPage,
-                $this->status,
-                $this->pageName(),
-            ),
+            'assets' => $assets,
             'pageName' => $this->pageName(),
         ]);
     }

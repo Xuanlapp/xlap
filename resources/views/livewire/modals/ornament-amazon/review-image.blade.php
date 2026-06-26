@@ -2,10 +2,6 @@
     @if ($isOpen)
         @php
             $displayOriginalUrl = $original;
-            $isOrnamentAmazonTwoPreview = $action === 'ornament-amazon-two-custom-image';
-            $ornamentPreviewPrefix = $isOrnamentAmazonTwoPreview ? 'ornament-amazon-two' : 'ornament-amazon';
-            $ornamentGenerateMethod = $isOrnamentAmazonTwoPreview ? 'generateOrnamentAmazonTwoMockupImage' : 'generateOrnamentAmazonMockupImage';
-            $ornamentCustomizeMethod = $isOrnamentAmazonTwoPreview ? 'customizeOrnamentAmazonTwoImage' : 'customizeOrnamentAmazonImage';
             $appUrl = rtrim((string) config('app.url'), '/');
 
             if ($appUrl === '' || str_contains($appUrl, 'localhost') || str_contains($appUrl, '127.0.0.1')) {
@@ -318,23 +314,23 @@
                                             <h3 class="truncate text-sm font-bold text-slate-950">Prompt Create Image</h3>
                                         </div>
 
-                                        @if (! $assetApproved && $action === 'ornament-amazon-two-custom-image' && $editTarget && str_starts_with($editTarget, 'mockup'))
+                                        @if (! $assetApproved && $action === 'ornament-amazon-custom-image' && $editTarget && str_starts_with($editTarget, 'mockup'))
                                             <button
                                                 type="button"
-                                                x-on:click="document.querySelectorAll(`[data-{{ $ornamentPreviewPrefix }}-mockup-root][data-asset-id='${@js($assetId)}'] [data-{{ $ornamentPreviewPrefix }}-mockup-slot='${@js($previewMockupSlot)}']`).forEach((element) => element.classList.add('is-generating')); window.dispatchEvent(new CustomEvent('{{ $ornamentPreviewPrefix }}-generation-started')); window.dispatchEvent(new CustomEvent('{{ $ornamentPreviewPrefix }}-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($previewMockupSlot) } }))"
-                                                wire:click="{{ $ornamentGenerateMethod }}"
+                                                x-on:click="document.querySelectorAll(`[data-ornament-amazon-mockup-root][data-asset-id='${@js($assetId)}'] [data-ornament-amazon-mockup-slot='${@js($previewMockupSlot)}']`).forEach((element) => element.classList.add('is-generating')); window.dispatchEvent(new CustomEvent('ornament-amazon-generation-started')); window.dispatchEvent(new CustomEvent('ornament-amazon-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($previewMockupSlot) } }))"
+                                                wire:click="generateOrnamentAmazonMockupImage"
                                                 wire:loading.attr="disabled"
-                                                wire:target="{{ $ornamentGenerateMethod }}"
+                                                wire:target="generateOrnamentAmazonMockupImage"
                                                 class="inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 text-xs font-bold text-orange-700 transition-all duration-200 ease-out hover:border-orange-300 hover:bg-orange-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
                                                 <span
                                                     wire:loading
-                                                    wire:target="{{ $ornamentGenerateMethod }}"
+                                                    wire:target="generateOrnamentAmazonMockupImage"
                                                     class="h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700"
                                                     aria-hidden="true"
                                                 ></span>
-                                                <span wire:loading.remove wire:target="{{ $ornamentGenerateMethod }}">Generate</span>
-                                                <span wire:loading wire:target="{{ $ornamentGenerateMethod }}">Generating...</span>
+                                                <span wire:loading.remove wire:target="generateOrnamentAmazonMockupImage">Generate</span>
+                                                <span wire:loading wire:target="generateOrnamentAmazonMockupImage">Generating...</span>
                                             </button>
                                         @endif
                                     </div>
@@ -446,7 +442,7 @@
                                 </section>
                             @endif
 
-                            @if (! $assetApproved && $action === 'ornament-amazon-two-custom-image')
+                            @if (! $assetApproved && $action === 'ornament-amazon-custom-image')
                                 @php
                                     $activePreviewMockupSlot = match ($editTarget) {
                                         'mockup1' => 'usp',
@@ -474,7 +470,7 @@
                                     </div>
 
                                     @if ($original)
-                                        <form wire:submit.prevent="{{ $ornamentCustomizeMethod }}" class="space-y-3">
+                                        <form wire:submit.prevent="customizeOrnamentAmazonImage" class="space-y-3">
                                             <textarea
                                                 x-ref="ornamentCustomPromptInput"
                                                 wire:model.defer="customPrompt"
@@ -491,14 +487,14 @@
                                             <button
                                                 type="submit"
                                                 wire:loading.attr="disabled"
-                                                wire:target="{{ $ornamentCustomizeMethod }}"
+                                                wire:target="customizeOrnamentAmazonImage"
                                                 class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-gray-700 shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-xl hover:shadow-orange-500/25 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
                                                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                                     <path d="M12 2 14.7 9.3 22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z" />
                                                 </svg>
-                                                <span wire:loading.remove wire:target="{{ $ornamentCustomizeMethod }}">Redesign This Image</span>
-                                                <span wire:loading wire:target="{{ $ornamentCustomizeMethod }}">Generating...</span>
+                                                <span wire:loading.remove wire:target="customizeOrnamentAmazonImage">Redesign This Image</span>
+                                                <span wire:loading wire:target="customizeOrnamentAmazonImage">Generating...</span>
                                             </button>
                                         </form>
                                     @else
@@ -507,17 +503,17 @@
                                         </div>
                                         <button
                                             type="button"
-                                            x-on:click="document.querySelectorAll(`[data-{{ $ornamentPreviewPrefix }}-mockup-root][data-asset-id='${@js($assetId)}'] [data-{{ $ornamentPreviewPrefix }}-mockup-slot='${@js($activePreviewMockupSlot)}']`).forEach((element) => element.classList.add('is-generating')); window.dispatchEvent(new CustomEvent('{{ $ornamentPreviewPrefix }}-generation-started')); window.dispatchEvent(new CustomEvent('{{ $ornamentPreviewPrefix }}-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($activePreviewMockupSlot) } }))"
-                                            wire:click="{{ $ornamentGenerateMethod }}"
+                                            x-on:click="document.querySelectorAll(`[data-ornament-amazon-mockup-root][data-asset-id='${@js($assetId)}'] [data-ornament-amazon-mockup-slot='${@js($activePreviewMockupSlot)}']`).forEach((element) => element.classList.add('is-generating')); window.dispatchEvent(new CustomEvent('ornament-amazon-generation-started')); window.dispatchEvent(new CustomEvent('ornament-amazon-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($activePreviewMockupSlot) } }))"
+                                            wire:click="generateOrnamentAmazonMockupImage"
                                             wire:loading.attr="disabled"
-                                            wire:target="{{ $ornamentGenerateMethod }}"
+                                            wire:target="generateOrnamentAmazonMockupImage"
                                             class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-gray-700 shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-xl hover:shadow-orange-500/25 disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                                 <path d="M12 2 14.7 9.3 22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z" />
                                             </svg>
-                                            <span wire:loading.remove wire:target="{{ $ornamentGenerateMethod }}">Generate</span>
-                                            <span wire:loading wire:target="{{ $ornamentGenerateMethod }}">Generating...</span>
+                                            <span wire:loading.remove wire:target="generateOrnamentAmazonMockupImage">Generate</span>
+                                            <span wire:loading wire:target="generateOrnamentAmazonMockupImage">Generating...</span>
                                         </button>
                                     @endif
                                 </section>

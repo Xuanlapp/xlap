@@ -85,7 +85,7 @@
                         @endif
 
                         @if (! empty($competitorListing))
-                            <section class="rounded-xl border border-slate-200 bg-[#0f172a] p-3 text-white">
+                            <section class="rounded-xl border border-slate-200 p-3 text-white">
                                 <div class="mb-3 flex items-center gap-2">
                                     <span class="text-xs font-bold uppercase text-gray-700">MAIN IMAGES</span>
                                     <span class="text-xs text-slate-300">{{ count($competitorListing['images'] ?? []) }} imgs</span>

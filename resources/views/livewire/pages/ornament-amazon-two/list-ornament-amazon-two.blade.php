@@ -182,6 +182,17 @@
                         </svg>
                         {{ $addButtonLabel }}
                     </button>
+
+                    <button
+                        type="button"
+                        wire:click="$dispatch('openModal', { component: 'modals.ornament-amazon-two.excel-import-ornament' })"
+                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                    >
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 12-4-4m4 4 4-4M4 20h16" />
+                        </svg>
+                        Import Excel
+                    </button>
                 </div>
             </div>
         </div>
@@ -192,6 +203,7 @@
                     x-show="activeTab === '{{ $status }}'"
                     x-transition.opacity.duration.150ms
                     x-cloak
+                    wire:key="ornament-amazon-two-panel-shell-{{ $status }}"
                 >
                     <livewire:pages.ornament-amazon-two.ornament-amazon-two-status-panel
                         :status="$status"
@@ -206,10 +218,10 @@
                     />
                 </div>
             @endforeach
-        </div>
-    </div>
+        </div>    </div>
 
     <livewire:modals.ornament-amazon-two.add-product-design />
+    <livewire:modals.ornament-amazon-two.excel-import-ornament />
     <livewire:modals.ornament-amazon-two.edit-product-detail />
     <livewire:modals.ornament-amazon-two.psd-mockup-template />
     <livewire:modals.product-design.delete-idea-confirm />

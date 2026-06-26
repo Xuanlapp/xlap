@@ -628,14 +628,47 @@ class ProductDesignCard extends Component
         return app(OrnamentAmazonTwoService::class)->downloadWorkflowZip(auth()->user(), $this->assetId);
     }
 
+
+    public function retryAutomation(): void
+    {
+        try {
+            $asset = app(OrnamentAmazonTwoService::class)->retryAutomation(auth()->user(), $this->assetId, $this->providerKey, $this->imageModel, $this->textModel);
+            $this->dispatchCardUpdated($asset->product_design_asset_id);
+            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da retry automation.');
+        } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ornament_amazon_two.retry_automation', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ornament_amazon_two.retry_automation', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi retry automation.');
+        }
+    }
+
+
+    public function continueAutomation(): void
+    {
+        try {
+            app(OrnamentAmazonTwoService::class)->resumeAutomationStep(auth()->user(), $this->assetId, $this->providerKey, $this->imageModel, $this->textModel);
+            $this->dispatchCardUpdated($this->assetId);
+            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tiep tuc automation.');
+        } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ornament_amazon_two.continue_automation', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ornament_amazon_two.continue_automation', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi continue automation.');
+        }
+    }
+
     public function toggleApproval(): void
     {
         try {
+            $wasApproved = app(OrnamentAmazonTwoService::class)->assetForUser(auth()->user(), $this->assetId)->is_approved;
             $asset = app(OrnamentAmazonTwoService::class)->toggleApproval(auth()->user(), $this->assetId);
-            $message = $asset->is_approved ? 'Da duyet item.' : 'Da bo duyet item.';
+            $message = $wasApproved ? 'Da bo duyet item.' : 'Da bat dau automation cho item.';
             app(ActivityLogService::class)->record(
-                event: $asset->is_approved ? 'ornament.item_approved' : 'ornament.item_unapproved',
-                description: $asset->is_approved ? 'User approved Ornament item.' : 'User unapproved Ornament item.',
+                event: $wasApproved ? 'ornament.item_unapproved' : 'ornament.item_automation_started',
+                description: $wasApproved ? 'User unapproved Ornament item.' : 'User started Ornament Amazon 2 automation.',
                 subject: $asset,
                 properties: ['item_number' => $asset->item_number],
             );
@@ -645,6 +678,27 @@ class ProductDesignCard extends Component
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: $message);
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'ornament.toggle_approval', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        }
+    }
+
+
+    public function confirmApproval(): void
+    {
+        try {
+            $asset = app(OrnamentAmazonTwoService::class)->confirmApproval(auth()->user(), $this->assetId);
+            app(ActivityLogService::class)->record(
+                event: 'ornament.item_approved',
+                description: 'User approved Ornament Amazon 2 item after automation completed.',
+                subject: $asset,
+                properties: ['item_number' => $asset->item_number],
+            );
+
+            $this->dispatch('ornament-amazon-two-product-design-approval-updated')->to(ListOrnamentAmazonTwo::class);
+            $this->dispatch('ornament-amazon-two-product-design-approval-updated')->to(OrnamentAmazonTwoStatusPanel::class);
+            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da duyet item va day queue upload Drive.');
+        } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ornament.confirm_approval', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         }
     }
@@ -663,6 +717,7 @@ class ProductDesignCard extends Component
 
         return view('livewire.pages.ornament-amazon-two.product-design-card', [
             'asset' => $asset,
+            'automation' => app(OrnamentAmazonTwoService::class)->automationForUser(auth()->user(), $this->assetId),
             'providerLabel' => config("ai_providers.providers.{$this->providerKey}.label", $this->providerKey ?: 'Default'),
             'imageModel' => $this->imageModel,
             'textModel' => $this->textModel,

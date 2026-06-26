@@ -42,11 +42,15 @@ class PsdMockupRenderer
         $process->setTimeout(300);
         $process->run();
 
+        $files = $this->outputFiles($process->getOutput(), $outputDirectory, $assetId);
+
         if (! $process->isSuccessful()) {
+            if ($files !== []) {
+                return $files;
+            }
+
             throw new RuntimeException(trim($process->getErrorOutput()) ?: 'PSD renderer failed.');
         }
-
-        $files = $this->outputFiles($process->getOutput(), $outputDirectory, $assetId);
 
         if ($files === []) {
             throw new RuntimeException('PSD renderer khong xuat file PNG nao.');
@@ -82,7 +86,7 @@ class PsdMockupRenderer
                 ->map(fn (mixed $path): string => (string) $path)
                 ->filter(fn (string $path): bool => str_starts_with(realpath($path) ?: '', realpath($outputDirectory) ?: ''))
                 ->map(fn (string $path): string => '/storage/generated/ornament/mockups/'.$assetId.'/'.basename($path))
-                ->take(10)
+                ->take(11)
                 ->values()
                 ->all();
         }
@@ -91,7 +95,7 @@ class PsdMockupRenderer
             ->filter(fn (\SplFileInfo $file): bool => strtolower($file->getExtension()) === 'png')
             ->sortBy(fn (\SplFileInfo $file): int => (int) preg_replace('/\D+/', '', $file->getFilename()))
             ->values()
-            ->take(10)
+            ->take(11)
             ->map(fn (\SplFileInfo $file): string => '/storage/generated/ornament/mockups/'.$assetId.'/'.$file->getFilename())
             ->all();
     }

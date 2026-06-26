@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\GoogleDriveOAuthController;
 use App\Http\Controllers\IdeaEtsyExtensionDownloadController;
 use App\Http\Controllers\IdeaAmazonExtensionDownloadController;
 use App\Http\Controllers\ImagePreviewController;
+use App\Http\Controllers\OrnamentAmazonWorkflowImageController;
 use App\Http\Controllers\OrnamentAmazonTwoWorkflowImageController;
 use App\Livewire\Pages\Admin\ActivityLogs;
 use App\Livewire\Pages\Admin\ApiCredits;
@@ -13,9 +14,11 @@ use App\Livewire\Pages\Admin\MailTest;
 use App\Livewire\Pages\Drive\DriveUploads;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
+use App\Livewire\Pages\OrnamentAmazon\AutomationCatalog;
 use App\Support\ProductRegistry;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
+
 
 Route::get('/', function () {
     return auth()->check()
@@ -70,6 +73,9 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('listing-metadata', ListingMetadataStatus::class)
         ->name('offorest.listing-metadata');
 
+    Route::get('ornament-amazon-catalog', AutomationCatalog::class)
+        ->name('offorest.ornament-amazon.catalog');
+
     Route::get('exports', MarketplaceExports::class)
         ->name('offorest.exports');
 
@@ -83,6 +89,30 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('idea-amazon/extension/download', IdeaAmazonExtensionDownloadController::class)
         ->middleware('product:idea-amazon')
         ->name('offorest.idea-amazon.extension.download');
+
+    Route::post('ornament/workflow/{asset}/listing-images/prepare', [OrnamentAmazonWorkflowImageController::class, 'prepare'])
+        ->middleware('product:ornament')
+        ->name('offorest.ornament.workflow.listing-images.prepare');
+
+    Route::get('ornament/workflow/{asset}/listing-images/status', [OrnamentAmazonWorkflowImageController::class, 'status'])
+        ->middleware('product:ornament')
+        ->name('offorest.ornament.workflow.listing-images.status');
+
+    Route::post('ornament/workflow/{asset}/redesign', [OrnamentAmazonWorkflowImageController::class, 'redesign'])
+        ->middleware('product:ornament')
+        ->name('offorest.ornament.workflow.redesign');
+
+    Route::post('ornament/workflow/{asset}/script', [OrnamentAmazonWorkflowImageController::class, 'script'])
+        ->middleware('product:ornament')
+        ->name('offorest.ornament.workflow.script');
+
+    Route::post('ornament/workflow/{asset}/person/{person}', [OrnamentAmazonWorkflowImageController::class, 'person'])
+        ->middleware('product:ornament')
+        ->name('offorest.ornament.workflow.person');
+
+    Route::post('ornament/workflow/{asset}/listing-images/{slot}', [OrnamentAmazonWorkflowImageController::class, 'generate'])
+        ->middleware('product:ornament')
+        ->name('offorest.ornament.workflow.listing-images.generate');
 
     Route::post('ornament-amazon-2/workflow/{asset}/listing-images/prepare', [OrnamentAmazonTwoWorkflowImageController::class, 'prepare'])
         ->middleware('product:ornament-amazon-2')

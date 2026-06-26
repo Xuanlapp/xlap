@@ -1,5 +1,26 @@
 <?php
 
+$keyFromEnvFile = null;
+
+try {
+    $envPath = dirname(__DIR__).'/.env';
+
+    if (is_file($envPath) && is_readable($envPath)) {
+        foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+            $line = trim($line);
+
+            if ($line === '' || str_starts_with($line, '#') || ! str_starts_with($line, 'APP_KEY=')) {
+                continue;
+            }
+
+            $keyFromEnvFile = trim(substr($line, strlen('APP_KEY=')));
+            $keyFromEnvFile = trim($keyFromEnvFile, '"');
+            break;
+        }
+    }
+} catch (Throwable) {
+    $keyFromEnvFile = null;
+}
 return [
 
     /*
@@ -97,7 +118,7 @@ return [
 
     'cipher' => 'AES-256-CBC',
 
-    'key' => env('APP_KEY'),
+    'key' => env('APP_KEY') ?: $keyFromEnvFile,
 
     'previous_keys' => [
         ...array_filter(
@@ -124,3 +145,5 @@ return [
     ],
 
 ];
+
+

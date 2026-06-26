@@ -8,6 +8,7 @@ use App\Services\Image\BackgroundRemovalService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
+use App\Services\Google\GoogleDriveService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -450,6 +451,24 @@ class ApiKeyImageGenerator
             ];
         }
 
+        $host = strtolower((string) parse_url($imageUri, PHP_URL_HOST));
+
+        if (str_contains($host, 'drive.google.com')) {
+            $fileId = $this->googleDriveFileId($imageUri);
+
+            if (! $fileId) {
+                throw new RuntimeException('Khong lay duoc file id tu Google Drive link nguon.');
+            }
+
+            $download = app(GoogleDriveService::class)->downloadImageFile($fileId);
+
+            return [
+                'bytes' => $download['body'],
+                'filename' => $fileId.'.png',
+                'mime_type' => $download['content_type'],
+            ];
+        }
+
         $startedAt = microtime(true);
         $response = Http::timeout(30)
             ->retry(2, 500)
@@ -479,6 +498,21 @@ class ApiKeyImageGenerator
             'filename' => basename((string) parse_url($imageUri, PHP_URL_PATH)) ?: 'source.png',
             'mime_type' => $contentType,
         ];
+    }
+
+
+    private function googleDriveFileId(string $url): ?string
+    {
+        $path = parse_url($url, PHP_URL_PATH) ?: '';
+        $query = parse_url($url, PHP_URL_QUERY) ?: '';
+
+        if (preg_match('#/file/d/([^/]+)#', $path, $matches) === 1) {
+            return $matches[1];
+        }
+
+        parse_str($query, $params);
+
+        return ! empty($params['id']) && is_string($params['id']) ? $params['id'] : null;
     }
 
     private function extractImageBytes(Response $response): string

@@ -15,26 +15,61 @@
         }
     }"
     x-init="
-        if (! window.__ornamentAmazonBeforeUnloadGuardInstalled) {
-            window.__ornamentAmazonBeforeUnloadGuardInstalled = true;
-            window.__ornamentAmazonGenerationCount = window.__ornamentAmazonGenerationCount || 0;
+        if (! window.__OrnamentAmazonBeforeUnloadGuardInstalled) {
+            window.__OrnamentAmazonBeforeUnloadGuardInstalled = true;
+            window.__OrnamentAmazonGenerationCount = window.__OrnamentAmazonGenerationCount || 0;
 
             window.addEventListener('ornament-amazon-generation-started', () => {
-                window.__ornamentAmazonGenerationCount = (window.__ornamentAmazonGenerationCount || 0) + 1;
+                window.__OrnamentAmazonGenerationCount = (window.__OrnamentAmazonGenerationCount || 0) + 1;
             });
 
             window.addEventListener('ornament-amazon-generation-finished', () => {
-                window.__ornamentAmazonGenerationCount = Math.max(0, (window.__ornamentAmazonGenerationCount || 0) - 1);
+                window.__OrnamentAmazonGenerationCount = Math.max(0, (window.__OrnamentAmazonGenerationCount || 0) - 1);
             });
 
             window.addEventListener('beforeunload', (event) => {
-                if ((window.__ornamentAmazonGenerationCount || 0) <= 0) {
+                if ((window.__OrnamentAmazonGenerationCount || 0) <= 0) {
                     return;
                 }
 
                 event.preventDefault();
                 event.returnValue = '';
             });
+
+            window.__OrnamentAmazonWarnNavigation = () => {
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: {
+                        type: 'error',
+                        title: 'Dang tao anh',
+                        message: 'Vui long doi Generate chay xong roi moi chuyen trang de khong mat du lieu.',
+                    },
+                }));
+            };
+
+            document.addEventListener('livewire:navigate', (event) => {
+                if ((window.__OrnamentAmazonGenerationCount || 0) <= 0) {
+                    return;
+                }
+
+                event.preventDefault();
+                window.__OrnamentAmazonWarnNavigation();
+            });
+
+            document.addEventListener('click', (event) => {
+                if ((window.__OrnamentAmazonGenerationCount || 0) <= 0) {
+                    return;
+                }
+
+                const link = event.target?.closest?.('a');
+
+                if (! link || (! link.hasAttribute('wire:navigate') && ! link.hasAttribute('wire:navigate.hover'))) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                window.__OrnamentAmazonWarnNavigation();
+            }, true);
         }
     "
     class="min-h-[calc(100vh-4rem)] bg-[#f3f4f6] text-slate-950"
@@ -55,6 +90,65 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
+                    @if (count($providerOptions) > 0)
+                        <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
+                            <span>API</span>
+                            <select
+                                wire:model.live="selectedAiProvider"
+                                class="h-7 cursor-pointer rounded-md border-0 bg-slate-100 py-0 pl-2 pr-7 text-xs font-semibold text-slate-700 transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6366f1]"
+                            >
+                                @foreach ($providerOptions as $providerKey => $providerLabel)
+                                    <option value="{{ $providerKey }}">{{ $providerLabel }}</option>
+                                @endforeach
+                            </select>
+                            @if (($selectedAiProvider ?? null) === 'v98store' && ! empty($v98StoreBalance))
+                                @if ($v98StoreBalance['ok'] ?? false)
+                                    <span
+                                        class="inline-flex h-7 items-center rounded-md bg-emerald-50 px-2 text-xs font-bold text-emerald-700"
+                                        title="{{ $v98StoreBalance['name'] ?? 'v98Store balance' }}"
+                                    >
+                                        ${{ number_format((float) ($v98StoreBalance['remain_quota'] ?? 0), 2) }}
+                                    </span>
+                                @else
+                                    <span
+                                        class="inline-flex h-7 items-center rounded-md bg-amber-50 px-2 text-xs font-bold text-amber-700"
+                                        title="{{ $v98StoreBalance['message'] ?? 'Balance unavailable' }}"
+                                    >
+                                        N/A
+                                    </span>
+                                @endif
+                            @endif
+                        </label>
+                    @endif
+
+                    @if (count($textModelOptions) > 0)
+                        <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
+                            <span>Text</span>
+                            <select
+                                wire:model.live="selectedTextModel"
+                                class="h-7 cursor-pointer rounded-md border-0 bg-slate-100 py-0 pl-2 pr-7 font-mono text-xs font-semibold text-slate-700 transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6366f1]"
+                            >
+                                @foreach ($textModelOptions as $modelKey => $modelLabel)
+                                    <option value="{{ $modelKey }}">{{ $modelLabel }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    @endif
+
+                    @if (count($imageModelOptions) > 0)
+                        <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
+                            <span>Image</span>
+                            <select
+                                wire:model.live="selectedImageModel"
+                                class="h-7 cursor-pointer rounded-md border-0 bg-slate-100 py-0 pl-2 pr-7 font-mono text-xs font-semibold text-slate-700 transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6366f1]"
+                            >
+                                @foreach ($imageModelOptions as $modelKey => $modelLabel)
+                                    <option value="{{ $modelKey }}">{{ $modelLabel }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    @endif
+
                     <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
                         <span>Hien thi</span>
                         <select
@@ -94,17 +188,16 @@
 
         <div class="mt-4">
             @foreach (['all', 'unapproved', 'approved'] as $status)
-                <div
-                    x-show="activeTab === '{{ $status }}'"
-                    x-transition.opacity.duration.150ms
-                    x-cloak
-                >
+                <div x-show="activeTab === '{{ $status }}'" x-transition.opacity.duration.150ms x-cloak>
                     <livewire:pages.ornament-amazon.ornament-amazon-status-panel
                         :status="$status"
                         :per-page="$perPage"
                         :active-psd-template-name="$activePsdTemplateName"
+                        :provider-key="$selectedAiProvider"
+                        :image-model="$selectedImageModel"
+                        :text-model="$selectedTextModel"
                         :status-counts="$statusCounts"
-                        :key="'ornament-amazon-status-panel-'.$status.'-'.$perPage"
+                        :key="'ornament-amazon-status-panel-'.$status.'-'.$perPage.'-'.$selectedAiProvider.'-'.$selectedImageModel.'-'.$selectedTextModel"
                         lazy
                     />
                 </div>
@@ -119,3 +212,4 @@
     <livewire:modals.prompt.detail-prompt />
 
 </div>
+
