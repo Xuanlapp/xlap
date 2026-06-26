@@ -24,6 +24,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -179,11 +180,11 @@ class OrnamentAmazonTwoService
         try {
             return Cache::remember(
                 "v98store-balance:{$credential->id}",
-                now()->addSeconds(45),
-                fn (): array => $this->fetchV98StoreBalance($credential),
+                now()->addSeconds(15),
+                fn (): array => array_merge($this->fetchV98StoreBalance($credential), ['credential_id' => $credential->id]),
             );
         } catch (\Throwable) {
-            return $this->fetchV98StoreBalance($credential);
+            return array_merge($this->fetchV98StoreBalance($credential), ['credential_id' => $credential->id]);
         }
     }
 
@@ -579,6 +580,7 @@ class OrnamentAmazonTwoService
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
 
         $rawScript = $this->apiKeyGenerator->generateText(
             user: $user,
@@ -622,6 +624,7 @@ class OrnamentAmazonTwoService
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
 
         $payload = $this->jsonPayload(
             $this->apiKeyGenerator->generateText(
@@ -691,6 +694,7 @@ class OrnamentAmazonTwoService
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
 
         $imageUrl = $this->apiKeyGenerator->generateFromPrompt(
             user: $user,
@@ -767,6 +771,7 @@ class OrnamentAmazonTwoService
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
 
         $payload = $this->jsonPayload(
             $this->apiKeyGenerator->generateText(
@@ -844,6 +849,7 @@ class OrnamentAmazonTwoService
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
 
         $imageUrl = $this->apiKeyGenerator->generateWithReferences(
             user: $user,
@@ -934,6 +940,7 @@ class OrnamentAmazonTwoService
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
 
         $missingSlots = $this->missingWorkflowImageSlots($asset, $workflow, $promptSlots);
 
@@ -1175,6 +1182,7 @@ class OrnamentAmazonTwoService
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
 
         $imageUrl = $this->apiKeyGenerator->generateWithReferences(
             user: $user,
@@ -1243,6 +1251,7 @@ class OrnamentAmazonTwoService
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
 
         $imageUrl = $this->apiKeyGenerator->generateWithReferences(
             user: $user,
@@ -1290,6 +1299,7 @@ class OrnamentAmazonTwoService
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
 
         $imageUrl = $this->apiKeyGenerator->generateWithReferences(
             user: $user,
@@ -1649,6 +1659,7 @@ class OrnamentAmazonTwoService
 
         $providerKey ??= $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
 
         $record = $this->automationForAsset($asset) ?: $this->startAutomation($user, $assetId, $providerKey, $imageModel, $textModel, false);
         $asset = $asset->refresh();
@@ -2217,6 +2228,70 @@ PROMPT;
     {
         if (! in_array($providerKey, ['chatgpt', 'v98store'], true)) {
             throw new RuntimeException('Workflow Ornament Amazon 2 chi dung ChatGPT hoac v98Store.');
+        }
+    }
+
+    private function ensureProviderHasBalance(User $user, string $providerKey): void
+    {
+        if ($providerKey !== 'v98store') {
+            return;
+        }
+
+        $balance = $this->v98StoreBalanceForUser($user, $providerKey);
+
+        if (! is_array($balance) || ($balance['ok'] ?? false) !== true) {
+            throw new RuntimeException('Khong kiem tra duoc so du v98Store. Tam dung automation de tranh loi API.');
+        }
+
+        $remaining = is_numeric($balance['remain_quota'] ?? null) ? (float) $balance['remain_quota'] : 0.0;
+
+        if ($remaining <= 0) {
+            $this->notifyV98StoreBalanceExhausted($user, $balance);
+
+            throw new RuntimeException('v98Store da het tien/het quota. Automation da dung, vui long nap them tien roi bam Continue/Retry.');
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $balance
+     */
+    private function notifyV98StoreBalanceExhausted(User $user, array $balance): void
+    {
+        $credentialId = (string) ($balance['credential_id'] ?? 'unknown');
+        $alertKey = "v98store-balance-alert:{$credentialId}";
+
+        if (! Cache::add($alertKey, true, now()->addHours(6))) {
+            return;
+        }
+
+        $remaining = is_numeric($balance['remain_quota'] ?? null) ? (float) $balance['remain_quota'] : 0.0;
+        $used = is_numeric($balance['used_quota'] ?? null) ? (float) $balance['used_quota'] : null;
+        $accountName = is_string($balance['name'] ?? null) ? $balance['name'] : 'v98Store';
+        $subject = 'v98Store het tien/quota - automation da tam dung';
+        $body = implode("
+", array_filter([
+            'v98Store het tien/quota nen automation da tam dung.',
+            '',
+            'User: #'.$user->id.' '.$user->name.' <'.$user->email.'>',
+            'Account: '.$accountName,
+            'Remain: $'.number_format($remaining, 4, '.', ''),
+            $used !== null ? 'Used: '.number_format($used, 4, '.', '') : null,
+            'Time: '.now()->format('Y-m-d H:i:s'),
+            '',
+            'Vui long nap them tien/quota roi bam Continue hoac Retry tren item dang dung.',
+        ]));
+
+        $recipients = collect([$user->email])
+            ->merge(User::query()->where('is_admin', true)->pluck('email'))
+            ->filter(fn (mixed $email): bool => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
+
+        foreach ($recipients as $email) {
+            try {
+                Mail::raw($body, fn ($mail) => $mail->to($email)->subject($subject));
+            } catch (Throwable) {
+            }
         }
     }
 

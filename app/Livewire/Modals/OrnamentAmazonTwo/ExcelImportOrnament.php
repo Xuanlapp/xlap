@@ -412,11 +412,18 @@ PY;
         File::ensureDirectoryExists(dirname($scriptPath));
         File::put($scriptPath, $script);
 
+        if (! function_exists('exec')) {
+            File::delete($scriptPath);
+
+            throw new RuntimeException('Server has disabled exec(), so .xlsx import cannot be read here. Please export this file as .csv and upload again, or enable exec/python on the server.');
+        }
+
         try {
-            $command = 'python '.escapeshellarg($scriptPath).' '.escapeshellarg($path).' 2>&1';
+            $pythonBinary = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+            $command = $pythonBinary.' '.escapeshellarg($scriptPath).' '.escapeshellarg($path).' 2>&1';
             $output = [];
             $code = 0;
-            @exec($command, $output, $code);
+            \exec($command, $output, $code);
         } finally {
             File::delete($scriptPath);
         }
