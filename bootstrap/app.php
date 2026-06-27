@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Http\Middleware\EnsureUserHasProductAccess;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -19,9 +19,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'product' => EnsureUserHasProductAccess::class,
         ]);
 
-        $middleware->validateCsrfTokens(except: [
+        $csrfExcept = [
             'webhook/telegram',
-        ]);
+        ];
+
+        if ((['APP_ENV'] ?? ['APP_ENV'] ?? getenv('APP_ENV')) === 'local') {
+            $csrfExcept[] = 'login';
+        }
+
+        $middleware->validateCsrfTokens(except: $csrfExcept);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->report(function (\Throwable $exception): void {

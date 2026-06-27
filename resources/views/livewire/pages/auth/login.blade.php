@@ -57,9 +57,10 @@ new #[Layout('layouts.guest')] class extends Component
 
             <x-auth-session-status class="mt-5" :status="session('status')" />
 
-            <form class="mt-6 space-y-4" wire:submit="login">
-                <input type="text" tabindex="-1" autocomplete="off" class="hidden" wire:model="form.website">
-                <input type="hidden" wire:model="form.startedAt">
+            <form class="mt-6 space-y-4" method="POST" action="{{ route('login', absolute: false) }}">
+                @csrf
+                <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden" wire:model="form.website">
+                <input type="hidden" name="started_at" value="{{ $form->startedAt }}" wire:model="form.startedAt">
 
                 @php
                     $authFailedMessage = trans('auth.failed');
@@ -67,7 +68,7 @@ new #[Layout('layouts.guest')] class extends Component
                     $credentialMessages = collect($errors->get('form.password'))
                         ->merge($loginMessages->filter(fn ($message) => $message === $authFailedMessage));
                     $turnstileMessages = collect($errors->get('form.turnstileToken'))
-                        ->merge($loginMessages->filter(fn ($message) => str_contains($message, 'xac minh') || str_contains($message, 'xÃ¡c minh') || str_contains($message, 'security')));
+                        ->merge($loginMessages->filter(fn ($message) => str_contains($message, 'xac minh') || str_contains($message, 'xÃƒÂ¡c minh') || str_contains($message, 'security')));
                     $visibleLoginMessages = $loginMessages->reject(fn ($message) => $message === $authFailedMessage || $turnstileMessages->contains($message));
                 @endphp
 
@@ -107,7 +108,7 @@ new #[Layout('layouts.guest')] class extends Component
                             type="password"
                             name="password"
                             autocomplete="current-password"
-                            placeholder="Mật khẩu"
+                            placeholder="Mật Khẩu"
                             class="w-full rounded-full border border-slate-300/80 bg-white/75 py-3.5 pl-12 pr-12 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-400/20"
                         />
                         <button
@@ -167,7 +168,7 @@ new #[Layout('layouts.guest')] class extends Component
                     <span wire:loading.remove wire:target="login">ĐĂNG NHẬP</span>
                     <span wire:loading wire:target="login" class="inline-flex items-center gap-2">
                         <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-                        ĐANG ĐĂNG NHẬP...
+                        Đang đăng nhập
                     </span>
                 </button>
 
@@ -178,13 +179,13 @@ new #[Layout('layouts.guest')] class extends Component
                 </div>
 
                 <div class="flex items-center justify-center gap-4">
-                    <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white" aria-label="Đăng nhập bằng Google">
+                    <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white" aria-label="ÄÄƒng nháº­p báº±ng Google">
                         <span class="text-xl font-semibold text-[#EA4335]">G</span>
                     </button>
-                    <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white" aria-label="Đăng nhập bằng Apple">
+                    <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white" aria-label="ÄÄƒng nháº­p báº±ng Apple">
                         <span class="text-xl font-semibold text-slate-900">A</span>
                     </button>
-                    <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white" aria-label="Đăng nhập bằng Facebook">
+                    <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white" aria-label="ÄÄƒng nháº­p báº±ng Facebook">
                         <span class="text-xl font-semibold text-[#1877F2]">f</span>
                     </button>
                 </div>
