@@ -32,6 +32,8 @@ class ApiKeyImageGenerator
         bool $removeBackground = false,
         ?string $model = null,
     ): string {
+        $providerKey = $this->normalizeProviderKey($providerKey);
+
         return $this->generateWithReferences(
             user: $user,
             providerKey: $providerKey,
@@ -54,6 +56,7 @@ class ApiKeyImageGenerator
         bool $removeBackground = false,
         ?string $model = null,
     ): string {
+        $providerKey = $this->normalizeProviderKey($providerKey);
         $endpoint = $this->imageEndpoint($providerKey, false);
 
         if (! $endpoint) {
@@ -94,6 +97,7 @@ class ApiKeyImageGenerator
         bool $removeBackground = false,
         ?string $model = null,
     ): string {
+        $providerKey = $this->normalizeProviderKey($providerKey);
         $endpoint = $this->imageEndpoint($providerKey, true);
 
         if (! $endpoint) {
@@ -145,6 +149,7 @@ class ApiKeyImageGenerator
         string $prompt,
         ?string $model = null,
     ): string {
+        $providerKey = $this->normalizeProviderKey($providerKey);
         $endpoint = $this->textEndpoint($providerKey);
 
         if (! $endpoint) {
@@ -179,6 +184,8 @@ class ApiKeyImageGenerator
 
     private function credentialFor(User $user, string $providerKey): UserApiCredential
     {
+        $providerKey = $this->normalizeProviderKey($providerKey);
+
         $credential = UserApiCredential::query()
             ->where('provider_key', $providerKey)
             ->where('is_active', true)
@@ -213,6 +220,8 @@ class ApiKeyImageGenerator
 
     private function imageEndpoint(string $providerKey, bool $withReferences): ?string
     {
+        $providerKey = $this->normalizeProviderKey($providerKey);
+
         $endpoint = $withReferences
             ? config("services.api_key_providers.{$providerKey}.image_edit_endpoint", config("services.api_key_providers.{$providerKey}.image_endpoint"))
             : config("services.api_key_providers.{$providerKey}.image_generation_endpoint", config("services.api_key_providers.{$providerKey}.image_endpoint"));
@@ -413,13 +422,19 @@ class ApiKeyImageGenerator
 
     private function textEndpoint(string $providerKey): ?string
     {
+        $providerKey = $this->normalizeProviderKey($providerKey);
         $endpoint = config("services.api_key_providers.{$providerKey}.text_endpoint");
+
+        if ((! is_string($endpoint) || trim($endpoint) === '') && $providerKey === 'v98store') {
+            $endpoint = env('V98STORE_TEXT_ENDPOINT', 'https://v98store.com/v1/chat/completions');
+        }
 
         return is_string($endpoint) && trim($endpoint) !== '' ? trim($endpoint) : null;
     }
 
     private function imageModel(string $providerKey, ?string $model = null): string
     {
+        $providerKey = $this->normalizeProviderKey($providerKey);
         $model = $model ?: config("services.api_key_providers.{$providerKey}.model");
 
         return is_string($model) && trim($model) !== '' ? trim($model) : 'gpt-image-1';
@@ -427,6 +442,7 @@ class ApiKeyImageGenerator
 
     private function textModel(string $providerKey, ?string $model = null): string
     {
+        $providerKey = $this->normalizeProviderKey($providerKey);
         $model = $model ?: config("services.api_key_providers.{$providerKey}.text_model");
 
         return is_string($model) && trim($model) !== '' ? trim($model) : 'gpt-4.1-mini';
@@ -583,18 +599,29 @@ class ApiKeyImageGenerator
         ]);
     }
 
+    private function normalizeProviderKey(string $providerKey): string
+    {
+        return strtolower(trim($providerKey));
+    }
+
     private function imageAttemptCount(string $providerKey): int
     {
+        $providerKey = $this->normalizeProviderKey($providerKey);
+
         return max(1, (int) config("services.api_key_providers.{$providerKey}.image_attempts", 4));
     }
 
     private function imageTimeoutSeconds(string $providerKey): int
     {
+        $providerKey = $this->normalizeProviderKey($providerKey);
+
         return max(30, (int) config("services.api_key_providers.{$providerKey}.image_timeout_seconds", 120));
     }
 
     private function providerLabel(string $providerKey): string
     {
+        $providerKey = $this->normalizeProviderKey($providerKey);
+
         return config("ai_providers.providers.{$providerKey}.label", $providerKey);
     }
 

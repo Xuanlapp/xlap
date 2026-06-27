@@ -81,4 +81,24 @@ return [
         'edge_color_bucket_size' => env('OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_BUCKET_SIZE', 24),
     ],
 
+    'api_key_providers' => [
+        'defaults' => [
+            'image_min_interval_ms' => env('API_KEY_PROVIDER_IMAGE_MIN_INTERVAL_MS', 2500),
+            'text_min_interval_ms' => env('API_KEY_PROVIDER_TEXT_MIN_INTERVAL_MS', 700),
+        ],
+
+        'v98store' => [
+            'balance_endpoint' => env('V98STORE_BALANCE_ENDPOINT', 'https://v98store.com/check-balance'),
+            'image_generation_endpoint' => env('V98STORE_IMAGE_GENERATION_ENDPOINT', 'https://v98store.com/v1/images/generations'),
+            'image_edit_endpoint' => env('V98STORE_IMAGE_EDIT_ENDPOINT', 'https://v98store.com/v1/images/edits'),
+            'image_endpoint' => env('V98STORE_IMAGE_ENDPOINT'),
+            'text_endpoint' => env('V98STORE_TEXT_ENDPOINT', 'https://v98store.com/v1/chat/completions'),
+            'model' => env('V98STORE_IMAGE_MODEL', 'gpt-image-2'),
+            'text_model' => env('V98STORE_TEXT_MODEL', 'gpt-5.4'),
+            'image_min_interval_ms' => env('V98STORE_IMAGE_MIN_INTERVAL_MS', 2500),
+            'text_min_interval_ms' => env('V98STORE_TEXT_MIN_INTERVAL_MS', 700),
+            'image_attempts' => env('V98STORE_IMAGE_ATTEMPTS', 4),
+            'image_timeout_seconds' => env('V98STORE_IMAGE_TIMEOUT_SECONDS', 120),
+        ],
+    ],
 ];
