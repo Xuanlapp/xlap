@@ -64,6 +64,17 @@ return [
         'debug_payload' => env('VERTEX_DEBUG_PAYLOAD', false),
     ],
 
+    'google_drive' => [
+        'service_account_json' => env('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON'),
+        'service_account_path' => env('GOOGLE_DRIVE_SERVICE_ACCOUNT_PATH'),
+        'folder_id' => env('GOOGLE_DRIVE_FOLDER_ID'),
+        'make_public' => env('GOOGLE_DRIVE_MAKE_PUBLIC', true),
+        'supports_all_drives' => env('GOOGLE_DRIVE_SUPPORTS_ALL_DRIVES', true),
+        'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
+        'redirect_uri' => env('GOOGLE_DRIVE_REDIRECT_URI'),
+        'scopes' => env('GOOGLE_DRIVE_SCOPES', 'https://www.googleapis.com/auth/drive.file'),
+    ],
     'background_removal' => [
         'enabled' => env('OFFOREST_REMOVE_VERTEX_BACKGROUND', false),
         'engine' => env('OFFOREST_BACKGROUND_REMOVAL_ENGINE', 'magic_eraser'),
