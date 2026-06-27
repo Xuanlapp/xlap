@@ -6,12 +6,6 @@ return [
     |--------------------------------------------------------------------------
     | Third Party Services
     |--------------------------------------------------------------------------
-    |
-    | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
-    |
     */
 
     'postmark' => [
@@ -33,6 +27,14 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
+    ],
+
+    'telegram_bot' => [
+        'token' => env('TELEGRAM_BOT_TOKEN'),
+        'timeout' => env('TELEGRAM_BOT_TIMEOUT', 10),
+        'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+        'ai_enabled' => env('TELEGRAM_BOT_AI_ENABLED', true),
+        'vertex_user_id' => env('TELEGRAM_BOT_VERTEX_USER_ID'),
     ],
 
     'telegram_error_log' => [
@@ -77,59 +79,6 @@ return [
         'edge_flood_min_opacity' => env('OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_MIN_OPACITY', 12),
         'edge_color_samples' => env('OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_SAMPLES', 3),
         'edge_color_bucket_size' => env('OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_BUCKET_SIZE', 24),
-    ],
-
-    'psd_mockup_renderer' => [
-        'command' => env('PSD_MOCKUP_RENDERER_COMMAND', 'node scripts/psd-renderer/render.js'),
-        'lock_seconds' => env('PSD_MOCKUP_RENDERER_LOCK_SECONDS', 900),
-        'wait_seconds' => env('PSD_MOCKUP_RENDERER_WAIT_SECONDS', 1800),
-    ],
-
-    'google_drive' => [
-        'service_account_json' => env('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON'),
-        'service_account_path' => env('GOOGLE_DRIVE_SERVICE_ACCOUNT_PATH'),
-        'folder_id' => env('GOOGLE_DRIVE_FOLDER_ID'),
-        'make_public' => env('GOOGLE_DRIVE_MAKE_PUBLIC', true),
-        'supports_all_drives' => env('GOOGLE_DRIVE_SUPPORTS_ALL_DRIVES', true),
-        'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
-        'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
-        'redirect_uri' => env('GOOGLE_DRIVE_REDIRECT_URI'),
-        'scopes' => env('GOOGLE_DRIVE_SCOPES', 'https://www.googleapis.com/auth/drive.file'),
-    ],
-
-    'marketplace_listing' => [
-        'batch_size' => env('MARKETPLACE_LISTING_BATCH_SIZE', 0),
-        'delay_seconds' => env('MARKETPLACE_LISTING_DELAY_SECONDS', 30),
-        'lock_seconds' => env('MARKETPLACE_LISTING_LOCK_SECONDS', 21600),
-        'stale_processing_minutes' => env('MARKETPLACE_LISTING_STALE_PROCESSING_MINUTES', 10),
-    ],
-
-    'api_key_providers' => [
-        'defaults' => [
-            'image_min_interval_ms' => (int) env('API_IMAGE_MIN_INTERVAL_MS', 2500),
-            'text_min_interval_ms' => (int) env('API_TEXT_MIN_INTERVAL_MS', 700),
-        ],
-        'v98store' => [
-            'image_generation_endpoint' => env('V98STORE_IMAGE_GENERATION_ENDPOINT', 'https://v98store.com/v1/images/generations'),
-            'image_edit_endpoint' => env('V98STORE_IMAGE_EDIT_ENDPOINT', env('V98STORE_IMAGE_ENDPOINT', 'https://v98store.com/v1/images/edits')),
-            'text_endpoint' => env('V98STORE_TEXT_ENDPOINT', 'https://v98store.com/v1/chat/completions'),
-            'balance_endpoint' => env('V98STORE_BALANCE_ENDPOINT', 'https://v98store.com/check-balance'),
-            'model' => env('V98STORE_IMAGE_MODEL', 'gpt-image-2'),
-            'text_model' => env('V98STORE_TEXT_MODEL', 'gpt-5.4'),
-            'image_attempts' => (int) env('V98STORE_IMAGE_ATTEMPTS', 4),
-            'image_timeout_seconds' => (int) env('V98STORE_IMAGE_TIMEOUT_SECONDS', 300),
-            'image_min_interval_ms' => (int) env('V98STORE_IMAGE_MIN_INTERVAL_MS', 0),
-            'text_min_interval_ms' => (int) env('V98STORE_TEXT_MIN_INTERVAL_MS', 0),
-        ],
-        'chatgpt' => [
-            'image_generation_endpoint' => env('OPENAI_IMAGE_GENERATION_ENDPOINT', 'https://api.openai.com/v1/images/generations'),
-            'image_edit_endpoint' => env('OPENAI_IMAGE_EDIT_ENDPOINT', env('OPENAI_IMAGE_ENDPOINT', 'https://api.openai.com/v1/images/edits')),
-            'text_endpoint' => env('OPENAI_TEXT_ENDPOINT', 'https://api.openai.com/v1/chat/completions'),
-            'model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-2'),
-            'text_model' => env('OPENAI_TEXT_MODEL', 'gpt-4.1-mini'),
-            'image_min_interval_ms' => (int) env('OPENAI_IMAGE_MIN_INTERVAL_MS', env('API_IMAGE_MIN_INTERVAL_MS', 2500)),
-            'text_min_interval_ms' => (int) env('OPENAI_TEXT_MIN_INTERVAL_MS', env('API_TEXT_MIN_INTERVAL_MS', 700)),
-        ],
     ],
 
 ];

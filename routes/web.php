@@ -7,6 +7,7 @@ use App\Http\Controllers\IdeaAmazonExtensionDownloadController;
 use App\Http\Controllers\ImagePreviewController;
 use App\Http\Controllers\OrnamentAmazonWorkflowImageController;
 use App\Http\Controllers\OrnamentAmazonTwoWorkflowImageController;
+use App\Http\Controllers\Webhook\TelegramWebhookController;
 use App\Livewire\Pages\Admin\ActivityLogs;
 use App\Livewire\Pages\Admin\ApiCredits;
 use App\Livewire\Pages\Admin\ListUser;
@@ -42,6 +43,8 @@ Route::view('dashboard', 'dashboard')
 Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
+Route::post('webhook/telegram', [TelegramWebhookController::class, 'handle'])
+    ->name('webhook.telegram');
 
 Route::get('image-preview', ImagePreviewController::class)
     ->middleware(['auth', 'signed'])
@@ -148,3 +151,4 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
 });
 
 require __DIR__.'/auth.php';
+
