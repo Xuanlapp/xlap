@@ -416,6 +416,7 @@
                     @foreach ([['a', 'Person A', 'personARef', 'personAImageUpload'], ['b', 'Person B', 'personBRef', 'personBImageUpload']] as [$personKey, $personLabel, $refModel, $uploadModel])
                         @php
                             $refValue = $personKey === 'a' ? $personARef : $personBRef;
+                            $refPreviewValue = $personKey === 'a' ? ($asset->person_a_ref_preview_url ?? $refValue) : ($asset->person_b_ref_preview_url ?? $refValue);
                             $uploadTarget = $personKey === 'a'
                                 ? 'personAImageUpload,updatedPersonAImageUpload'
                                 : 'personBImageUpload,updatedPersonBImageUpload';
@@ -430,6 +431,7 @@
                                 assetId: @js($asset->id),
                                 personKey: @js($personKey),
                                 refUrl: @js($refValue),
+                                refPreviewUrl: @js($refPreviewValue),
                                 errorMessage: '',
                                 generateUrl: @js(route('offorest.ornament-amazon-2.workflow.person', ['asset' => $asset->id, 'person' => $personKey])),
                                 providerKey: @js($providerKey),
@@ -437,6 +439,21 @@
                                 csrfToken: document.querySelector('meta[name=\'csrf-token\']')?.getAttribute('content') || '',
                                 generationKey() {
                                     return `${this.assetId}:${this.personKey}`;
+                                },
+                                previewUrl(url) {
+                                    if (!url) return url;
+
+                                    try {
+                                        const parsed = new URL(url, window.location.origin);
+                                        if (!parsed.hostname.includes('drive.google.com')) return url;
+
+                                        const fileMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/);
+                                        const fileId = fileMatch?.[1] || parsed.searchParams.get('id');
+
+                                        return fileId ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w800` : url;
+                                    } catch {
+                                        return url;
+                                    }
                                 },
                                 async generatePerson() {
                                     if (this.personGenerating || @js(! $hasWorkflowScript || $asset->is_approved)) {
@@ -476,6 +493,7 @@
                                         }
 
                                         this.refUrl = data.url;
+                                        this.refPreviewUrl = this.previewUrl(data.url);
                                         window.dispatchEvent(new CustomEvent('toast', {
                                             detail: {
                                                 type: 'success',
@@ -637,7 +655,7 @@
                                     x-show="! refUrl || refUrl === @js($refValue)"
                                     class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
                                 >
-                                    <img src="{{ $refValue }}" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
+                                    <img src="{{ $refPreviewValue }}" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
                                 </button>
                             @elseif (true)
                                 <button
@@ -647,7 +665,7 @@
                                     x-on:click="$dispatch('review-image', { src: refUrl, original: refUrl, title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                     class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
                                 >
-                                    <img x-bind:src="refUrl" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
+                                    <img x-bind:src="refPreviewUrl || refUrl" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
                                 </button>
                             @endif
 

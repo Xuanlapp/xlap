@@ -731,11 +731,16 @@ class ProductDesignCard extends Component
     {
         $imagePreview = app(ImageLinkPreviewService::class);
 
+        $workflow = $this->workflowData($asset);
+        $b2 = is_array($workflow['b2'] ?? null) ? $workflow['b2'] : [];
+
         $asset->setAttribute('image_preview_url', $imagePreview->previewUrl($asset->image_link));
         $asset->setAttribute('redesign_preview_url', $imagePreview->previewUrl($asset->redesign));
         $asset->setAttribute('lifestyle1_preview_url', $imagePreview->previewUrl($asset->lifestyle1));
         $asset->setAttribute('lifestyle2_preview_url', $imagePreview->previewUrl($asset->lifestyle2));
         $asset->setAttribute('lifestyle3_preview_url', $imagePreview->previewUrl($asset->lifestyle3));
+        $asset->setAttribute('person_a_ref_preview_url', $imagePreview->previewUrl(is_string($b2['person_a_ref'] ?? null) ? $b2['person_a_ref'] : null));
+        $asset->setAttribute('person_b_ref_preview_url', $imagePreview->previewUrl(is_string($b2['person_b_ref'] ?? null) ? $b2['person_b_ref'] : null));
         $asset->setAttribute(
             'image_sub_preview_urls',
             collect($asset->image_sub ?: [])
