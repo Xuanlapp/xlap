@@ -14,14 +14,18 @@ use RuntimeException;
 class MarketplaceListingMetadataService
 {
     private const AMAZON_PROMPT_TEMPLATE = <<<'PROMPT'
-Ban hay dong vai mot chuyen gia viet content Amazon chuyen nghiep bang tieng Anh, chuyen toi uu title, bullet points, description theo dung chuan SEO cua Amazon, tranh tu bi cam, dam bao tang ty le chuyen doi va tuan thu chinh sach.
+Ban hay dong vai mot chuyen gia viet content Amazon chuyen nghiep bang tieng Anh, chuyen toi uu Amazon SEO, Title, Bullet Points, Generic Keywords va Product Description. Muc tieu la viet noi dung de doc, tu nhien nhu nguoi ban xu, tang ty le chuyen doi, tranh keyword stuffing, tranh tu bi cam, tranh claim qua da, tranh dung ten thuong hieu doi thu, va tuan thu chinh sach Amazon.
 
-San pham cua toi la sticker.
-Ten sticker / product keyword cua toi la: "{keyword}"
-Product page: "{product}"
+San pham cua toi la: {keyword}
 
-Hay viet cho toi noi dung Amazon listing bang tieng Anh theo cac yeu cau duoi day.
-Return ONLY valid JSON. Do not include markdown, explanation, comments, or extra keys.
+Link doi thu de tham khao cau truc, keyword, cach trinh bay va insight khach hang:
+[LINK DOI THU : {competitor_link}]
+
+Danh sach keyword uu tien cua toi, hay dung theo thu tu uu tien tu tren xuong duoi. Keyword nao o tren thi uu tien dua vao Title, Bullet Points, Generic Keywords va Product Description truoc. Hay dung toi da nhieu keyword nhat co the nhung phai tu nhien, khong spam, khong lap qua muc:
+[KEYWORDS: {keyword_phrase}]
+
+YEU CAU DAU RA:
+Return ONLY valid JSON. Do not include markdown, explanation, comments, character-count labels, safety-check text, or extra keys.
 
 Required JSON schema, with exact keys:
 {
@@ -35,80 +39,152 @@ Required JSON schema, with exact keys:
   "generic_keyword": "string"
 }
 
-Yeu cau bat buoc:
-- Title toi uu keyword, de doc, co do dai tu 180 den 195 ky tu tinh ca dau cach. Khong duoc vuot qua 200 ky tu tinh ca dau cach. Khong lap lai tu "stickers" qua 2 lan.
-- Bullet Points gom 5 dong. Moi bullet point co do dai tu 460 den 480 ky tu tinh ca dau cach. Khong duoc vuot qua 480 ky tu tinh ca dau cach.
-- Bullet point dau tien phai mo ta ve san pham cua toi.
-- Moi bullet point phai bat dau bang mot icon phu hop.
-- Generic Keyword phai gom ten sticker toi dua "{keyword}" va them khoang 5 den 8 keyword uu tien ben duoi, theo thu tu uu tien tu tren xuong duoi. Cac tu cach nhau bang dau cham phay ";". Generic Keyword khong duoc vuot qua 200 ky tu tinh ca dau cach. Neu gan dat 200 ky tu thi dung lai, khong them tu nua.
-- Product Description co do dai tu 1800 den 1900 ky tu tinh ca dau cach. Khong duoc vuot qua 2000 ky tu tinh ca dau cach. Noi dung can tang tinh cam xuc va giai thich chi tiet.
-- Dua theo keyword list ben duoi de toi uu SEO cho Bullet Points va Product Description. Chua toi da nhieu keyword co the, theo thu tu uu tien tu tren xuong duoi.
-- Use natural US English.
-- Keep claims safe, non-medical, non-offensive, and compliant with Amazon policy.
-- Do not mention Amazon, Etsy, Midjourney, AI, prompts, competitor, or policy rules in the output.
-- Do not include trademarked brands unless they are present in the product keyword.
-- Khong duoc vuot qua so luong ky tu toi yeu cau. So luong ky tu tinh ca dau cach.
 
-Priority SEO keyword list:
-stickers for adults
-water bottle stickers
-stickers for water bottles
-vinyl stickers
-laptop stickers
-waterproof stickers
-waterproof stickers for water bottle
-fun stickers
-water bottle stickers for adults
-vinyl stickers for water bottles
-stickers waterproof
-phone stickers
-laptop stickers for women
-computer stickers
-stanley cup stickers
-stickers for laptop
-waterbottle stickers
-water proof stickers for water bottles
-phone case stickers
-stickers for phone case
-adult stickers uncensored
-karol g stickers
-luggage stickers for suitcases
-fun stickers for adults
-water bottle stickers waterproof
-tumbler stickers
-ipad stickers
-assorted stickers
-cup stickers for tumblers waterproof
-tumbler stickers decals waterproof
-water proof stickers
-water bottle stickers for teens
-decal stickers
-owala stickers
-stickers for water bottles adult
-stickers for cups
-computer stickers for laptop
-stickers for ipad case
-cup stickers
-waterbottle stickers for adults
-water bottle sticker
-teen stickers
-waterproof stickers for water bottles
-laptop decals
-stanley stickers waterproof
-suitcase stickers
-sticker for water bottle
-pack of stickers
-sticker bomb pack
-sticker set
-stickers adult
-waterproof vinyl stickers
-bottle stickers
-dishwasher safe stickers
-vinyl stickers for adults
-macbook stickers for laptop
-waterproof sticker
-vinyl stickers waterproof
-waterproof stickers for kids
+YÊU CẦU ĐẦU RA:
+
+TITLE AMAZON
+
+Viết 1 Title bằng tiếng Anh, tối ưu keyword, dễ đọc, tự nhiên, phù hợp Amazon US.
+
+Yêu cầu bắt buộc:
+
+Độ dài Title nằm trong khoảng 180–195 ký tự tính cả dấu cách.
+Không được vượt quá 200 ký tự bao gồm cả dấu cách.
+Ưu tiên keyword chính ở đầu Title.
+Không nhồi keyword quá lộ.
+Không dùng ALL CAPS.
+Không dùng ký tự đặc biệt không cần thiết.
+Không dùng claim như Best, #1, Guaranteed, Official, Luxury nếu không có căn cứ.
+Không dùng tên thương hiệu đối thủ.
+Title phải mô tả rõ loại sản phẩm, điểm cá nhân hóa, đối tượng tặng quà và dịp sử dụng.
+
+Sau Title, ghi rõ:
+TITLE — [SỐ KÝ TỰ] CHARACTERS
+
+BULLET POINTS AMAZON
+
+Viết 5 Bullet Points bằng tiếng Anh.
+
+Yêu cầu bắt buộc:
+
+Mỗi bullet point phải có độ dài từ 460–480 ký tự tính cả dấu cách.
+Không bullet nào được vượt quá 480 ký tự.
+Mỗi bullet có 1 icon phù hợp ở đầu dòng.
+Bullet point đầu tiên phải mô tả trực tiếp sản phẩm của tôi: sản phẩm là gì, dùng để làm gì, điểm cá nhân hóa chính.
+Các bullet còn lại phải tập trung vào lợi ích, tính năng, quà tặng, dịp sử dụng, cảm xúc, cách cá nhân hóa và giá trị lưu giữ kỷ niệm.
+Dùng keyword theo thứ tự ưu tiên từ danh sách tôi đưa.
+Keyword phải được đưa vào tự nhiên, không spam.
+Nội dung phải phù hợp với khách hàng Amazon US.
+Không dùng câu cam kết tuyệt đối như “will last forever”, “guaranteed to make them happy”, “best quality”.
+Không dùng từ bị cấm hoặc claim y tế, tôn giáo, chính trị, phân biệt đối tượng nếu không liên quan.
+Không dùng tên brand đối thủ hoặc trademark của người khác.
+
+Sau mỗi bullet, ghi rõ:
+BULLET POINT 1 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 2 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 3 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 4 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 5 — [SỐ KÝ TỰ] CHARACTERS
+
+GENERIC KEYWORDS
+
+Viết Generic Keywords theo đúng danh sách keyword tôi đưa, ưu tiên từ trên xuống dưới.
+
+Yêu cầu bắt buộc:
+
+Các từ khóa cách nhau bằng dấu “;”
+Độ dài Generic Keywords nằm trong khoảng 230–240 ký tự tính cả dấu cách thì dừng lại.
+Không được vượt quá 240 ký tự bao gồm cả dấu cách.
+Không thêm keyword nếu vượt giới hạn.
+Không dùng tên thương hiệu đối thủ.
+Không dùng ASIN.
+Không dùng từ sai chính tả nếu làm listing thiếu chuyên nghiệp.
+Không lặp lại một từ khóa quá nhiều nếu không cần thiết.
+Ưu tiên keyword có volume/search intent cao hơn.
+
+Sau phần Generic Keywords, ghi rõ:
+GENERIC KEYWORDS — [SỐ KÝ TỰ] CHARACTERS
+
+PRODUCT DESCRIPTION
+
+Viết Product Description bằng tiếng Anh.
+
+Yêu cầu bắt buộc:
+
+Độ dài nằm trong khoảng 1800–1900 ký tự tính cả dấu cách.
+Không được vượt quá 2000 ký tự bao gồm cả dấu cách.
+Nội dung phải giàu cảm xúc, tự nhiên, dễ đọc, tăng chuyển đổi.
+Giải thích rõ sản phẩm là gì, dùng như thế nào, cá nhân hóa ra sao, phù hợp tặng ai, phù hợp dịp nào.
+Đưa nhiều keyword nhất có thể theo thứ tự ưu tiên từ danh sách tôi cung cấp, nhưng phải tự nhiên.
+Không lặp keyword quá dày.
+Không claim quá đà.
+Không dùng tên brand đối thủ.
+Không viết thông tin sai về chất liệu, kích thước, quy trình sản xuất nếu tôi chưa cung cấp.
+Nếu thông tin sản phẩm chưa rõ, hãy viết theo hướng an toàn, không khẳng định quá cụ thể.
+Tập trung vào cảm xúc: family memories, holiday tradition, meaningful keepsake, personalized gift, Christmas tree decor, loved ones, special moments.
+
+Sau phần Product Description, ghi rõ:
+PRODUCT DESCRIPTION — [SỐ KÝ TỰ] CHARACTERS
+
+KIỂM TRA CUỐI CÙNG
+
+Trước khi trả kết quả, hãy tự kiểm tra:
+
+Title có nằm trong 180–195 ký tự không?
+Title có vượt 200 ký tự không?
+Mỗi bullet có nằm trong 460–480 ký tự không?
+Có bullet nào vượt 480 ký tự không?
+Generic Keywords có nằm trong 230–240 ký tự không?
+Generic Keywords có vượt 240 ký tự không?
+Product Description có nằm trong 1800–1900 ký tự không?
+Product Description có vượt 2000 ký tự không?
+Có dùng tên thương hiệu đối thủ không?
+Có dùng claim quá đà hoặc từ có rủi ro chính sách không?
+Keyword có được dùng tự nhiên không?
+Nội dung có phù hợp khách hàng Amazon US không?
+
+ĐỊNH DẠNG TRẢ KẾT QUẢ:
+
+Trả kết quả theo đúng format sau, không giải thích dài dòng:
+
+TITLE — [SỐ KÝ TỰ] CHARACTERS
+
+[Title hoàn chỉnh]
+
+BULLET POINT 1 — [SỐ KÝ TỰ] CHARACTERS
+
+[Bullet 1]
+
+BULLET POINT 2 — [SỐ KÝ TỰ] CHARACTERS
+
+[Bullet 2]
+
+BULLET POINT 3 — [SỐ KÝ TỰ] CHARACTERS
+
+[Bullet 3]
+
+BULLET POINT 4 — [SỐ KÝ TỰ] CHARACTERS
+
+[Bullet 4]
+
+BULLET POINT 5 — [SỐ KÝ TỰ] CHARACTERS
+
+[Bullet 5]
+
+GENERIC KEYWORDS — [SỐ KÝ TỰ] CHARACTERS
+
+[Generic Keywords]
+
+PRODUCT DESCRIPTION — [SỐ KÝ TỰ] CHARACTERS
+
+[Product Description]
+
+SAFETY CHECK
+
+Brand/trademark risk: Passed / Needs Review
+Amazon policy risk: Passed / Needs Review
+Keyword stuffing risk: Low / Medium / High
+Readability: Good / Needs Improvement
 PROMPT;
 
     private const ETSY_PROMPT_TEMPLATE = <<<'PROMPT'
@@ -329,7 +405,25 @@ PROMPT;
         return strtr($template, [
             '{keyword}' => $asset->keyword,
             '{product}' => $asset->product?->name ?? 'Product',
+            '{competitor_link}' => $this->competitorLink($asset),
+            '{keyword_phrase}' => $this->keywordPhrase($asset),
         ]);
+    }
+
+    private function competitorLink(ProductDesignAsset $asset): string
+    {
+        $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
+        $link = $sourceData['competitor_link'] ?? $sourceData['product_link'] ?? $sourceData['link'] ?? '';
+
+        return is_string($link) && trim($link) !== '' ? trim($link) : 'N/A';
+    }
+
+    private function keywordPhrase(ProductDesignAsset $asset): string
+    {
+        $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
+        $keywordPhrase = $sourceData['keyword_phrase'] ?? '';
+
+        return is_string($keywordPhrase) && trim($keywordPhrase) !== '' ? trim($keywordPhrase) : $asset->keyword;
     }
 
     /**

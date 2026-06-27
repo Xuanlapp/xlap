@@ -46,7 +46,7 @@ class ExcelImportOrnament extends Component
     public bool $isProcessing = false;
 
     /**
-     * @var array<int, array{row: int, product_link: string, main_image: string, keyword: string, status: string, competitor_listing?: array<string, mixed>}> 
+     * @var array<int, array{row: int, product_link: string, main_image: string, keyword: string, keyword_phrase: string, status: string, competitor_listing?: array<string, mixed>}> 
      */
     public array $rows = [];
 
@@ -217,12 +217,18 @@ class ExcelImportOrnament extends Component
                 throw new RuntimeException('Khong lay duoc product title va khong tao duoc keyword fallback.');
             }
 
+            $listingPayload = array_merge($competitorListing, [
+                'product_link' => $row['product_link'],
+                'main_image_link' => $row['main_image'],
+                'keyword_phrase' => $row['keyword_phrase'] ?? '',
+            ]);
+
             $asset = $service->createAsset(
                 auth()->user(),
                 $keyword,
                 $inputImage,
                 $imageSub,
-                $competitorListing,
+                $listingPayload,
             );
 
             $asset->update(['redesign' => $row['main_image']]);
@@ -281,7 +287,7 @@ class ExcelImportOrnament extends Component
         $headerIndexes = $this->headerIndexes($rows[0] ?? []);
 
         if ($headerIndexes === []) {
-            throw new RuntimeException('Required columns missing: Link Product and Link Main Image.');
+            throw new RuntimeException('Required columns missing: Link Product, Link Main Image and Keyword Phrase.');
         }
 
         $parsedRows = [];
@@ -295,8 +301,11 @@ class ExcelImportOrnament extends Component
             $rowNumber = $index + 1;
             $productLink = trim((string) ($row[$headerIndexes['product_link']] ?? ''));
             $mainImage = trim((string) ($row[$headerIndexes['main_image']] ?? ''));
+            $keywordPhrase = isset($headerIndexes['keyword_phrase'])
+                ? trim((string) ($row[$headerIndexes['keyword_phrase']] ?? ''))
+                : '';
 
-            if ($productLink === '' && $mainImage === '') {
+            if ($productLink === '' && $mainImage === '' && $keywordPhrase === '') {
                 continue;
             }
 
@@ -307,6 +316,11 @@ class ExcelImportOrnament extends Component
 
             if ($mainImage === '') {
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Link Main Image.'];
+                continue;
+            }
+
+            if ($keywordPhrase === '') {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Keyword Phrase.'];
                 continue;
             }
 
@@ -325,6 +339,7 @@ class ExcelImportOrnament extends Component
                 'product_link' => $productLink,
                 'main_image' => $mainImage,
                 'keyword' => $this->keywordFromUrl($productLink),
+                'keyword_phrase' => $keywordPhrase,
                 'status' => 'ready',
                 'attempts' => 0,
                 'result_message' => '',
@@ -531,9 +546,13 @@ class ExcelImportOrnament extends Component
             if (in_array($normalized, ['link main image', 'main image link', 'main image', '2 main image', 'link design'], true)) {
                 $indexes['main_image'] = $index;
             }
+
+            if (in_array($normalized, ['keyword phrase', 'keywordphrase', 'phrase keyword', 'keyword_pharse'], true)) {
+                $indexes['keyword_phrase'] = $index;
+            }
         }
 
-        return isset($indexes['product_link'], $indexes['main_image']) ? $indexes : [];
+        return isset($indexes['product_link'], $indexes['main_image'], $indexes['keyword_phrase']) ? $indexes : [];
     }
 
     private function isSupportedProductUrl(string $url): bool

@@ -372,3 +372,18 @@ php artisan route:cache           # Cache routes
 
 - Ornament Amazon 2 card button logic: Auto when script is empty, Continue when automation stops at Person A/B or Prompt create, Retry when mockup fails and DB still misses slots, Duyet only after automation completed and all 6 mockups exist in DB.
 
+
+## Ornament Amazon 2 Import
+- Excel import supports optional column \\Keyword Phrase\\.
+- Imported value is stored in \\product_design_assets.data_item_add.keyword_phrase\\.
+- Import preview modal shows \\Keyword Phrase\\ alongside \\Link Product\\ and \\Link Main Image\\.
+
+
+- Amazon listing prompt now injects competitor link from product_design_assets.data_item_add.product_link (fallback link) and keyword priority text from product_design_assets.data_item_add.keyword_phrase.
+
+
+- keyword_phrase, product_link, and main_image_link must be whitelisted in OrnamentAmazonTwoService::normalizeDataItemAdd() or import data will be dropped before save.
+
+
+- Amazon prompt template now uses San pham cua toi la: {keyword}, [LINK DOI THU : {competitor_link}], and [KEYWORDS: {keyword_phrase}]; competitor link fallback order is competitor_link -> product_link -> link.
+
