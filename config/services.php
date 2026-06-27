@@ -91,6 +91,11 @@ return [
         'edge_color_samples' => env('OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_SAMPLES', 3),
         'edge_color_bucket_size' => env('OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_BUCKET_SIZE', 24),
     ],
+    'psd_mockup_renderer' => [
+        'command' => env('PSD_MOCKUP_RENDERER_COMMAND'),
+        'lock_seconds' => env('PSD_MOCKUP_RENDERER_LOCK_SECONDS', 900),
+        'wait_seconds' => env('PSD_MOCKUP_RENDERER_WAIT_SECONDS', 1800),
+    ],
 
     'api_key_providers' => [
         'defaults' => [
