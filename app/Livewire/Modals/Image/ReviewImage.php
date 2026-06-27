@@ -174,11 +174,16 @@ class ReviewImage extends Component
                 'target' => $this->editTarget,
                 'slot' => $slot,
                 'message' => $exception->getMessage(),
+                'exception' => $exception,
             ]);
 
+            $message = trim((string) $exception->getMessage()) !== ''
+                ? $exception->getMessage()
+                : 'Loi he thong khi tao anh mockup.';
+
             $this->dispatch('ornament-amazon-two-generation-finished');
-            $this->dispatch('ornament-amazon-two-preview-mockup-generation-finished', assetId: $this->assetId, slot: $slot, ok: false, message: 'Loi he thong khi tao anh mockup.');
-            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao anh mockup. Hay xem log de biet chi tiet.');
+            $this->dispatch('ornament-amazon-two-preview-mockup-generation-finished', assetId: $this->assetId, slot: $slot, ok: false, message: $message);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $message);
 
             return;
         }
