@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use JsonException;
 use RuntimeException;
+use Throwable;
 
 class MarketplaceListingMetadataService
 {
@@ -23,21 +24,6 @@ Link doi thu de tham khao cau truc, keyword, cach trinh bay va insight khach han
 
 Danh sach keyword uu tien cua toi, hay dung theo thu tu uu tien tu tren xuong duoi. Keyword nao o tren thi uu tien dua vao Title, Bullet Points, Generic Keywords va Product Description truoc. Hay dung toi da nhieu keyword nhat co the nhung phai tu nhien, khong spam, khong lap qua muc:
 [KEYWORDS: {keyword_phrase}]
-
-YEU CAU DAU RA:
-Return ONLY valid JSON. Do not include markdown, explanation, comments, character-count labels, safety-check text, or extra keys.
-
-Required JSON schema, with exact keys:
-{
-  "title": "string",
-  "description": "string",
-  "bullet_point_1": "string",
-  "bullet_point_2": "string",
-  "bullet_point_3": "string",
-  "bullet_point_4": "string",
-  "bullet_point_5": "string",
-  "generic_keyword": "string"
-}
 
 
 YÊU CẦU ĐẦU RA:
@@ -187,6 +173,41 @@ Keyword stuffing risk: Low / Medium / High
 Readability: Good / Needs Improvement
 PROMPT;
 
+    private const AMAZON_STICKER_PROMPT_TEMPLATE = <<<'PROMPT'
+Ban hay dong vai dong vai mot chuyen gia viet content Amazon chuyen nghiep bang tieng anh, chuyen toi uu title, bullet points, description theo dung chuan SEO cua Amazon, tranh tu bi cam, dam bao tang ty le chuyen doi va tuan thu chinh sach.
+San pham cua toi la: {amazon_product_from_sheet}
+LINK DOI THU : {competitor_link}
+KEYWORDS: {keyword_phrase}
+
+Ban hay viet cho toi:
+Title toi uu keyword, de doc, tuan thu do dai Amazon o cuoi tieu de co ( 3PCS,3”) ( co do dai nam trong khoang 180-195 ky tu tinh ca dau cach, khong duoc vuot qua 200 ky tu bao gom ca dau cach, khong duoc lap lai tu stickers qua 2 lan )
+Bullet Points (5 dong) ( moi bullet points phai co do dai nam trong khoang 460 den 480 ky tu tinh ca dau cach, khong duoc vuot qua 480 ky tu bao gom ca dau cach - mo ta loi ich va tinh nang san pham
++ Bullet point dau mo ta ve san pham cua toi
++ Co cac icon phu hop o dau cac bullet point
+Generic Keyword : Ten sticker toi dua va khoang 5 den 8 tu ben duoi toi dua , theo thu tu uu tien tu tren xuong duoi cac tu cach nhau boi dau ; (Neu Generic Keyword co do dai nam trong khoang 230-240 ky tu tinh ca dau cach thi dung lai khong them cac tu o duoi nua ,Generic Keyword khong duoc vuot qua 240 ky tu bao gom ca dau cach)
+Product Description ( co do dai nam trong khoang 1800 den 1900 ky tu tinh ca dau cach, khong duoc vuot qua 2000 ky tu bao gom ca dau cach ) - tang tinh cam xuc & giai thich chi tiet
+Chu y so luong ky tu khong duoc vuot qua yeu cau cua toi, va so luong ky tu bao gom ca dau cach
+
+Return ONLY valid JSON. Do not include markdown, explanation, comments, character-count labels, safety-check text, or extra keys.
+
+Required JSON schema, with exact keys:
+{
+  "title": "string",
+  "description": "string",
+  "bullet_point_1": "string",
+  "bullet_point_2": "string",
+  "bullet_point_3": "string",
+  "bullet_point_4": "string",
+  "bullet_point_5": "string",
+  "generic_keyword": "string"
+}
+
+Luu y:
+- Dung dung san pham la sticker, khong viet theo kieu ornament.
+- Khong duoc vuot qua so luong ky tu toi yeu cau, va so luong ky tu tinh ca dau cach.
+- Su dung keyword tu nhien, uu tien theo thu tu da cung cap trong KEYWORDS.
+- Khong nhac toi doi thu, khong dua ten thuong hieu doi thu vao noi dung tra ve.
+PROMPT;
     private const ETSY_PROMPT_TEMPLATE = <<<'PROMPT'
 You are an expert Etsy SEO listing copywriter.
 
@@ -236,7 +257,7 @@ PROMPT;
             return $this->assets->markListingCompleted($this->generateEtsyMetadata($asset), 'etsy');
         }
 
-        return null;
+        throw new RuntimeException('User chua bat quyen tao listing metadata Amazon hoac Etsy.');
     }
 
     public function retryApprovedAsset(int $assetId): ?ProductDesignAsset
@@ -257,7 +278,7 @@ PROMPT;
 
         try {
             return $this->generateForApprovedAsset($processing->id);
-        } catch (RuntimeException $exception) {
+        } catch (Throwable $exception) {
             $this->assets->markListingFailed($processing, $exception->getMessage());
 
             throw $exception;
@@ -285,7 +306,7 @@ PROMPT;
                 if ($this->generateForApprovedAsset($asset->id)) {
                     $processed++;
                 }
-            } catch (RuntimeException $exception) {
+            } catch (Throwable $exception) {
                 $this->assets->markListingFailed($asset, $exception->getMessage());
                 Log::warning('Marketplace listing metadata generation failed.', [
                     'asset_id' => $asset->id,
@@ -352,7 +373,7 @@ PROMPT;
     private function generateAmazonMetadata(ProductDesignAsset $asset): ProductDesignAsset
     {
         $payload = $this->jsonPayload(
-            $this->generator->generateText($asset->user, $this->prompt(self::AMAZON_PROMPT_TEMPLATE, $asset)),
+            $this->generator->generateText($asset->user, $this->prompt($this->amazonPromptTemplate($asset), $asset)),
         );
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
@@ -400,6 +421,12 @@ PROMPT;
         return $asset->user->can_generate_amazon_listing ? 'amazon' : 'etsy';
     }
 
+    private function amazonPromptTemplate(ProductDesignAsset $asset): string
+    {
+        return $asset->product?->slug === 'sticker'
+            ? self::AMAZON_STICKER_PROMPT_TEMPLATE
+            : self::AMAZON_PROMPT_TEMPLATE;
+    }
     private function prompt(string $template, ProductDesignAsset $asset): string
     {
         return strtr($template, [
