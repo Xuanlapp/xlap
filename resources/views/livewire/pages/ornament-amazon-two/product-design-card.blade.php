@@ -651,7 +651,7 @@
                             @if (filled($refValue))
                                 <button
                                     type="button"
-                                    wire:click="$dispatch('review-image', { src: @js($refValue), original: @js($refValue), title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                    wire:click="$dispatch('review-image', { src: @js($refPreviewValue), original: @js($refValue), title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                     x-show="! refUrl || refUrl === @js($refValue)"
                                     class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
                                 >
@@ -662,7 +662,7 @@
                                     type="button"
                                     x-cloak
                                     x-show="refUrl && refUrl !== @js($refValue)"
-                                    x-on:click="$dispatch('review-image', { src: refUrl, original: refUrl, title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                    x-on:click="$dispatch('review-image', { src: refPreviewUrl || previewUrl(refUrl) || refUrl, original: refUrl, title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                     class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
                                 >
                                     <img x-bind:src="refPreviewUrl || refUrl" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
@@ -853,6 +853,7 @@
         @endonce
 
         <div
+            wire:key="ornament-amazon-two-mockup-b5-{{ $asset->id }}-{{ md5(json_encode($mockupB5Images)) }}-{{ md5(json_encode($mockupBatchStates)) }}-{{ $mockupBatchRunning ? '1' : '0' }}"
             data-ornament-amazon-two-mockup-root
             data-asset-id="{{ $asset->id }}"
             x-data="{
