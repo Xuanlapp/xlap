@@ -2326,10 +2326,6 @@ PROMPT;
             throw new InvalidArgumentException('Keyword khong duoc qua '.self::MAX_KEYWORD_LENGTH.' ky tu.');
         }
 
-        if (! Str::contains(Str::lower($keyword), self::REQUIRED_KEYWORD)) {
-            throw new InvalidArgumentException("Keyword phai chua tu '".self::REQUIRED_KEYWORD."' cho trang {$this->product()->name}.");
-        }
-
         return $keyword;
     }
 

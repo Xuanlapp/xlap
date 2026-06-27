@@ -403,3 +403,7 @@ php artisan route:cache           # Cache routes
 
 - Ornament Amazon 2 Input Image metadata (Product, Keyword Phrase) is rendered below the preview image, not inside the x-image-preview slot, so it stays visible even when the image loads successfully.
 
+
+- Ornament Amazon 2 no longer requires the keyword to contain 'ornament' inside 
+ormalizeKeyword(). Keywords from import/product titles are accepted as-is if non-empty and within length limits.
+

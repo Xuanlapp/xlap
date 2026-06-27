@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Http\Middleware\EnsureUserHasProductAccess;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
             'product' => EnsureUserHasProductAccess::class,
+        ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'webhook/telegram',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
