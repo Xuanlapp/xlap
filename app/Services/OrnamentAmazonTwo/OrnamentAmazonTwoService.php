@@ -2387,6 +2387,7 @@ PROMPT;
             'link',
             'product_link',
             'main_image_link',
+            'product',
             'keyword_phrase',
             'productDescription',
             'description',

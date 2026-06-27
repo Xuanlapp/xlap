@@ -16,7 +16,7 @@ class MarketplaceListingMetadataService
     private const AMAZON_PROMPT_TEMPLATE = <<<'PROMPT'
 Ban hay dong vai mot chuyen gia viet content Amazon chuyen nghiep bang tieng Anh, chuyen toi uu Amazon SEO, Title, Bullet Points, Generic Keywords va Product Description. Muc tieu la viet noi dung de doc, tu nhien nhu nguoi ban xu, tang ty le chuyen doi, tranh keyword stuffing, tranh tu bi cam, tranh claim qua da, tranh dung ten thuong hieu doi thu, va tuan thu chinh sach Amazon.
 
-San pham cua toi la: {keyword}
+San pham cua toi la: {amazon_product_from_sheet}
 
 Link doi thu de tham khao cau truc, keyword, cach trinh bay va insight khach hang:
 [LINK DOI THU : {competitor_link}]
@@ -403,7 +403,7 @@ PROMPT;
     private function prompt(string $template, ProductDesignAsset $asset): string
     {
         return strtr($template, [
-            '{keyword}' => $asset->keyword,
+            '{amazon_product_from_sheet}' => $this->amazonProductFromSheet($asset),
             '{product}' => $asset->product?->name ?? 'Product',
             '{competitor_link}' => $this->competitorLink($asset),
             '{keyword_phrase}' => $this->keywordPhrase($asset),
@@ -424,6 +424,14 @@ PROMPT;
         $keywordPhrase = $sourceData['keyword_phrase'] ?? '';
 
         return is_string($keywordPhrase) && trim($keywordPhrase) !== '' ? trim($keywordPhrase) : $asset->keyword;
+    }
+
+    private function amazonProductFromSheet(ProductDesignAsset $asset): string
+    {
+        $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
+        $product = $sourceData['product'] ?? '';
+
+        return is_string($product) && trim($product) !== '' ? trim($product) : ($asset->product?->name ?? $asset->keyword);
     }
 
     /**

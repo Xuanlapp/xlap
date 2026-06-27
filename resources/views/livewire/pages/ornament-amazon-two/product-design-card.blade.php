@@ -270,9 +270,18 @@
                 <x-label class="truncate text-xs font-bold uppercase text-slate-600">1. Input Image</x-label>
             </div>
 
-            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="ornament-amazon-2" :keyword="$asset->keyword">
-                <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
-            </x-image-preview>
+            <div class="relative overflow-hidden rounded-xl">
+                <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="ornament-amazon-2" :keyword="$asset->keyword">
+                    <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
+                </x-image-preview>
+
+                <div class="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-slate-950/90 via-slate-900/70 to-transparent px-3 pb-3 pt-8 text-[11px] leading-4 text-white">
+                    <div class="rounded-lg border border-white/10 bg-black/10 px-2.5 py-2 backdrop-blur-sm">
+                        <div class="line-clamp-2"><span class="font-bold text-white/90">Product:</span> {{ $asset->source_product_name ?: '-' }}</div>
+                        <div class="mt-1 line-clamp-2"><span class="font-bold text-white/90">Keyword Phrase:</span> {{ $asset->source_keyword_phrase ?: '-' }}</div>
+                    </div>
+                </div>
+            </div>
 
         </div>
 

@@ -736,6 +736,9 @@ class ProductDesignCard extends Component
 
         $asset->setAttribute('image_preview_url', $imagePreview->previewUrl($asset->image_link));
         $asset->setAttribute('redesign_preview_url', $imagePreview->previewUrl($asset->redesign));
+        $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
+        $asset->setAttribute('source_product_name', is_string($sourceData['product'] ?? null) ? trim((string) $sourceData['product']) : null);
+        $asset->setAttribute('source_keyword_phrase', is_string($sourceData['keyword_phrase'] ?? null) ? trim((string) $sourceData['keyword_phrase']) : null);
         $asset->setAttribute('lifestyle1_preview_url', $imagePreview->previewUrl($asset->lifestyle1));
         $asset->setAttribute('lifestyle2_preview_url', $imagePreview->previewUrl($asset->lifestyle2));
         $asset->setAttribute('lifestyle3_preview_url', $imagePreview->previewUrl($asset->lifestyle3));

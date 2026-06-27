@@ -387,3 +387,19 @@ php artisan route:cache           # Cache routes
 
 - Amazon prompt template now uses San pham cua toi la: {keyword}, [LINK DOI THU : {competitor_link}], and [KEYWORDS: {keyword_phrase}]; competitor link fallback order is competitor_link -> product_link -> link.
 
+
+- Ornament Amazon 2 Excel import now requires 4 columns: Link Product, Link Main Image, Product, Keyword Phrase.
+- Amazon content prompt mapping: San pham cua toi la = data_item_add.product, LINK DOI THU = data_item_add.product_link/link, KEYWORDS = data_item_add.keyword_phrase.
+
+
+- Ornament Amazon 2 import now accepts Google Drive links for Link Main Image; if competitor scraping has no image, import falls back to the sheet's Main Image instead of failing the row.
+
+
+- Ornament Amazon 2 import rule: Link Product must scrape competitor listing image/data; Link Main Image is only for the destination main image and must not be used as a fallback for competitor scraping.
+
+
+- Ornament Amazon 2 Input Image preview now also shows source_product_name and source_keyword_phrase derived from data_item_add.product and data_item_add.keyword_phrase.
+
+
+- Ornament Amazon 2 Input Image metadata (Product, Keyword Phrase) is rendered below the preview image, not inside the x-image-preview slot, so it stays visible even when the image loads successfully.
+

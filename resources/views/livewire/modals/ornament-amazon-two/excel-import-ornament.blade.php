@@ -80,6 +80,7 @@
                                             <th class="px-4 py-3">Row</th>
                                             <th class="min-w-[320px] px-4 py-3">Link Product</th>
                                             <th class="min-w-[320px] px-4 py-3">Link Main Image</th>
+                                            <th class="min-w-[240px] px-4 py-3">Product</th>
                                             <th class="min-w-[240px] px-4 py-3">Keyword Phrase</th>
                                             <th class="px-4 py-3">Status</th>
                                             <th class="px-4 py-3 text-right">Action</th>
@@ -100,6 +101,12 @@
                                                     <div x-data="{ expanded: false, value: @js($row['main_image']) }" class="max-w-[420px] text-xs text-slate-700">
                                                         <a href="{{ $row['main_image'] }}" target="_blank" class="font-medium text-slate-700 hover:text-slate-900 break-all" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : value)"></a>
                                                         <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gá»n' : 'Xem thÃªm'"></button>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <div x-data="{ expanded: false, value: @js($row['product'] ?? '') }" class="max-w-[280px] text-xs text-slate-700">
+                                                        <span class="font-medium break-words" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : (value || '-'))"></span>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
