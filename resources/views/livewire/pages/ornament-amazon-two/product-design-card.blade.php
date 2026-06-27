@@ -1,4 +1,4 @@
-<article @if(in_array(($automation?->workflow_status ?? null), ['running', 'failed'], true)) wire:poll.3s="refreshWhenUpdated" @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+<article @if(($automation?->workflow_status ?? null) === 'running') wire:poll.5s="refreshWhenUpdated" @elseif(($automation?->workflow_status ?? null) === 'failed') wire:poll.10s="refreshWhenUpdated" @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     @php
         $automationRunning = (($automation?->workflow_status ?? null) === 'running');
         $automationFailed = (($automation?->workflow_status ?? null) === 'failed');
