@@ -319,3 +319,6 @@ If `php artisan view:cache` fails on Windows with `Access is denied` in `bootstr
 ### Ornament Amazon pages
 - `ornament` and `ornament-amazon-2` must stay separate product flows.
 - Prefer event-driven Livewire updates for add/delete refresh instead of browser reloads.
+### Sticker import
+- Use `modals.sticker.excel-import-sticker` for Sticker spreadsheet imports; `Keyword` is required.
+- Keep Sticker import independent from Ornament Amazon 2 import logic even if the UI shell is similar.

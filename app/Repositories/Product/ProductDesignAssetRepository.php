@@ -135,6 +135,44 @@ class ProductDesignAssetRepository
         });
     }
 
+
+    /**
+     * Create one imported Sticker asset with optional source image, master image, and mockup slots.
+     *
+     * @param array<int, string> $mockups
+     */
+    public function createImportedSticker(int $userId, int $productId, string $keyword, ?string $sourceImage, string $masterImage, array $mockups = []): ProductDesignAsset
+    {
+        return DB::transaction(function () use ($userId, $productId, $keyword, $sourceImage, $masterImage, $mockups): ProductDesignAsset {
+            $lastNumber = ProductDesignAsset::query()
+                ->where('user_id', $userId)
+                ->where('product_id', $productId)
+                ->lockForUpdate()
+                ->max('item_number');
+
+            $attributes = [
+                'user_id' => $userId,
+                'product_id' => $productId,
+                'item_number' => ((int) $lastNumber) + 1,
+                'keyword' => $keyword,
+                'image_link' => $sourceImage,
+                'redesign' => $masterImage,
+            ];
+
+            foreach (array_values($mockups) as $index => $mockup) {
+                $slot = $index + 1;
+
+                if ($slot > 6) {
+                    break;
+                }
+
+                $attributes["mockup{$slot}"] = $mockup;
+            }
+
+            return ProductDesignAsset::create($attributes);
+        });
+    }
+
     public function latestWithoutImageLink(int $userId, int $productId): ?ProductDesignAsset
     {
         return ProductDesignAsset::query()
@@ -408,3 +446,4 @@ class ProductDesignAssetRepository
         return addcslashes($value, '\%_');
     }
 }
+

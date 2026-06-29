@@ -224,11 +224,19 @@ class CompetitorListingScraper
         }
 
         foreach ([
+            "//meta[@property='og:image']/@content",
+            "//meta[@name='twitter:image']/@content",
+            "//*[@id='landingImage']/@src",
+            "//*[@id='landingImage']/@data-old-hires",
+            "//*[@id='landingImage']/@data-a-dynamic-image",
+            "//*[@id='imgTagWrapperId']//img/@src",
+            "//*[@id='imgTagWrapperId']//img/@data-old-hires",
+            "//*[@id='main-image-container']//img/@src",
             "//*[@id='altImages']//li[contains(@class, 'imageThumbnail') and not(contains(@class, 'videoThumbnail')) and not(contains(@class, 'video'))]//*[contains(@data-thumb-action, '&quot;type&quot;:&quot;image&quot;') or contains(@data-thumb-action, '\"type\":\"image\"')]//img/@src",
             "//*[@id='altImages']//li[contains(@class, 'imageThumbnail') and not(contains(@class, 'videoThumbnail')) and not(contains(@class, 'video'))]//img/@src",
         ] as $query) {
             foreach ($xpath->query($query) ?: [] as $node) {
-                $this->pushImage($images, $node->nodeValue, $pageUrl, 'amazon');
+                $this->pushImageOrJson($images, $node->nodeValue, $pageUrl, 'amazon');
             }
         }
 
@@ -243,12 +251,15 @@ class CompetitorListingScraper
             }
         }
 
+        if (preg_match_all('#https?:\\?/\\?/[^"\'\s<>]+?(?:media-amazon|images-amazon|ssl-images-amazon)[^"\'\s<>]+?\.(?:jpg|jpeg|png|webp)(?:\?[^"\'\s<>]*)?#i', $html, $matches)) {
+            foreach ($matches[0] as $url) {
+                $this->pushImage($images, stripslashes($url), $pageUrl, 'amazon');
+            }
+        }
+
         return $images;
     }
 
-    /**
-     * @return array<int, string>
-     */
     private function etsyMainImages(DOMXPath $xpath, string $html, string $pageUrl): array
     {
         $images = [];

@@ -100,6 +100,37 @@ class StickerService
         );
     }
 
+
+    /**
+     * Import one Sticker row with optional source image, required master image, and optional mockups.
+     *
+     * @param array<int, string> $mockups
+     */
+    public function importAsset(User $user, string $keyword, ?string $sourceImage, string $masterImage, array $mockups = []): ProductDesignAsset
+    {
+        $keyword = $this->normalizeKeyword($keyword);
+        $sourceImage = trim((string) $sourceImage);
+        $masterImage = $this->normalizeImageLink($masterImage);
+        $mockups = collect($mockups)
+            ->map(fn (string $mockup): string => $this->normalizeImageLink($mockup))
+            ->take(6)
+            ->values()
+            ->all();
+
+        $asset = $this->assets->createImportedSticker(
+            $user->id,
+            $this->product()->id,
+            $keyword,
+            $sourceImage === '' ? null : $this->normalizeImageLink($sourceImage),
+            $masterImage,
+            $mockups,
+        );
+
+        $this->driveUploadQueue->syncForAsset($asset);
+
+        return $asset;
+    }
+
     public function saveLatestImageLink(User $user, string $imageLink): ProductDesignAsset
     {
         $asset = $this->assets->latestWithoutImageLink($user->id, $this->product()->id);
@@ -396,3 +427,4 @@ class StickerService
         return $content;
     }
 }
+

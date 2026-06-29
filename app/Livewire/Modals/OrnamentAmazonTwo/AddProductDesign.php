@@ -24,6 +24,10 @@ class AddProductDesign extends Component
 
     public string $competitorUrl = '';
 
+    public string $product = '';
+
+    public string $keywordPhrase = '';
+
     /**
      * @var array{platform?: string, productTitle?: string, link?: string, productDescription?: string, bulletPoints?: array<int, string>, images?: array<int, string>}
      */
@@ -55,6 +59,8 @@ class AddProductDesign extends Component
             'imageLink',
             'isImageLink',
             'competitorUrl',
+            'product',
+            'keywordPhrase',
             'competitorListing',
             'selectedImageUrl',
             'scrapeError',
@@ -71,6 +77,8 @@ class AddProductDesign extends Component
             'imageLink',
             'isImageLink',
             'competitorUrl',
+            'product',
+            'keywordPhrase',
             'competitorListing',
             'selectedImageUrl',
             'scrapeError',
@@ -147,7 +155,7 @@ class AddProductDesign extends Component
 
     public function save(): void
     {
-        if ($this->competitorListing === [] || $this->keyword === '' || $this->imageLink === '') {
+        if ($this->competitorListing === [] || $this->keyword === '' || $this->imageLink === '' || $this->product === '' || $this->keywordPhrase === '') {
             $this->addError('competitorUrl', 'Hay cho he thong lay xong du lieu roi moi them item.');
 
             return;
@@ -164,6 +172,8 @@ class AddProductDesign extends Component
                     $fail('Link này chưa giống link ảnh.');
                 }
             }],
+            'product' => ['required', 'string', 'max:255'],
+            'keywordPhrase' => ['required', 'string', 'max:1000'],
         ]);
 
         app(OrnamentAmazonTwoService::class)->createAsset(
@@ -171,7 +181,12 @@ class AddProductDesign extends Component
             $validated['keyword'],
             $validated['imageLink'],
             $this->secondaryImages($validated['imageLink']),
-            $this->competitorListing,
+            array_merge($this->competitorListing, [
+                'product' => trim($validated['product']),
+                'keyword_phrase' => trim($validated['keywordPhrase']),
+                'product_link' => trim((string) ($this->competitorListing['link'] ?? $this->competitorUrl)),
+                'competitor_link' => trim((string) ($this->competitorListing['link'] ?? $this->competitorUrl)),
+            ]),
         );
 
         $this->dispatch('product-design-created')->to(ListOrnamentAmazonTwo::class);

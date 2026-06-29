@@ -94,6 +94,14 @@
 
                     <button
                         type="button"
+                        wire:click="$dispatch('openModal', { component: 'modals.sticker.excel-import-sticker' })"
+                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                    >
+                        Import Excel
+                    </button>
+
+                    <button
+                        type="button"
                         wire:click="$dispatch('openModal', { component: 'modals.sticker.add-product-design' })"
                         class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-cyan-500 px-3 text-xs font-bold text-white shadow-sm transition hover:bg-cyan-600 focus:outline-none focus:ring-4 focus:ring-cyan-200"
                     >
@@ -130,6 +138,7 @@
     <livewire:modals.sticker.add-product-design />
     <livewire:modals.sticker.edit-product-detail />
     <livewire:modals.sticker.psd-mockup-template />
+    <livewire:modals.sticker.excel-import-sticker />
     <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
 

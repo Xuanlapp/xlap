@@ -223,7 +223,7 @@ class ImportExcelOrnament extends Component
         $headerIndexes = $this->headerIndexes($rows[0] ?? []);
 
         if ($headerIndexes === []) {
-            throw new RuntimeException('Thi?u c?t b?t bu?c: Link Product v Link Main Image.');
+            throw new RuntimeException('Required columns missing: Link Product, Link Main Image, Product and Keyword Phrase.');
         }
 
         $parsedRows = [];

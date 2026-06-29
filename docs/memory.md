@@ -407,3 +407,10 @@ php artisan route:cache           # Cache routes
 - Ornament Amazon 2 no longer requires the keyword to contain 'ornament' inside 
 ormalizeKeyword(). Keywords from import/product titles are accepted as-is if non-empty and within length limits.
 
+
+## Sticker import
+- Sticker has its own Excel import modal at `app/Livewire/Modals/Sticker/ExcelImportSticker.php`.
+- Supported columns: `Source Image` (optional), `Create Master` (required), `Mockup 1`..`Mockup 6` (optional), `Keyword` (optional).
+- `Keyword` is required in Sticker import and must be provided in the spreadsheet.
+- Import persists `redesign` directly from `Create Master` and maps `Mockup 1..6` into `mockup1..mockup6`.
+- If Source Image is empty, Sticker import stores Create Master into both image_link and edesign.

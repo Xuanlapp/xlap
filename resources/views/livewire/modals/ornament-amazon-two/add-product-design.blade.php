@@ -35,7 +35,7 @@
                     <div class="flex items-center justify-between border-b border-gray-200 p-4 md:p-5">
                         <div>
                             <h3 class="text-xl font-semibold text-gray-900">Add Ornament</h3>
-                            <p class="mt-1 text-sm text-gray-500">Nhap URL doi thu Etsy/Amazon, he thong se lay title, noi dung va anh listing.</p>
+                            <p class="mt-1 text-sm text-gray-500">Nhap URL doi thu Etsy/Amazon de lay du lieu tham khao, con Product va Keyword Phrase ban tu nhap.</p>
                         </div>
 
                         <button
@@ -63,6 +63,18 @@
                                 autofocus
                             />
                             @error('competitorUrl') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div>
+                            <label for="ornament-amazon-two-product" class="mb-2 block text-sm font-medium text-gray-900">Product</label>
+                            <x-input id="ornament-amazon-two-product" wire:model.live="product" type="text" class="block w-full" placeholder="Enter the product name manually" />
+                            @error('product') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div>
+                            <label for="ornament-amazon-two-keyword-phrase" class="mb-2 block text-sm font-medium text-gray-900">Keyword Phrase</label>
+                            <x-input id="ornament-amazon-two-keyword-phrase" wire:model.live="keywordPhrase" type="text" class="block w-full" placeholder="Enter keyword phrase manually" />
+                            @error('keywordPhrase') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                         </div>
 
                         <div
