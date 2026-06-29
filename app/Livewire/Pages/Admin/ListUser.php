@@ -9,6 +9,7 @@ use App\Services\Logging\ActivityLogService;
 use App\Services\Product\ApprovedAssetDriveExportService;
 use App\Services\User\UserAccessService;
 use App\Support\Traits\BuildsVertexCredentialPayload;
+use Illuminate\Support\Facades\File;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -128,6 +129,28 @@ class ListUser extends Component
                 ->where('is_active', true)
                 ->first(),
             'googleDriveConnection' => app(GoogleDriveOAuthService::class)->activeConnection(),
+            'importTemplates' => $this->importTemplates(),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, filename: string, exists: bool, size: int, updated_at: ?string}>
+     */
+    private function importTemplates(): array
+    {
+        return [
+            [
+                'key' => 'ornament',
+                'label' => 'Ornament Amazon',
+                'filename' => 'importamaazonxlsx.xlsx',
+                'path' => public_path('templates/importamaazonxlsx.xlsx'),
+            ],
+            [
+                'key' => 'sticker',
+                'label' => 'Sticker',
+                'filename' => 'sticker-import-template.xlsx',
+                'path' => public_path('templates/sticker-import-template.xlsx'),
+            ],
+        ];
     }
 }

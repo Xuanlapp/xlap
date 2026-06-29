@@ -19,6 +19,12 @@
                     <div>
                         <h2 class="text-lg font-semibold tracking-tight text-slate-900">Import Sticker Excel</h2>
                         <p class="mt-1 text-sm text-slate-500">Cot ho tro: Source Image (optional, empty = Create Master when importing), Create Master (required), Mockup 1 -> Mockup 6 (optional), Keyword (required).</p>
+                        <p class="mt-2 text-sm text-slate-600">
+                            Template:
+                            <a href="{{ asset('templates/sticker-import-template.xlsx') }}" download="sticker-import-template.xlsx" class="font-semibold text-emerald-600 underline decoration-emerald-200 underline-offset-4 transition hover:text-emerald-700">
+                                sticker-import-template.xlsx
+                            </a>
+                        </p>
                     </div>
 
                     <button type="button" wire:click="close" class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
