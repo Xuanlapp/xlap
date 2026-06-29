@@ -12,6 +12,7 @@
 
             this.activeTab = tab;
             localStorage.setItem('ornament-amazon-two.status-filter', tab);
+            window.dispatchEvent(new CustomEvent('ornament-amazon-two-tab-changed', { detail: { tab } }));
         }
     }"
     x-init="

@@ -58,6 +58,21 @@ class OrnamentAmazonTwoStatusPanel extends Component
         $this->statusCounts = $statusCounts;
     }
 
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage($this->pageName());
+    }
+    #[On('ornament-amazon-two-tab-changed')]
+    public function resetPageWhenTabChanges(string $tab): void
+    {
+        if ($tab !== $this->status) {
+            return;
+        }
+
+        $this->resetPage($this->pageName());
+    }
+
     #[On('product-design-created')]
     #[On('ornament-amazon-two-product-design-approval-updated')]
     #[On('ornament-amazon-two-product-design-workflow-updated')]

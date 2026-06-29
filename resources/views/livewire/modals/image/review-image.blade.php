@@ -23,6 +23,11 @@
                 copied: false,
                 dimensions: 'Loading...',
                 generatedAt: new Date().toLocaleString(),
+                notifyProcessing(title, message) {
+                    window.dispatchEvent(new CustomEvent('toast', {
+                        detail: { type: 'info', title, message },
+                    }));
+                },
                 notifyCopySuccess() {
                     this.copied = true;
                     window.dispatchEvent(new CustomEvent('toast', {
@@ -490,6 +495,7 @@
                                             </div>
                                             <button
                                                 type="submit"
+                                                x-on:click="notifyProcessing('Dang custom', 'He thong dang custom lai anh preview nay.')"
                                                 wire:loading.attr="disabled"
                                                 wire:target="{{ $ornamentCustomizeMethod }}"
                                                 class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-gray-700 shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-xl hover:shadow-orange-500/25 disabled:cursor-not-allowed disabled:opacity-60"
@@ -507,7 +513,7 @@
                                         </div>
                                         <button
                                             type="button"
-                                            x-on:click="document.querySelectorAll(`[data-{{ $ornamentPreviewPrefix }}-mockup-root][data-asset-id='${@js($assetId)}'] [data-{{ $ornamentPreviewPrefix }}-mockup-slot='${@js($activePreviewMockupSlot)}']`).forEach((element) => element.classList.add('is-generating')); window.dispatchEvent(new CustomEvent('{{ $ornamentPreviewPrefix }}-generation-started')); window.dispatchEvent(new CustomEvent('{{ $ornamentPreviewPrefix }}-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($activePreviewMockupSlot) } }))"
+                                            x-on:click="notifyProcessing('Dang generate', 'He thong dang tao anh cho preview nay.'); document.querySelectorAll(`[data-{{ $ornamentPreviewPrefix }}-mockup-root][data-asset-id='${@js($assetId)}'] [data-{{ $ornamentPreviewPrefix }}-mockup-slot='${@js($activePreviewMockupSlot)}']`).forEach((element) => element.classList.add('is-generating')); window.dispatchEvent(new CustomEvent('{{ $ornamentPreviewPrefix }}-generation-started')); window.dispatchEvent(new CustomEvent('{{ $ornamentPreviewPrefix }}-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($activePreviewMockupSlot) } }))"
                                             wire:click="{{ $ornamentGenerateMethod }}"
                                             wire:loading.attr="disabled"
                                             wire:target="{{ $ornamentGenerateMethod }}"
