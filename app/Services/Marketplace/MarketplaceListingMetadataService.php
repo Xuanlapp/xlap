@@ -426,7 +426,7 @@ PROMPT;
         $balance = $this->v98StoreBalanceForUser($user);
 
         if (! is_array($balance) || ($balance['ok'] ?? false) !== true) {
-            throw new RuntimeException('Khong kiem tra duoc so du v98Store cho Listing metadata logs.');
+            return;
         }
 
         $remaining = is_numeric($balance['remain_quota'] ?? null) ? (float) $balance['remain_quota'] : 0.0;
