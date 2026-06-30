@@ -379,7 +379,7 @@ PROMPT;
     private function generateAmazonMetadata(ProductDesignAsset $asset): ProductDesignAsset
     {
         $payload = $this->jsonPayload(
-            $this->generator->generateText($asset->user, $this->prompt($this->amazonPromptTemplate($asset), $asset)),
+            $this->generateAmazonListingText($asset),
         );
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
@@ -403,6 +403,10 @@ PROMPT;
     private function generateAmazonListingText(ProductDesignAsset $asset): string
     {
         $prompt = $this->prompt($this->amazonPromptTemplate($asset), $asset);
+
+        if (($asset->product?->slug ?? null) === 'sticker') {
+            return $this->generator->generateText($asset->user, $prompt, true);
+        }
 
         if (($asset->product?->slug ?? null) !== 'ornament-amazon-2') {
             return $this->generator->generateText($asset->user, $prompt);
