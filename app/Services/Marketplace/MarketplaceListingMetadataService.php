@@ -256,6 +256,10 @@ PROMPT;
             return null;
         }
 
+        if ($asset->product?->slug === 'ornament-amazon-2') {
+            return $this->assets->markListingCompleted($this->generateAmazonMetadata($asset), 'amazon');
+        }
+
         if ($asset->user->can_generate_amazon_listing) {
             return $this->assets->markListingCompleted($this->generateAmazonMetadata($asset), 'amazon');
         }
@@ -405,21 +409,17 @@ PROMPT;
     {
         $prompt = $this->prompt($this->amazonPromptTemplate($asset), $asset);
 
-        if (($asset->product?->slug ?? null) === 'sticker') {
-            return $this->generator->generateText($asset->user, $prompt, true);
+        if (($asset->product?->slug ?? null) === 'ornament-amazon-2') {
+            if (! $asset->user->canUseAiProvider('v98store')) {
+                throw new RuntimeException('User duoc duyet item nay chua bat provider v98Store cho Listing metadata logs.');
+            }
+
+            $this->ensureOrnamentAmazonTwoV98StoreBalance($asset->user);
+
+            return $this->apiKeyGenerator->generateText($asset->user, 'v98store', $prompt, 'gpt-5.4');
         }
 
-        if (($asset->product?->slug ?? null) !== 'ornament-amazon-2') {
-            return $this->generator->generateText($asset->user, $prompt);
-        }
-
-        if (! $asset->user->canUseAiProvider('v98store')) {
-            throw new RuntimeException('User duoc duyet item nay chua bat provider v98Store cho Listing metadata logs.');
-        }
-
-        $this->ensureOrnamentAmazonTwoV98StoreBalance($asset->user);
-
-        return $this->apiKeyGenerator->generateText($asset->user, 'v98store', $prompt, 'gpt-5.4');
+        return $this->generator->generateText($asset->user, $prompt);
     }
 
     private function ensureOrnamentAmazonTwoV98StoreBalance(User $user): void
@@ -583,10 +583,9 @@ PROMPT;
 
     private function marketplaceForAsset(ProductDesignAsset $asset): string
     {
-        return match ($asset->product?->slug) {
-            'ornament-amazon-2', 'sticker' => 'amazon',
-            default => $asset->user->can_generate_amazon_listing ? 'amazon' : 'etsy',
-        };
+        return $asset->product?->slug === 'ornament-amazon-2'
+            ? 'amazon'
+            : ($asset->user->can_generate_amazon_listing ? 'amazon' : 'etsy');
     }
 
     private function amazonPromptTemplate(ProductDesignAsset $asset): string
