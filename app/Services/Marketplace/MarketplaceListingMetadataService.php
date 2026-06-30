@@ -239,6 +239,7 @@ PROMPT;
 
     public function __construct(
         private readonly VertexImageGenerator $generator,
+        private readonly ApiKeyImageGenerator $apiKeyGenerator,
         private readonly ProductDesignAssetRepository $assets,
     ) {}
 
@@ -582,7 +583,10 @@ PROMPT;
 
     private function marketplaceForAsset(ProductDesignAsset $asset): string
     {
-        return $asset->user->can_generate_amazon_listing ? 'amazon' : 'etsy';
+        return match ($asset->product?->slug) {
+            'ornament-amazon-2', 'sticker' => 'amazon',
+            default => $asset->user->can_generate_amazon_listing ? 'amazon' : 'etsy',
+        };
     }
 
     private function amazonPromptTemplate(ProductDesignAsset $asset): string
