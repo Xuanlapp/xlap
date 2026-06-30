@@ -158,16 +158,31 @@ class ApiKeyImageGenerator
 
         $credential = $this->credentialFor($user, $providerKey);
 
-        $response = $this->postTextJsonWithRetries($providerKey, $this->credentialKeyApi($credential, $providerKey), $endpoint, [
+        $payload = [
             'model' => $this->textModel($providerKey, $model),
             'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => 'Return only valid JSON. Do not include markdown, explanations, code fences, or text outside the JSON object.',
+                ],
                 [
                     'role' => 'user',
                     'content' => $prompt,
                 ],
             ],
             'temperature' => 0.4,
-        ]);
+        ];
+
+        if ($providerKey === 'v98store') {
+            $payload['response_format'] = ['type' => 'json_object'];
+        }
+
+        $response = $this->postTextJsonWithRetries(
+            $providerKey,
+            $this->credentialKeyApi($credential, $providerKey),
+            $endpoint,
+            $payload,
+        );
 
         if ($response->failed()) {
             throw new RuntimeException($this->errorMessage($providerKey, $response));

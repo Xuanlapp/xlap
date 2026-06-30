@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Mail;
 use JsonException;
 use RuntimeException;
@@ -177,6 +178,20 @@ Brand/trademark risk: Passed / Needs Review
 Amazon policy risk: Passed / Needs Review
 Keyword stuffing risk: Low / Medium / High
 Readability: Good / Needs Improvement
+
+Return ONLY valid JSON. Do not include markdown, explanation, comments, character-count labels, safety-check text, or extra keys.
+
+Required JSON schema, with exact keys:
+{
+  "title": "string",
+  "description": "string",
+  "bullet_point_1": "string",
+  "bullet_point_2": "string",
+  "bullet_point_3": "string",
+  "bullet_point_4": "string",
+  "bullet_point_5": "string",
+  "generic_keyword": "string"
+}
 PROMPT;
 
     private const AMAZON_STICKER_PROMPT_TEMPLATE = <<<'PROMPT'
@@ -337,32 +352,7 @@ PROMPT;
     private function claimNextPendingApprovedAsset(): ?ProductDesignAsset
     {
         return DB::transaction(function (): ?ProductDesignAsset {
-            $asset = ProductDesignAsset::query()
-                ->with(['user', 'product'])
-                ->where('is_approved', true)
-                ->whereNull('title')
-                ->where(function ($query): void {
-                    $query
-                        ->whereNull('marketplace_listing_status')
-                        ->orWhere('marketplace_listing_status', 'waiting')
-                        ->orWhere('marketplace_listing_status', 'failed')
-                        ->orWhere(function ($query): void {
-                            $query
-                                ->where('marketplace_listing_status', 'processing')
-                                ->where(function ($query): void {
-                                    $query
-                                        ->whereNull('marketplace_listing_started_at')
-                                        ->orWhere('marketplace_listing_started_at', '<=', $this->staleProcessingCutoff());
-                                });
-                        });
-                })
-                ->whereHas('user', function ($query): void {
-                    $query
-                        ->where('can_generate_amazon_listing', true)
-                        ->orWhere('can_generate_etsy_listing', true);
-                })
-                ->orderBy('approved_at')
-                ->orderBy('id')
+            $asset = $this->eligiblePendingApprovedAssetsQuery()
                 ->lockForUpdate()
                 ->first();
 
@@ -372,6 +362,52 @@ PROMPT;
 
             return $this->assets->markListingProcessing($asset, $this->marketplaceForAsset($asset));
         });
+    }
+
+    private function eligiblePendingApprovedAssetsQuery(): Builder
+    {
+        return ProductDesignAsset::query()
+            ->with(['user', 'product'])
+            ->where('is_approved', true)
+            ->whereNull('title')
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereNull('marketplace_listing_status')
+                    ->orWhere('marketplace_listing_status', 'waiting')
+                    ->orWhere('marketplace_listing_status', 'failed')
+                    ->orWhere(function (Builder $query): void {
+                        $query
+                            ->where('marketplace_listing_status', 'processing')
+                            ->where(function (Builder $query): void {
+                                $query
+                                    ->whereNull('marketplace_listing_started_at')
+                                    ->orWhere('marketplace_listing_started_at', '<=', $this->staleProcessingCutoff());
+                            });
+                    });
+            })
+            ->where(function (Builder $query): void {
+                $query
+                    ->where(function (Builder $query): void {
+                        $query
+                            ->whereHas('product', fn (Builder $query): Builder => $query->where('slug', 'ornament-amazon-2'))
+                            ->whereHas('user', function (Builder $query): void {
+                                $query
+                                    ->where('can_generate_amazon_listing', true)
+                                    ->whereHas('aiProviders', fn (Builder $query): Builder => $query->where('provider_key', 'v98store')->where('is_enabled', true));
+                            });
+                    })
+                    ->orWhere(function (Builder $query): void {
+                        $query
+                            ->whereDoesntHave('product', fn (Builder $query): Builder => $query->where('slug', 'ornament-amazon-2'))
+                            ->whereHas('user', function (Builder $query): void {
+                                $query
+                                    ->where('can_generate_amazon_listing', true)
+                                    ->orWhere('can_generate_etsy_listing', true);
+                            });
+                    });
+            })
+            ->orderBy('approved_at')
+            ->orderBy('id');
     }
 
     private function staleProcessingCutoff(): \DateTimeInterface
@@ -638,15 +674,39 @@ PROMPT;
 
         try {
             $payload = json_decode($text, true, flags: JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
-            throw new RuntimeException('Vertex khong tra ve JSON listing hop le.', previous: $exception);
+        } catch (JsonException) {
+            $start = strpos($text, '{');
+            $end = strrpos($text, '}');
+
+            if ($start !== false && $end !== false && $end > $start) {
+                $json = substr($text, $start, $end - $start + 1);
+                $json = preg_replace('/,\s*([}\]])/', '$1', $json) ?? $json;
+
+                try {
+                    $payload = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+                } catch (JsonException $exception) {
+                    throw new RuntimeException(
+                        "Listing metadata provider khong tra ve JSON listing hop le. RAW: ".$this->shortErrorPayload($text)." | EXTRACTED: ".$this->shortErrorPayload($json),
+                        previous: $exception,
+                    );
+                }
+            } else {
+                throw new RuntimeException('Listing metadata provider khong tra ve JSON listing hop le. RAW: '.$this->shortErrorPayload($text));
+            }
         }
 
         if (! is_array($payload)) {
-            throw new RuntimeException('Vertex khong tra ve JSON listing hop le.');
+            throw new RuntimeException('Listing metadata provider khong tra ve JSON listing hop le. RAW: '.$this->shortErrorPayload($text));
         }
 
         return $payload;
+    }
+
+    private function shortErrorPayload(string $text, int $limit = 1500): string
+    {
+        $text = preg_replace('/\s+/', ' ', trim($text)) ?? trim($text);
+
+        return mb_substr($text, 0, $limit);
     }
 
     /**

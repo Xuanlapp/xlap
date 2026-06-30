@@ -76,6 +76,42 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('listing-metadata', ListingMetadataStatus::class)
         ->name('offorest.listing-metadata');
 
+
+    Route::post('admin/debug/listing-metadata/{asset}/retry', function (App\Models\ProductDesignAsset $asset) {
+        try {
+            $result = app(App\Services\Marketplace\MarketplaceListingMetadataService::class)
+                ->retryApprovedAsset($asset->id);
+
+            return response()->json([
+                'ok' => true,
+                'asset' => [
+                    'id' => $result?->id,
+                    'product_slug' => $result?->product?->slug,
+                    'title' => $result?->title,
+                    'description' => $result?->description,
+                    'bullet_point_1' => $result?->bullet_point_1,
+                    'bullet_point_2' => $result?->bullet_point_2,
+                    'bullet_point_3' => $result?->bullet_point_3,
+                    'bullet_point_4' => $result?->bullet_point_4,
+                    'bullet_point_5' => $result?->bullet_point_5,
+                    'generic_keyword' => $result?->generic_keyword,
+                    'tags' => $result?->tags,
+                    'marketplace_listing_status' => $result?->marketplace_listing_status,
+                    'marketplace_listing_error' => $result?->marketplace_listing_error,
+                    'marketplace_listing_attempts' => $result?->marketplace_listing_attempts,
+                    'marketplace_listing_started_at' => optional($result?->marketplace_listing_started_at)?->toDateTimeString(),
+                    'marketplace_listing_completed_at' => optional($result?->marketplace_listing_completed_at)?->toDateTimeString(),
+                ],
+            ]);
+        } catch (Throwable $exception) {
+            return response()->json([
+                'ok' => false,
+                'error' => $exception->getMessage(),
+                'type' => get_class($exception),
+            ], 500);
+        }
+    })->middleware('admin')->name('offorest.admin.debug.listing-metadata.retry');
+
     Route::get('ornament-amazon-catalog', AutomationCatalog::class)
         ->name('offorest.ornament-amazon.catalog');
 
