@@ -3,11 +3,17 @@
 namespace App\Services\Marketplace;
 
 use App\Models\ProductDesignAsset;
+use App\Models\User;
+use App\Models\UserApiCredential;
 use App\Repositories\Product\ProductDesignAssetRepository;
+use App\Services\Ai\ApiKeyImageGenerator;
 use App\Services\Logging\ActivityLogService;
 use App\Services\Vertex\VertexImageGenerator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use JsonException;
 use RuntimeException;
 use Throwable;
@@ -26,142 +32,142 @@ Danh sach keyword uu tien cua toi, hay dung theo thu tu uu tien tu tren xuong du
 [KEYWORDS: {keyword_phrase}]
 
 
-YÊU CẦU ĐẦU RA:
+YÃŠU Cáº¦U Äáº¦U RA:
 
 TITLE AMAZON
 
-Viết 1 Title bằng tiếng Anh, tối ưu keyword, dễ đọc, tự nhiên, phù hợp Amazon US.
+Viáº¿t 1 Title báº±ng tiáº¿ng Anh, tá»‘i Æ°u keyword, dá»… Ä‘á»c, tá»± nhiÃªn, phÃ¹ há»£p Amazon US.
 
-Yêu cầu bắt buộc:
+YÃªu cáº§u báº¯t buá»™c:
 
-Độ dài Title nằm trong khoảng 180–195 ký tự tính cả dấu cách.
-Không được vượt quá 200 ký tự bao gồm cả dấu cách.
-Ưu tiên keyword chính ở đầu Title.
-Không nhồi keyword quá lộ.
-Không dùng ALL CAPS.
-Không dùng ký tự đặc biệt không cần thiết.
-Không dùng claim như Best, #1, Guaranteed, Official, Luxury nếu không có căn cứ.
-Không dùng tên thương hiệu đối thủ.
-Title phải mô tả rõ loại sản phẩm, điểm cá nhân hóa, đối tượng tặng quà và dịp sử dụng.
+Äá»™ dÃ i Title náº±m trong khoáº£ng 180â€“195 kÃ½ tá»± tÃ­nh cáº£ dáº¥u cÃ¡ch.
+KhÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 200 kÃ½ tá»± bao gá»“m cáº£ dáº¥u cÃ¡ch.
+Æ¯u tiÃªn keyword chÃ­nh á»Ÿ Ä‘áº§u Title.
+KhÃ´ng nhá»“i keyword quÃ¡ lá»™.
+KhÃ´ng dÃ¹ng ALL CAPS.
+KhÃ´ng dÃ¹ng kÃ½ tá»± Ä‘áº·c biá»‡t khÃ´ng cáº§n thiáº¿t.
+KhÃ´ng dÃ¹ng claim nhÆ° Best, #1, Guaranteed, Official, Luxury náº¿u khÃ´ng cÃ³ cÄƒn cá»©.
+KhÃ´ng dÃ¹ng tÃªn thÆ°Æ¡ng hiá»‡u Ä‘á»‘i thá»§.
+Title pháº£i mÃ´ táº£ rÃµ loáº¡i sáº£n pháº©m, Ä‘iá»ƒm cÃ¡ nhÃ¢n hÃ³a, Ä‘á»‘i tÆ°á»£ng táº·ng quÃ  vÃ  dá»‹p sá»­ dá»¥ng.
 
-Sau Title, ghi rõ:
-TITLE — [SỐ KÝ TỰ] CHARACTERS
+Sau Title, ghi rÃµ:
+TITLE â€” [Sá» KÃ Tá»°] CHARACTERS
 
 BULLET POINTS AMAZON
 
-Viết 5 Bullet Points bằng tiếng Anh.
+Viáº¿t 5 Bullet Points báº±ng tiáº¿ng Anh.
 
-Yêu cầu bắt buộc:
+YÃªu cáº§u báº¯t buá»™c:
 
-Mỗi bullet point phải có độ dài từ 460–480 ký tự tính cả dấu cách.
-Không bullet nào được vượt quá 480 ký tự.
-Mỗi bullet có 1 icon phù hợp ở đầu dòng.
-Bullet point đầu tiên phải mô tả trực tiếp sản phẩm của tôi: sản phẩm là gì, dùng để làm gì, điểm cá nhân hóa chính.
-Các bullet còn lại phải tập trung vào lợi ích, tính năng, quà tặng, dịp sử dụng, cảm xúc, cách cá nhân hóa và giá trị lưu giữ kỷ niệm.
-Dùng keyword theo thứ tự ưu tiên từ danh sách tôi đưa.
-Keyword phải được đưa vào tự nhiên, không spam.
-Nội dung phải phù hợp với khách hàng Amazon US.
-Không dùng câu cam kết tuyệt đối như “will last forever”, “guaranteed to make them happy”, “best quality”.
-Không dùng từ bị cấm hoặc claim y tế, tôn giáo, chính trị, phân biệt đối tượng nếu không liên quan.
-Không dùng tên brand đối thủ hoặc trademark của người khác.
+Má»—i bullet point pháº£i cÃ³ Ä‘á»™ dÃ i tá»« 460â€“480 kÃ½ tá»± tÃ­nh cáº£ dáº¥u cÃ¡ch.
+KhÃ´ng bullet nÃ o Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 480 kÃ½ tá»±.
+Má»—i bullet cÃ³ 1 icon phÃ¹ há»£p á»Ÿ Ä‘áº§u dÃ²ng.
+Bullet point Ä‘áº§u tiÃªn pháº£i mÃ´ táº£ trá»±c tiáº¿p sáº£n pháº©m cá»§a tÃ´i: sáº£n pháº©m lÃ  gÃ¬, dÃ¹ng Ä‘á»ƒ lÃ m gÃ¬, Ä‘iá»ƒm cÃ¡ nhÃ¢n hÃ³a chÃ­nh.
+CÃ¡c bullet cÃ²n láº¡i pháº£i táº­p trung vÃ o lá»£i Ã­ch, tÃ­nh nÄƒng, quÃ  táº·ng, dá»‹p sá»­ dá»¥ng, cáº£m xÃºc, cÃ¡ch cÃ¡ nhÃ¢n hÃ³a vÃ  giÃ¡ trá»‹ lÆ°u giá»¯ ká»· niá»‡m.
+DÃ¹ng keyword theo thá»© tá»± Æ°u tiÃªn tá»« danh sÃ¡ch tÃ´i Ä‘Æ°a.
+Keyword pháº£i Ä‘Æ°á»£c Ä‘Æ°a vÃ o tá»± nhiÃªn, khÃ´ng spam.
+Ná»™i dung pháº£i phÃ¹ há»£p vá»›i khÃ¡ch hÃ ng Amazon US.
+KhÃ´ng dÃ¹ng cÃ¢u cam káº¿t tuyá»‡t Ä‘á»‘i nhÆ° â€œwill last foreverâ€, â€œguaranteed to make them happyâ€, â€œbest qualityâ€.
+KhÃ´ng dÃ¹ng tá»« bá»‹ cáº¥m hoáº·c claim y táº¿, tÃ´n giÃ¡o, chÃ­nh trá»‹, phÃ¢n biá»‡t Ä‘á»‘i tÆ°á»£ng náº¿u khÃ´ng liÃªn quan.
+KhÃ´ng dÃ¹ng tÃªn brand Ä‘á»‘i thá»§ hoáº·c trademark cá»§a ngÆ°á»i khÃ¡c.
 
-Sau mỗi bullet, ghi rõ:
-BULLET POINT 1 — [SỐ KÝ TỰ] CHARACTERS
-BULLET POINT 2 — [SỐ KÝ TỰ] CHARACTERS
-BULLET POINT 3 — [SỐ KÝ TỰ] CHARACTERS
-BULLET POINT 4 — [SỐ KÝ TỰ] CHARACTERS
-BULLET POINT 5 — [SỐ KÝ TỰ] CHARACTERS
+Sau má»—i bullet, ghi rÃµ:
+BULLET POINT 1 â€” [Sá» KÃ Tá»°] CHARACTERS
+BULLET POINT 2 â€” [Sá» KÃ Tá»°] CHARACTERS
+BULLET POINT 3 â€” [Sá» KÃ Tá»°] CHARACTERS
+BULLET POINT 4 â€” [Sá» KÃ Tá»°] CHARACTERS
+BULLET POINT 5 â€” [Sá» KÃ Tá»°] CHARACTERS
 
 GENERIC KEYWORDS
 
-Viết Generic Keywords theo đúng danh sách keyword tôi đưa, ưu tiên từ trên xuống dưới.
+Viáº¿t Generic Keywords theo Ä‘Ãºng danh sÃ¡ch keyword tÃ´i Ä‘Æ°a, Æ°u tiÃªn tá»« trÃªn xuá»‘ng dÆ°á»›i.
 
-Yêu cầu bắt buộc:
+YÃªu cáº§u báº¯t buá»™c:
 
-Các từ khóa cách nhau bằng dấu “;”
-Độ dài Generic Keywords nằm trong khoảng 230–240 ký tự tính cả dấu cách thì dừng lại.
-Không được vượt quá 240 ký tự bao gồm cả dấu cách.
-Không thêm keyword nếu vượt giới hạn.
-Không dùng tên thương hiệu đối thủ.
-Không dùng ASIN.
-Không dùng từ sai chính tả nếu làm listing thiếu chuyên nghiệp.
-Không lặp lại một từ khóa quá nhiều nếu không cần thiết.
-Ưu tiên keyword có volume/search intent cao hơn.
+CÃ¡c tá»« khÃ³a cÃ¡ch nhau báº±ng dáº¥u â€œ;â€
+Äá»™ dÃ i Generic Keywords náº±m trong khoáº£ng 230â€“240 kÃ½ tá»± tÃ­nh cáº£ dáº¥u cÃ¡ch thÃ¬ dá»«ng láº¡i.
+KhÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 240 kÃ½ tá»± bao gá»“m cáº£ dáº¥u cÃ¡ch.
+KhÃ´ng thÃªm keyword náº¿u vÆ°á»£t giá»›i háº¡n.
+KhÃ´ng dÃ¹ng tÃªn thÆ°Æ¡ng hiá»‡u Ä‘á»‘i thá»§.
+KhÃ´ng dÃ¹ng ASIN.
+KhÃ´ng dÃ¹ng tá»« sai chÃ­nh táº£ náº¿u lÃ m listing thiáº¿u chuyÃªn nghiá»‡p.
+KhÃ´ng láº·p láº¡i má»™t tá»« khÃ³a quÃ¡ nhiá»u náº¿u khÃ´ng cáº§n thiáº¿t.
+Æ¯u tiÃªn keyword cÃ³ volume/search intent cao hÆ¡n.
 
-Sau phần Generic Keywords, ghi rõ:
-GENERIC KEYWORDS — [SỐ KÝ TỰ] CHARACTERS
+Sau pháº§n Generic Keywords, ghi rÃµ:
+GENERIC KEYWORDS â€” [Sá» KÃ Tá»°] CHARACTERS
 
 PRODUCT DESCRIPTION
 
-Viết Product Description bằng tiếng Anh.
+Viáº¿t Product Description báº±ng tiáº¿ng Anh.
 
-Yêu cầu bắt buộc:
+YÃªu cáº§u báº¯t buá»™c:
 
-Độ dài nằm trong khoảng 1800–1900 ký tự tính cả dấu cách.
-Không được vượt quá 2000 ký tự bao gồm cả dấu cách.
-Nội dung phải giàu cảm xúc, tự nhiên, dễ đọc, tăng chuyển đổi.
-Giải thích rõ sản phẩm là gì, dùng như thế nào, cá nhân hóa ra sao, phù hợp tặng ai, phù hợp dịp nào.
-Đưa nhiều keyword nhất có thể theo thứ tự ưu tiên từ danh sách tôi cung cấp, nhưng phải tự nhiên.
-Không lặp keyword quá dày.
-Không claim quá đà.
-Không dùng tên brand đối thủ.
-Không viết thông tin sai về chất liệu, kích thước, quy trình sản xuất nếu tôi chưa cung cấp.
-Nếu thông tin sản phẩm chưa rõ, hãy viết theo hướng an toàn, không khẳng định quá cụ thể.
-Tập trung vào cảm xúc: family memories, holiday tradition, meaningful keepsake, personalized gift, Christmas tree decor, loved ones, special moments.
+Äá»™ dÃ i náº±m trong khoáº£ng 1800â€“1900 kÃ½ tá»± tÃ­nh cáº£ dáº¥u cÃ¡ch.
+KhÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 2000 kÃ½ tá»± bao gá»“m cáº£ dáº¥u cÃ¡ch.
+Ná»™i dung pháº£i giÃ u cáº£m xÃºc, tá»± nhiÃªn, dá»… Ä‘á»c, tÄƒng chuyá»ƒn Ä‘á»•i.
+Giáº£i thÃ­ch rÃµ sáº£n pháº©m lÃ  gÃ¬, dÃ¹ng nhÆ° tháº¿ nÃ o, cÃ¡ nhÃ¢n hÃ³a ra sao, phÃ¹ há»£p táº·ng ai, phÃ¹ há»£p dá»‹p nÃ o.
+ÄÆ°a nhiá»u keyword nháº¥t cÃ³ thá»ƒ theo thá»© tá»± Æ°u tiÃªn tá»« danh sÃ¡ch tÃ´i cung cáº¥p, nhÆ°ng pháº£i tá»± nhiÃªn.
+KhÃ´ng láº·p keyword quÃ¡ dÃ y.
+KhÃ´ng claim quÃ¡ Ä‘Ã .
+KhÃ´ng dÃ¹ng tÃªn brand Ä‘á»‘i thá»§.
+KhÃ´ng viáº¿t thÃ´ng tin sai vá» cháº¥t liá»‡u, kÃ­ch thÆ°á»›c, quy trÃ¬nh sáº£n xuáº¥t náº¿u tÃ´i chÆ°a cung cáº¥p.
+Náº¿u thÃ´ng tin sáº£n pháº©m chÆ°a rÃµ, hÃ£y viáº¿t theo hÆ°á»›ng an toÃ n, khÃ´ng kháº³ng Ä‘á»‹nh quÃ¡ cá»¥ thá»ƒ.
+Táº­p trung vÃ o cáº£m xÃºc: family memories, holiday tradition, meaningful keepsake, personalized gift, Christmas tree decor, loved ones, special moments.
 
-Sau phần Product Description, ghi rõ:
-PRODUCT DESCRIPTION — [SỐ KÝ TỰ] CHARACTERS
+Sau pháº§n Product Description, ghi rÃµ:
+PRODUCT DESCRIPTION â€” [Sá» KÃ Tá»°] CHARACTERS
 
-KIỂM TRA CUỐI CÙNG
+KIá»‚M TRA CUá»I CÃ™NG
 
-Trước khi trả kết quả, hãy tự kiểm tra:
+TrÆ°á»›c khi tráº£ káº¿t quáº£, hÃ£y tá»± kiá»ƒm tra:
 
-Title có nằm trong 180–195 ký tự không?
-Title có vượt 200 ký tự không?
-Mỗi bullet có nằm trong 460–480 ký tự không?
-Có bullet nào vượt 480 ký tự không?
-Generic Keywords có nằm trong 230–240 ký tự không?
-Generic Keywords có vượt 240 ký tự không?
-Product Description có nằm trong 1800–1900 ký tự không?
-Product Description có vượt 2000 ký tự không?
-Có dùng tên thương hiệu đối thủ không?
-Có dùng claim quá đà hoặc từ có rủi ro chính sách không?
-Keyword có được dùng tự nhiên không?
-Nội dung có phù hợp khách hàng Amazon US không?
+Title cÃ³ náº±m trong 180â€“195 kÃ½ tá»± khÃ´ng?
+Title cÃ³ vÆ°á»£t 200 kÃ½ tá»± khÃ´ng?
+Má»—i bullet cÃ³ náº±m trong 460â€“480 kÃ½ tá»± khÃ´ng?
+CÃ³ bullet nÃ o vÆ°á»£t 480 kÃ½ tá»± khÃ´ng?
+Generic Keywords cÃ³ náº±m trong 230â€“240 kÃ½ tá»± khÃ´ng?
+Generic Keywords cÃ³ vÆ°á»£t 240 kÃ½ tá»± khÃ´ng?
+Product Description cÃ³ náº±m trong 1800â€“1900 kÃ½ tá»± khÃ´ng?
+Product Description cÃ³ vÆ°á»£t 2000 kÃ½ tá»± khÃ´ng?
+CÃ³ dÃ¹ng tÃªn thÆ°Æ¡ng hiá»‡u Ä‘á»‘i thá»§ khÃ´ng?
+CÃ³ dÃ¹ng claim quÃ¡ Ä‘Ã  hoáº·c tá»« cÃ³ rá»§i ro chÃ­nh sÃ¡ch khÃ´ng?
+Keyword cÃ³ Ä‘Æ°á»£c dÃ¹ng tá»± nhiÃªn khÃ´ng?
+Ná»™i dung cÃ³ phÃ¹ há»£p khÃ¡ch hÃ ng Amazon US khÃ´ng?
 
-ĐỊNH DẠNG TRẢ KẾT QUẢ:
+Äá»ŠNH Dáº NG TRáº¢ Káº¾T QUáº¢:
 
-Trả kết quả theo đúng format sau, không giải thích dài dòng:
+Tráº£ káº¿t quáº£ theo Ä‘Ãºng format sau, khÃ´ng giáº£i thÃ­ch dÃ i dÃ²ng:
 
-TITLE — [SỐ KÝ TỰ] CHARACTERS
+TITLE â€” [Sá» KÃ Tá»°] CHARACTERS
 
-[Title hoàn chỉnh]
+[Title hoÃ n chá»‰nh]
 
-BULLET POINT 1 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 1 â€” [Sá» KÃ Tá»°] CHARACTERS
 
 [Bullet 1]
 
-BULLET POINT 2 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 2 â€” [Sá» KÃ Tá»°] CHARACTERS
 
 [Bullet 2]
 
-BULLET POINT 3 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 3 â€” [Sá» KÃ Tá»°] CHARACTERS
 
 [Bullet 3]
 
-BULLET POINT 4 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 4 â€” [Sá» KÃ Tá»°] CHARACTERS
 
 [Bullet 4]
 
-BULLET POINT 5 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 5 â€” [Sá» KÃ Tá»°] CHARACTERS
 
 [Bullet 5]
 
-GENERIC KEYWORDS — [SỐ KÝ TỰ] CHARACTERS
+GENERIC KEYWORDS â€” [Sá» KÃ Tá»°] CHARACTERS
 
 [Generic Keywords]
 
-PRODUCT DESCRIPTION — [SỐ KÝ TỰ] CHARACTERS
+PRODUCT DESCRIPTION â€” [Sá» KÃ Tá»°] CHARACTERS
 
 [Product Description]
 
@@ -180,7 +186,7 @@ LINK DOI THU : {competitor_link}
 KEYWORDS: {keyword_phrase}
 
 Ban hay viet cho toi:
-Title toi uu keyword, de doc, tuan thu do dai Amazon o cuoi tieu de co ( 3PCS,3”) ( co do dai nam trong khoang 180-195 ky tu tinh ca dau cach, khong duoc vuot qua 200 ky tu bao gom ca dau cach, khong duoc lap lai tu stickers qua 2 lan )
+Title toi uu keyword, de doc, tuan thu do dai Amazon o cuoi tieu de co ( 3PCS,3â€) ( co do dai nam trong khoang 180-195 ky tu tinh ca dau cach, khong duoc vuot qua 200 ky tu bao gom ca dau cach, khong duoc lap lai tu stickers qua 2 lan )
 Bullet Points (5 dong) ( moi bullet points phai co do dai nam trong khoang 460 den 480 ky tu tinh ca dau cach, khong duoc vuot qua 480 ky tu bao gom ca dau cach - mo ta loi ich va tinh nang san pham
 + Bullet point dau mo ta ve san pham cua toi
 + Co cac icon phu hop o dau cac bullet point
@@ -393,6 +399,160 @@ PROMPT;
         return $updatedAsset;
     }
 
+
+    private function generateAmazonListingText(ProductDesignAsset $asset): string
+    {
+        $prompt = $this->prompt($this->amazonPromptTemplate($asset), $asset);
+
+        if (($asset->product?->slug ?? null) !== 'ornament-amazon-2') {
+            return $this->generator->generateText($asset->user, $prompt);
+        }
+
+        if (! $asset->user->canUseAiProvider('v98store')) {
+            throw new RuntimeException('User duoc duyet item nay chua bat provider v98Store cho Listing metadata logs.');
+        }
+
+        $this->ensureOrnamentAmazonTwoV98StoreBalance($asset->user);
+
+        return $this->apiKeyGenerator->generateText($asset->user, 'v98store', $prompt, 'gpt-5.4');
+    }
+
+    private function ensureOrnamentAmazonTwoV98StoreBalance(User $user): void
+    {
+        $balance = $this->v98StoreBalanceForUser($user);
+
+        if (! is_array($balance) || ($balance['ok'] ?? false) !== true) {
+            throw new RuntimeException('Khong kiem tra duoc so du v98Store cho Listing metadata logs.');
+        }
+
+        $remaining = is_numeric($balance['remain_quota'] ?? null) ? (float) $balance['remain_quota'] : 0.0;
+
+        if ($remaining <= 0) {
+            $this->notifyV98StoreBalanceExhausted($user, $balance);
+
+            throw new RuntimeException('v98Store da het tien/het quota. Listing metadata logs tam dung, vui long nap them tien roi chay lai.');
+        }
+    }
+
+    /**
+     * @return array{ok: bool, remain_quota?: float|int, used_quota?: float|int, name?: string|null, message?: string, credential_id?: int}|null
+     */
+    private function v98StoreBalanceForUser(User $user): ?array
+    {
+        $credential = UserApiCredential::query()
+            ->where('provider_key', 'v98store')
+            ->where('is_active', true)
+            ->where(function ($query) use ($user): void {
+                $query->where('user_id', $user->id)
+                    ->orWhereNull('user_id');
+            })
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->first();
+
+        if (! $credential) {
+            return ['ok' => false, 'message' => 'No key'];
+        }
+
+        try {
+            return Cache::remember(
+                "v98store-balance:{$credential->id}",
+                now()->addSeconds(15),
+                fn (): array => array_merge($this->fetchV98StoreBalance($credential), ['credential_id' => $credential->id]),
+            );
+        } catch (Throwable) {
+            return array_merge($this->fetchV98StoreBalance($credential), ['credential_id' => $credential->id]);
+        }
+    }
+
+    /**
+     * @return array{ok: bool, remain_quota?: float|int, used_quota?: float|int, name?: string|null, message?: string}
+     */
+    private function fetchV98StoreBalance(UserApiCredential $credential): array
+    {
+        $endpoint = config('services.api_key_providers.v98store.balance_endpoint', 'https://v98store.com/check-balance');
+
+        if (! is_string($endpoint) || trim($endpoint) === '') {
+            return ['ok' => false, 'message' => 'No endpoint'];
+        }
+
+        try {
+            $apiKey = $credential->key_api;
+        } catch (Throwable) {
+            return ['ok' => false, 'message' => 'Key decrypt error'];
+        }
+
+        if (! is_string($apiKey) || trim($apiKey) === '') {
+            return ['ok' => false, 'message' => 'Empty key'];
+        }
+
+        try {
+            $response = Http::timeout(10)->get(trim($endpoint), [
+                'key_api' => trim($apiKey),
+            ]);
+        } catch (Throwable) {
+            return ['ok' => false, 'message' => 'Request failed'];
+        }
+
+        if ($response->failed()) {
+            return ['ok' => false, 'message' => 'HTTP '.$response->status()];
+        }
+
+        $payload = $response->json();
+
+        if (! is_array($payload)) {
+            return ['ok' => false, 'message' => 'Invalid balance'];
+        }
+
+        return [
+            'ok' => true,
+            'remain_quota' => is_numeric($payload['remain_quota'] ?? null) ? $payload['remain_quota'] + 0 : 0,
+            'used_quota' => is_numeric($payload['used_quota'] ?? null) ? $payload['used_quota'] + 0 : 0,
+            'name' => is_string($payload['name'] ?? null) ? $payload['name'] : null,
+            'message' => is_string($payload['message'] ?? null) ? $payload['message'] : null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $balance
+     */
+    private function notifyV98StoreBalanceExhausted(User $user, array $balance): void
+    {
+        $credentialId = (string) ($balance['credential_id'] ?? 'unknown');
+        $alertKey = "v98store-listing-balance-alert:{$credentialId}";
+
+        if (! Cache::add($alertKey, true, now()->addHours(6))) {
+            return;
+        }
+
+        $remaining = is_numeric($balance['remain_quota'] ?? null) ? (float) $balance['remain_quota'] : 0.0;
+        $used = is_numeric($balance['used_quota'] ?? null) ? (float) $balance['used_quota'] : null;
+        $accountName = is_string($balance['name'] ?? null) ? $balance['name'] : 'v98Store';
+        $subject = 'v98Store het tien/quota - Listing metadata logs da tam dung';
+        $body = implode("\n", array_filter([
+            'v98Store het tien/quota nen Listing metadata logs da tam dung.',
+            '',
+            'User: #'.$user->id.' '.$user->name.' <'.$user->email.'>',
+            'Account: '.$accountName,
+            'Remain: $'.number_format($remaining, 4, '.', ''),
+            $used !== null ? 'Used: '.number_format($used, 4, '.', '') : null,
+            'Time: '.now()->format('Y-m-d H:i:s'),
+            '',
+            'Vui long nap them tien/quota roi bam Duyet lai/Retry de chay Listing metadata logs.',
+        ]));
+
+        $recipients = collect([$user->email])
+            ->merge(User::query()->where('is_admin', true)->pluck('email'))
+            ->filter(fn (mixed $email): bool => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
+
+        foreach ($recipients as $email) {
+            try {
+                Mail::raw($body, fn ($mail) => $mail->to($email)->subject($subject));
+            } catch (Throwable) {
+            }
+        }
+    }
     private function generateEtsyMetadata(ProductDesignAsset $asset): ProductDesignAsset
     {
         $payload = $this->jsonPayload(
