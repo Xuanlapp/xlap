@@ -133,29 +133,18 @@ class VertexImageGenerator
      */
     public function generateText(User $user, string $prompt, bool $userCredentialOnly = false): string
     {
-        $credential = $userCredentialOnly
-            ? VertexApiCredential::query()
-                ->where('user_id', $user->id)
-                ->where('is_active', true)
-                ->whereIn('function_key', ['marketplace_listing', 'image_generation'])
-                ->orderByRaw("CASE WHEN function_key = 'marketplace_listing' THEN 0 ELSE 1 END")
-                ->latest('id')
-                ->first()
-            : VertexApiCredential::query()
-                ->where('function_key', 'marketplace_listing')
-                ->where('is_active', true)
-                ->where(function ($query) use ($user): void {
-                    $query->where('user_id', $user->id)
-                        ->orWhereNull('user_id');
-                })
-                ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
-                ->latest('id')
-                ->first();
+        $credential = VertexApiCredential::query()
+            ->where('is_active', true)
+            ->where(function ($query) use ($user): void {
+                $query->where('user_id', $user->id)
+                    ->orWhereNull('user_id');
+            })
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->latest('id')
+            ->first();
 
         if (! $credential) {
-            throw new RuntimeException($userCredentialOnly
-                ? 'User nay chua cau hinh Vertex API rieng de tao listing metadata.'
-                : 'Chua cau hinh Vertex API rieng cho title/listing.');
+            throw new RuntimeException('User chua cau hinh Vertex API active de tao text/image.');
         }
 
         $credentials = $this->credentialsFor($credential);

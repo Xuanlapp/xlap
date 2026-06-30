@@ -455,6 +455,10 @@ PROMPT;
             return $this->apiKeyGenerator->generateText($asset->user, 'v98store', $prompt, 'gpt-5.4');
         }
 
+        if (($asset->product?->slug ?? null) === 'sticker') {
+            return $this->generator->generateText($asset->user, $prompt, true);
+        }
+
         return $this->generator->generateText($asset->user, $prompt);
     }
 

@@ -62,7 +62,6 @@ class User extends Authenticatable
     public function vertexApiCredential(): HasOne
     {
         return $this->hasOne(VertexApiCredential::class)
-            ->where('function_key', 'image_generation')
             ->where('is_active', true)
             ->latestOfMany();
     }
