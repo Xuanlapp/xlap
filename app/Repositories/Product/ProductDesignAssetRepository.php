@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class ProductDesignAssetRepository
 {
@@ -65,6 +66,48 @@ class ProductDesignAssetRepository
         ];
     }
 
+    private function ensureSkuUniqueForUserAndProduct(int $userId, int $productId, ?string $sku, ?int $ignoreAssetId = null): void
+    {
+        $sku = trim((string) $sku);
+
+        if ($sku === '') {
+            return;
+        }
+
+        $query = ProductDesignAsset::query()
+            ->where('user_id', $userId)
+            ->where('product_id', $productId)
+            ->where('sku', $sku);
+
+        if ($ignoreAssetId !== null) {
+            $query->whereKeyNot($ignoreAssetId);
+        }
+
+        if ($query->exists()) {
+            throw new RuntimeException('Sku da ton tai trong san pham nay cua user nay. Hay dung sku khac.');
+        }
+    }
+
+    public function skuExistsForUserAndProduct(int $userId, int $productId, string $sku, ?int $ignoreAssetId = null): bool
+    {
+        $sku = trim($sku);
+
+        if ($sku === '') {
+            return false;
+        }
+
+        $query = ProductDesignAsset::query()
+            ->where('user_id', $userId)
+            ->where('product_id', $productId)
+            ->where('sku', $sku);
+
+        if ($ignoreAssetId !== null) {
+            $query->whereKeyNot($ignoreAssetId);
+        }
+
+        return $query->exists();
+    }
+
     public function createDraft(int $userId, int $productId, string $keyword): ProductDesignAsset
     {
         return DB::transaction(function () use ($userId, $productId, $keyword): ProductDesignAsset {
@@ -83,9 +126,10 @@ class ProductDesignAssetRepository
         });
     }
 
-    public function createWithSource(int $userId, int $productId, string $keyword, string $imageLink): ProductDesignAsset
+    public function createWithSource(int $userId, int $productId, string $keyword, string $imageLink, ?string $sku = null): ProductDesignAsset
     {
-        return DB::transaction(function () use ($userId, $productId, $keyword, $imageLink): ProductDesignAsset {
+        return DB::transaction(function () use ($userId, $productId, $keyword, $imageLink, $sku): ProductDesignAsset {
+            $this->ensureSkuUniqueForUserAndProduct($userId, $productId, $sku);
             $lastNumber = ProductDesignAsset::query()
                 ->where('user_id', $userId)
                 ->where('product_id', $productId)
@@ -96,6 +140,7 @@ class ProductDesignAssetRepository
                 'user_id' => $userId,
                 'product_id' => $productId,
                 'item_number' => ((int) $lastNumber) + 1,
+                'sku' => $sku,
                 'keyword' => $keyword,
                 'image_link' => $imageLink,
             ]);
@@ -115,8 +160,10 @@ class ProductDesignAssetRepository
         string $imageLink,
         array $imageSub = [],
         array $dataItemAdd = [],
+        ?string $sku = null,
     ): ProductDesignAsset {
-        return DB::transaction(function () use ($userId, $productId, $keyword, $imageLink, $imageSub, $dataItemAdd): ProductDesignAsset {
+        return DB::transaction(function () use ($userId, $productId, $keyword, $imageLink, $imageSub, $dataItemAdd, $sku): ProductDesignAsset {
+            $this->ensureSkuUniqueForUserAndProduct($userId, $productId, $sku);
             $lastNumber = ProductDesignAsset::query()
                 ->where('user_id', $userId)
                 ->where('product_id', $productId)
@@ -127,6 +174,7 @@ class ProductDesignAssetRepository
                 'user_id' => $userId,
                 'product_id' => $productId,
                 'item_number' => ((int) $lastNumber) + 1,
+                'sku' => $sku,
                 'keyword' => $keyword,
                 'image_link' => $imageLink,
                 'image_sub' => $imageSub === [] ? null : $imageSub,
@@ -141,9 +189,10 @@ class ProductDesignAssetRepository
      *
      * @param array<int, string> $mockups
      */
-    public function createImportedSticker(int $userId, int $productId, string $keyword, ?string $sourceImage, string $masterImage, array $mockups = []): ProductDesignAsset
+    public function createImportedSticker(int $userId, int $productId, string $sku, string $keyword, ?string $sourceImage, string $masterImage, array $mockups = []): ProductDesignAsset
     {
-        return DB::transaction(function () use ($userId, $productId, $keyword, $sourceImage, $masterImage, $mockups): ProductDesignAsset {
+        return DB::transaction(function () use ($userId, $productId, $sku, $keyword, $sourceImage, $masterImage, $mockups): ProductDesignAsset {
+            $this->ensureSkuUniqueForUserAndProduct($userId, $productId, $sku);
             $lastNumber = ProductDesignAsset::query()
                 ->where('user_id', $userId)
                 ->where('product_id', $productId)
@@ -154,6 +203,7 @@ class ProductDesignAssetRepository
                 'user_id' => $userId,
                 'product_id' => $productId,
                 'item_number' => ((int) $lastNumber) + 1,
+                'sku' => $sku,
                 'keyword' => $keyword,
                 'image_link' => $sourceImage,
                 'redesign' => $masterImage,
@@ -446,4 +496,10 @@ class ProductDesignAssetRepository
         return addcslashes($value, '\%_');
     }
 }
+
+
+
+
+
+
 

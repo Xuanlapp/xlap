@@ -193,6 +193,7 @@ class ExcelImportSticker extends Component
         try {
             $asset = $service->importAsset(
                 auth()->user(),
+                (string) $row['sku'],
                 (string) $row['keyword'],
                 $row['source_image'] ?: (string) $row['create_master'],
                 (string) $row['create_master'],
@@ -262,11 +263,12 @@ class ExcelImportSticker extends Component
         $this->setProgress('checking', 65, 'Checking rows...');
         $headerIndexes = $this->headerIndexes($rows[0] ?? []);
 
-        if (! isset($headerIndexes['create_master'])) {
-            throw new RuntimeException('Required column missing: Create Master.');
+        if (! isset($headerIndexes['sku'], $headerIndexes['create_master'])) {
+            throw new RuntimeException('Required columns missing: SKU and Create Master.');
         }
 
         $parsedRows = [];
+        $seenSkus = [];
         $this->totalRows = max(0, count($rows) - 1);
 
         foreach ($rows as $index => $row) {
@@ -275,6 +277,7 @@ class ExcelImportSticker extends Component
             }
 
             $rowNumber = $index + 1;
+            $sku = trim((string) ($row[$headerIndexes['sku']] ?? ''));
             $sourceImage = trim((string) ($row[$headerIndexes['source_image']] ?? ''));
             $createMaster = trim((string) ($row[$headerIndexes['create_master']] ?? ''));
             $keyword = isset($headerIndexes['keyword'])
@@ -288,7 +291,12 @@ class ExcelImportSticker extends Component
                     : '';
             }
 
-            if ($sourceImage === '' && $createMaster === '' && $keyword === '' && collect($mockups)->filter()->isEmpty()) {
+            if ($sku === '' && $sourceImage === '' && $createMaster === '' && $keyword === '' && collect($mockups)->filter()->isEmpty()) {
+                continue;
+            }
+
+            if ($sku === '') {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing SKU.'];
                 continue;
             }
 
@@ -296,6 +304,13 @@ class ExcelImportSticker extends Component
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Create Master.'];
                 continue;
             }
+
+            $skuKey = Str::lower($sku);
+            if (isset($seenSkus[$skuKey])) {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Duplicate SKU in file: '.$sku.'.'];
+                continue;
+            }
+            $seenSkus[$skuKey] = true;
 
             if ($sourceImage !== '' && ! $this->isImageUrl($sourceImage)) {
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Source Image is invalid.'];
@@ -321,6 +336,7 @@ class ExcelImportSticker extends Component
 
             $parsedRows[] = [
                 'row' => $rowNumber,
+                'sku' => $sku,
                 'source_image' => $sourceImage,
                 'create_master' => $createMaster,
                 'keyword' => $keyword,
@@ -549,6 +565,10 @@ class ExcelImportSticker extends Component
         foreach ($header as $index => $value) {
             $normalized = Str::of($value)->lower()->ascii()->replaceMatches('/[^a-z0-9]+/', ' ')->trim()->toString();
 
+            if (in_array($normalized, ['sku', 'product sku', 'item sku'], true)) {
+                $indexes['sku'] = $index;
+            }
+
             if (in_array($normalized, ['source image', '1 source image', 'source image link', 'input image', 'link source image'], true)) {
                 $indexes['source_image'] = $index;
             }
@@ -605,3 +625,4 @@ class ExcelImportSticker extends Component
         $this->statusMessage = 'No file selected.';
     }
 }
+

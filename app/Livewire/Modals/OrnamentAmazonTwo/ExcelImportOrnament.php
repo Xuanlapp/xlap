@@ -218,6 +218,7 @@ class ExcelImportOrnament extends Component
             }
 
             $listingPayload = array_merge($competitorListing, [
+                'sku' => $row['sku'] ?? '',
                 'product_link' => $row['product_link'],
                 'main_image_link' => $row['main_image'],
                 'product' => $row['product'] ?? '',
@@ -236,6 +237,7 @@ class ExcelImportOrnament extends Component
                 $inputImage,
                 $imageSub,
                 $listingPayload,
+                $row['sku'],
             );
 
             $asset->update(['redesign' => $row['main_image']]);
@@ -294,10 +296,11 @@ class ExcelImportOrnament extends Component
         $headerIndexes = $this->headerIndexes($rows[0] ?? []);
 
         if ($headerIndexes === []) {
-            throw new RuntimeException('Required columns missing: Link Product, Link Main Image, Product and Keyword Phrase.');
+            throw new RuntimeException('Required columns missing: SKU, Link Product, Link Main Image, Product and Keyword Phrase.');
         }
 
         $parsedRows = [];
+        $seenSkus = [];
         $this->totalRows = max(0, count($rows) - 1);
 
         foreach ($rows as $index => $row) {
@@ -306,6 +309,7 @@ class ExcelImportOrnament extends Component
             }
 
             $rowNumber = $index + 1;
+            $sku = trim((string) ($row[$headerIndexes['sku']] ?? ''));
             $productLink = trim((string) ($row[$headerIndexes['product_link']] ?? ''));
             $mainImage = trim((string) ($row[$headerIndexes['main_image']] ?? ''));
             $product = trim((string) ($row[$headerIndexes['product']] ?? ''));
@@ -313,7 +317,12 @@ class ExcelImportOrnament extends Component
                 ? trim((string) ($row[$headerIndexes['keyword_phrase']] ?? ''))
                 : '';
 
-            if ($productLink === '' && $mainImage === '' && $product === '' && $keywordPhrase === '') {
+            if ($sku === '' && $productLink === '' && $mainImage === '' && $product === '' && $keywordPhrase === '') {
+                continue;
+            }
+
+            if ($sku === '') {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing SKU.'];
                 continue;
             }
 
@@ -321,6 +330,13 @@ class ExcelImportOrnament extends Component
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Link Product.'];
                 continue;
             }
+
+            $skuKey = Str::lower($sku);
+            if (isset($seenSkus[$skuKey])) {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Duplicate SKU in file: '.$sku.'.'];
+                continue;
+            }
+            $seenSkus[$skuKey] = true;
 
             if ($mainImage === '') {
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Link Main Image.'];
@@ -349,6 +365,7 @@ class ExcelImportOrnament extends Component
 
             $parsedRows[] = [
                 'row' => $rowNumber,
+                'sku' => $sku,
                 'product_link' => $productLink,
                 'main_image' => $mainImage,
                 'product' => $product,
@@ -553,6 +570,10 @@ class ExcelImportOrnament extends Component
         foreach ($header as $index => $value) {
             $normalized = Str::of($value)->lower()->ascii()->replaceMatches('/[^a-z0-9]+/', ' ')->trim()->toString();
 
+            if (in_array($normalized, ['sku', 'product sku', 'item sku'], true)) {
+                $indexes['sku'] = $index;
+            }
+
             if (in_array($normalized, ['link product', 'product link', 'link amazon etsy', 'amazon etsy link'], true)) {
                 $indexes['product_link'] = $index;
             }
@@ -570,7 +591,7 @@ class ExcelImportOrnament extends Component
             }
         }
 
-        return isset($indexes['product_link'], $indexes['main_image'], $indexes['product'], $indexes['keyword_phrase']) ? $indexes : [];
+        return isset($indexes['sku'], $indexes['product_link'], $indexes['main_image'], $indexes['product'], $indexes['keyword_phrase']) ? $indexes : [];
     }
 
     private function isSupportedProductUrl(string $url): bool
@@ -681,3 +702,5 @@ class ExcelImportOrnament extends Component
         $this->setProgress('idle', 0, 'No file selected.');
     }
 }
+
+

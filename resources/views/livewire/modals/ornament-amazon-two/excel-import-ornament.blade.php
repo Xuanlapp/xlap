@@ -78,6 +78,7 @@
                                     <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                                         <tr>
                                             <th class="px-4 py-3">Row</th>
+                                            <th class="min-w-[180px] px-4 py-3">SKU</th>
                                             <th class="min-w-[320px] px-4 py-3">Link Product</th>
                                             <th class="min-w-[320px] px-4 py-3">Link Main Image</th>
                                             <th class="min-w-[240px] px-4 py-3">Product</th>
@@ -91,6 +92,7 @@
                                             @php $rowStatus = $row['status'] ?? 'ready'; @endphp
                                             <tr x-show="! hiddenRows.includes({{ $index }})" x-cloak wire:key="excel-import-row-{{ $row['row'] }}">
                                                 <td class="px-4 py-3 text-slate-500">{{ $row['row'] }}</td>
+                                                <td class="px-4 py-3 text-xs text-slate-700 break-words max-w-[180px]">{{ $row['sku'] ?? '-' }}</td>
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['product_link']) }" class="max-w-[420px] text-xs text-slate-700">
                                                         <a href="{{ $row['product_link'] }}" target="_blank" class="font-medium text-slate-700 hover:text-slate-900 break-all" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : value)"></a>

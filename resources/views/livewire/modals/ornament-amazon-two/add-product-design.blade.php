@@ -66,6 +66,13 @@
                         </div>
 
                         <div>
+                            <label for="ornament-amazon-two-sku" class="mb-2 block text-sm font-medium text-gray-900">SKU</label>
+                            <x-input id="ornament-amazon-two-sku" wire:model.live.debounce.300ms="sku" type="text" class="block w-full {{ $errors->has('sku') ? 'border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-200' : '' }}" placeholder="Enter SKU manually" />
+                            @error('sku') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+
+                        <div>
                             <label for="ornament-amazon-two-product" class="mb-2 block text-sm font-medium text-gray-900">Product</label>
                             <x-input id="ornament-amazon-two-product" wire:model.live="product" type="text" class="block w-full" placeholder="Enter the product name manually" />
                             @error('product') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
@@ -190,3 +197,6 @@
         </div>
     @endif
 </div>
+
+
+

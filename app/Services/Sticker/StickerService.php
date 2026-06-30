@@ -87,16 +87,22 @@ class StickerService
         return $this->assets->createDraft($user->id, $this->product()->id, $this->normalizeKeyword($keyword));
     }
 
+    public function skuExistsForCurrentProduct(User $user, string $sku): bool
+    {
+        return $this->assets->skuExistsForUserAndProduct($user->id, $this->product()->id, trim($sku));
+    }
+
     /**
      * Create one Sticker item with the user-provided keyword and source image URL.
      */
-    public function createAsset(User $user, string $keyword, string $imageLink): ProductDesignAsset
+    public function createAsset(User $user, string $keyword, string $imageLink, ?string $sku = null): ProductDesignAsset
     {
         return $this->assets->createWithSource(
             $user->id,
             $this->product()->id,
             $this->normalizeKeyword($keyword),
             $this->normalizeImageLink($imageLink),
+            $sku === null ? null : $this->normalizeSku($sku),
         );
     }
 
@@ -106,8 +112,9 @@ class StickerService
      *
      * @param array<int, string> $mockups
      */
-    public function importAsset(User $user, string $keyword, ?string $sourceImage, string $masterImage, array $mockups = []): ProductDesignAsset
+    public function importAsset(User $user, string $sku, string $keyword, ?string $sourceImage, string $masterImage, array $mockups = []): ProductDesignAsset
     {
+        $sku = $this->normalizeSku($sku);
         $keyword = $this->normalizeKeyword($keyword);
         $sourceImage = trim((string) $sourceImage);
         $masterImage = $this->normalizeImageLink($masterImage);
@@ -120,6 +127,7 @@ class StickerService
         $asset = $this->assets->createImportedSticker(
             $user->id,
             $this->product()->id,
+            $sku,
             $keyword,
             $sourceImage === '' ? null : $this->normalizeImageLink($sourceImage),
             $masterImage,
@@ -363,6 +371,21 @@ class StickerService
         }
     }
 
+    private function normalizeSku(string $sku): string
+    {
+        $sku = trim($sku);
+
+        if ($sku === '') {
+            throw new InvalidArgumentException('Sku khong duoc de trong.');
+        }
+
+        if (mb_strlen($sku) > 100) {
+            throw new InvalidArgumentException('Sku khong duoc qua 100 ky tu.');
+        }
+
+        return $sku;
+    }
+
     private function normalizeKeyword(string $keyword): string
     {
         $keyword = trim($keyword);
@@ -427,4 +450,7 @@ class StickerService
         return $content;
     }
 }
+
+
+
 

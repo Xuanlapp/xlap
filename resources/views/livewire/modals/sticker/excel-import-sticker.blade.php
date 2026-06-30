@@ -73,6 +73,7 @@
                                     <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                                         <tr>
                                             <th class="px-4 py-3">Row</th>
+                                            <th class="px-4 py-3">SKU</th>
                                             <th class="px-4 py-3">Keyword</th>
                                             <th class="px-4 py-3">Source Image</th>
                                             <th class="px-4 py-3">Create Master</th>
@@ -86,6 +87,7 @@
                                             @php($rowStatus = $row['status'] ?? 'ready')
                                             <tr x-show="! hiddenRows.includes({{ $index }})" x-cloak wire:key="sticker-import-row-{{ $row['row'] }}">
                                                 <td class="px-4 py-3 text-xs font-semibold text-slate-700">{{ $row['row'] }}</td>
+                                                <td class="px-4 py-3 text-xs text-slate-700 break-words max-w-[180px]">{{ $row['sku'] ?? '-' }}</td>
                                                 <td class="px-4 py-3 text-xs text-slate-700 break-words max-w-[220px]">{{ $row['keyword'] }}</td>
                                                 <td class="px-4 py-3 text-xs text-slate-700 break-all max-w-[260px]">{{ $row['source_image'] ?: '-' }}</td>
                                                 <td class="px-4 py-3 text-xs text-slate-700 break-all max-w-[260px]">{{ $row['create_master'] }}</td>

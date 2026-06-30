@@ -15,6 +15,8 @@ class AddProductDesign extends Component
 {
     public bool $isOpen = false;
 
+    public string $sku = '';
+
     public string $keyword = '';
 
     public string $imageLink = '';
@@ -54,7 +56,7 @@ class AddProductDesign extends Component
     ): void
     {
         $this->resetValidation();
-        $this->reset(['keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'sourceAssetId', 'sourceRedesignCandidate']);
+        $this->reset(['sku', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'sourceAssetId', 'sourceRedesignCandidate']);
         $this->keyword = $keyword;
         $this->imageLink = $imageLink;
         $this->sourceAssetId = $sourceAssetId && $sourceAssetId > 0 ? $sourceAssetId : null;
@@ -66,7 +68,22 @@ class AddProductDesign extends Component
     public function close(): void
     {
         $this->resetValidation();
-        $this->reset(['isOpen', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'sourceAssetId', 'sourceRedesignCandidate']);
+        $this->reset(['isOpen', 'sku', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'sourceAssetId', 'sourceRedesignCandidate']);
+    }
+
+    public function updatedSku(): void
+    {
+        $this->validateOnly('sku', [
+            'sku' => [
+                'required',
+                'string',
+                'max:100',
+            ],
+        ]);
+
+        if ($this->sku !== '' && app(StickerService::class)->skuExistsForCurrentProduct(auth()->user(), $this->sku)) {
+            $this->addError('sku', 'Sku da ton tai trong Sticker cua user nay.');
+        }
     }
 
     public function updatedImageLink(): void
@@ -77,6 +94,7 @@ class AddProductDesign extends Component
     public function save(): void
     {
         $validated = $this->validate([
+            'sku' => ['required', 'string', 'max:100'],
             'keyword' => ['required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! is_string($value) || ! Str::contains(Str::lower($value), 'sticker')) {
                     $fail("Keyword phai chua tu 'sticker' cho trang Sticker.");
@@ -91,7 +109,7 @@ class AddProductDesign extends Component
 
         $service = app(StickerService::class);
 
-        $service->createAsset(auth()->user(), $validated['keyword'], $validated['imageLink']);
+        $service->createAsset(auth()->user(), $validated['keyword'], $validated['imageLink'], $validated['sku']);
 
         if ($this->sourceAssetId && $this->sourceRedesignCandidate) {
             $service->removeRedesignCandidate(auth()->user(), $this->sourceAssetId, $this->sourceRedesignCandidate);
@@ -125,3 +143,5 @@ class AddProductDesign extends Component
             : null;
     }
 }
+
+

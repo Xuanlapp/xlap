@@ -16,6 +16,8 @@ class AddProductDesign extends Component
 {
     public bool $isOpen = false;
 
+    public string $sku = '';
+
     public string $keyword = '';
 
     public string $imageLink = '';
@@ -55,6 +57,7 @@ class AddProductDesign extends Component
     {
         $this->resetValidation();
         $this->reset([
+            'sku',
             'keyword',
             'imageLink',
             'isImageLink',
@@ -73,6 +76,7 @@ class AddProductDesign extends Component
         $this->resetValidation();
         $this->reset([
             'isOpen',
+            'sku',
             'keyword',
             'imageLink',
             'isImageLink',
@@ -83,6 +87,21 @@ class AddProductDesign extends Component
             'selectedImageUrl',
             'scrapeError',
         ]);
+    }
+
+    public function updatedSku(): void
+    {
+        $this->validateOnly('sku', [
+            'sku' => [
+                'required',
+                'string',
+                'max:100',
+            ],
+        ]);
+
+        if ($this->sku !== '' && app(OrnamentAmazonTwoService::class)->skuExistsForCurrentProduct(auth()->user(), $this->sku)) {
+            $this->addError('sku', 'Sku da ton tai trong Ornament Amazon 2 cua user nay.');
+        }
     }
 
     public function updatedImageLink(): void
@@ -155,13 +174,14 @@ class AddProductDesign extends Component
 
     public function save(): void
     {
-        if ($this->competitorListing === [] || $this->keyword === '' || $this->imageLink === '' || $this->product === '' || $this->keywordPhrase === '') {
+        if ($this->competitorListing === [] || $this->sku === '' || $this->keyword === '' || $this->imageLink === '' || $this->product === '' || $this->keywordPhrase === '') {
             $this->addError('competitorUrl', 'Hay cho he thong lay xong du lieu roi moi them item.');
 
             return;
         }
 
         $validated = $this->validate([
+            'sku' => ['required', 'string', 'max:100'],
             'keyword' => ['required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! is_string($value) || ! Str::contains(Str::lower($value), 'ornament')) {
                     $fail("Keyword phai chua tu 'ornament' cho trang Ornament.");
@@ -182,11 +202,13 @@ class AddProductDesign extends Component
             $validated['imageLink'],
             $this->secondaryImages($validated['imageLink']),
             array_merge($this->competitorListing, [
+                'sku' => trim($validated['sku']),
                 'product' => trim($validated['product']),
                 'keyword_phrase' => trim($validated['keywordPhrase']),
                 'product_link' => trim((string) ($this->competitorListing['link'] ?? $this->competitorUrl)),
                 'competitor_link' => trim((string) ($this->competitorListing['link'] ?? $this->competitorUrl)),
             ]),
+            trim($validated['sku']),
         );
 
         $this->dispatch('product-design-created')->to(ListOrnamentAmazonTwo::class);
@@ -236,3 +258,4 @@ class AddProductDesign extends Component
             ->all();
     }
 }
+

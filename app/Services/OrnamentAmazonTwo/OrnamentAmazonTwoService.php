@@ -258,10 +258,15 @@ class OrnamentAmazonTwoService
         return $this->assets->createDraft($user->id, $this->product()->id, $this->normalizeKeyword($keyword));
     }
 
+    public function skuExistsForCurrentProduct(User $user, string $sku): bool
+    {
+        return $this->assets->skuExistsForUserAndProduct($user->id, $this->product()->id, trim($sku));
+    }
+
     /**
      * Create one Ornament item with the user-provided keyword and source image URL.
      */
-    public function createAsset(User $user, string $keyword, string $imageLink, array $imageSub = [], array $dataItemAdd = []): ProductDesignAsset
+    public function createAsset(User $user, string $keyword, string $imageLink, array $imageSub = [], array $dataItemAdd = [], ?string $sku = null): ProductDesignAsset
     {
         return $this->assets->createWithSourceData(
             $user->id,
@@ -270,6 +275,7 @@ class OrnamentAmazonTwoService
             $this->normalizeImageLink($imageLink),
             $this->normalizeImageSub($imageSub, $imageLink),
             $this->normalizeDataItemAdd($dataItemAdd),
+            $sku ? trim($sku) : null,
         );
     }
 

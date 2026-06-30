@@ -11,6 +11,7 @@ class ProductDesignAsset extends Model
     protected $fillable = [
         'user_id',
         'product_id',
+        'sku',
         'item_number',
         'keyword',
         'image_link',

@@ -4,6 +4,9 @@
             <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
                 STT: {{ $asset->item_number }}
             </span>
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-slate-100 px-3 text-xs font-bold text-slate-600">
+                SKU: {{ $asset->sku ?: '-' }}
+            </span>
 
             <h2 class="min-w-0 truncate text-lg font-bold text-slate-950">
                 {{ $asset->keyword ?: 'Sticker item' }}
@@ -226,3 +229,4 @@
         </div>
     </div>
 </article>
+

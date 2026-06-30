@@ -32,6 +32,19 @@
 
                     <div class="space-y-5 p-4 md:p-5">
                         <div>
+                            <label for="sticker-sku" class="mb-2 block text-sm font-medium text-gray-900">SKU</label>
+                            <x-input
+                                id="sticker-sku"
+                                wire:model.live.debounce.300ms="sku"
+                                type="text"
+                                class="block w-full {{ $errors->has('sku') ? 'border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-200' : '' }}
+                                placeholder="Enter SKU"
+                                autofocus
+                            />
+                            @error('sku') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div>
                             <label for="sticker-keyword" class="mb-2 block text-sm font-medium text-gray-900">Keyword</label>
                             <x-input
                                 id="sticker-keyword"
@@ -39,7 +52,6 @@
                                 type="text"
                                 class="block w-full"
                                 placeholder="Vui lòng có chữ sản phẩm ví vụ:Lap sticker"
-                                autofocus
                             />
                             @error('keyword') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                         </div>
@@ -102,3 +114,5 @@
         </div>
     @endif
 </div>
+
+

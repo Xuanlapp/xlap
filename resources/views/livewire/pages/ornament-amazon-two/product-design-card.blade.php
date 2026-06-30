@@ -38,6 +38,9 @@
                 STT: {{ $asset->item_number }}
             </span>
             <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-slate-100 px-3 text-xs font-bold text-slate-600">
+                SKU: {{ $asset->sku ?: '-' }}
+            </span>
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-slate-100 px-3 text-xs font-bold text-slate-600">
                 API: {{ $providerLabel }}
             </span>
 
@@ -1197,5 +1200,6 @@
     </div>
 
 </article>
+
 
 
