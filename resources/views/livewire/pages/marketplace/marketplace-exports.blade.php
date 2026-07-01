@@ -27,18 +27,34 @@
                         <span class="max-w-[260px] truncate text-xs font-medium text-slate-500">{{ $currentUser->email }}</span>
                     </div>
                     <h1 class="text-lg font-semibold text-slate-950">Marketplace Export</h1>
-                    <p class="mt-1 text-sm text-slate-500">Only items with Drive images and listing title are shown.</p>
+                    <p class="mt-1 text-sm text-slate-500">Link dang luu: @if(!empty($sheetUrl)) <a href="{{ $sheetUrl }}" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">{{ $sheetUrl }}</a> @else <span>Chua co link Google Sheet.</span> @endif</p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3">
                     <button
                         type="button"
+                        x-data="{ loading: false }"
+                        x-on:click="if (loading) return; loading = true; $dispatch('openModal', { component: 'modals.marketplace.export-to-sheet', arguments: { selectedIds: Array.from(new Set([...@js($selectedIds), ...Array.from(document.querySelectorAll('[data-marketplace-export-checkbox]:checked')).map((checkbox) => checkbox.value)])), marketplace: 'amazon' } }); setTimeout(() => loading = false, 5000)"
+                        x-bind:disabled="loading"
+                        wire:loading.attr="disabled"
+                        @disabled($selectedCount === 0 || ! filled($sheetUrl))
+                        class="inline-flex h-11 items-center gap-2 rounded-md bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-70"
+                    >
+                        <span x-show="!loading">Export to Sheet</span>
+                        <span x-show="loading" class="inline-flex items-center gap-2">
+                            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path></svg>
+                            <span>Loading...</span>
+                        </span>
+                    </button>
+                    <button
+                        type="button"
                         wire:click="exportSelected"
                         wire:loading.attr="disabled"
                         wire:target="exportSelected"
-                        class="inline-flex h-11 items-center gap-2 rounded-md bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-wait disabled:opacity-60"
+                        @disabled($selectedCount === 0)
+                        class="inline-flex h-11 items-center gap-2 rounded-md bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-70"
                     >
-                        <span wire:loading.remove wire:target="exportSelected">Export {{ $activeExportMarketplace === 'etsy' ? 'Folder' : 'Sheet' }} {{ $selectedCount ? '('.$selectedCount.')' : '' }}</span>
+                        <span wire:loading.remove wire:target="exportSelected">Export {{ $activeExportMarketplace === 'etsy' ? 'Folder' : 'Excel' }} {{ $selectedCount ? '('.$selectedCount.')' : '' }}</span>
                         <span wire:loading wire:target="exportSelected">Exporting...</span>
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M12 3v12" />
@@ -119,17 +135,17 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="text-sm" style="width: 100%; min-width: {{ auth()->user()->is_admin ? '1460px' : '1240px' }}; table-layout: fixed;">
+                <table class="text-sm" style="width: 100%; min-width: {{ auth()->user()->is_admin ? '1500px' : '1280px' }}; table-layout: fixed;">
                 <colgroup>
                     <col style="width: 60px;">
-                    <col style="width: 470px;">
+                    <col style="width: 160px;">
+                    <col style="width: 430px;">
                     @if (auth()->user()->is_admin)
                         <col style="width: 240px;">
                     @endif
                     <col style="width: 170px;">
                     <col style="width: 130px;">
                     <col style="width: 240px;">
-                    <col style="width: 150px;">
                 </colgroup>
                 <thead>
                     <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold text-slate-500">
@@ -143,14 +159,14 @@
                                 class="h-4 w-4 rounded border-slate-400 text-indigo-600 focus:ring-indigo-500"
                             >
                         </th>
-                        <th class="px-5 py-4">Product</th>
+                        <th class="px-5 py-4">SKU</th>
+                        <th class="px-5 py-4">Item</th>
                         @if (auth()->user()->is_admin)
                             <th class="px-5 py-4">User</th>
                         @endif
                         <th class="px-5 py-4">Category</th>
                         <th class="px-5 py-4">Drive</th>
                         <th class="px-5 py-4">Export</th>
-                        <th class="px-5 py-4">Created At</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -194,9 +210,14 @@
                                 >
                             </td>
                             <td class="px-5 py-5 align-middle">
+                                <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                                    {{ $asset->sku ?: '-' }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-5 align-middle">
                                 <div class="flex items-center gap-4">
                                     <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-slate-500">
-                                        #{{ $asset->id }}
+                                        {{ $asset->item_number }}
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate font-semibold text-slate-700">{{ $asset->keyword }}</p>
@@ -230,9 +251,7 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-5 py-5 align-middle">
-                                {{ optional($asset->created_at)->format('d M, Y') ?: '-' }}
-                            </td>
+
                         </tr>
                     @empty
                         <tr>
@@ -266,6 +285,11 @@
                         checkbox.checked = false;
                     });
             });
+
+            Livewire.on('marketplace-export-to-sheet-finished', () => {
+                window.location.reload();
+            });
         });
     </script>
+    <livewire:modals.marketplace.export-to-sheet />
 </section>

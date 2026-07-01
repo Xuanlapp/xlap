@@ -15,7 +15,7 @@ class ListOrnamentAmazonTwo extends Component
 
     public string $pageTitle = 'Ornament Amazon 2';
 
-    public string $pageSubtitle = 'Quan ly quy trinh tao anh ornament Amazon 2';
+    public string $pageSubtitle = '';
 
     public string $addButtonLabel = 'Them ornament';
 

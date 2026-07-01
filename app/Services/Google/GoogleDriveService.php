@@ -137,6 +137,95 @@ class GoogleDriveService
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function spreadsheet(string $spreadsheetId): array
+    {
+        $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
+            ->timeout(30)
+            ->get('https://sheets.googleapis.com/v4/spreadsheets/'.rawurlencode($spreadsheetId), [
+                'fields' => 'sheets(properties(sheetId,title))',
+            ]);
+
+        if ($response->failed()) {
+            $this->logExternalApiFailure('Google Sheets metadata failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong doc duoc thong tin Google Sheet. Hay kiem tra quyen sheet va scope Google Sheets.');
+        }
+
+        $data = $response->json();
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    public function sheetValues(string $spreadsheetId, string $range): array
+    {
+        $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
+            ->timeout(30)
+            ->get('https://sheets.googleapis.com/v4/spreadsheets/'.rawurlencode($spreadsheetId).'/values/'.rawurlencode($range));
+
+        if ($response->failed()) {
+            $this->logExternalApiFailure('Google Sheets values read failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong doc duoc data tu Google Sheet. Hay kiem tra quyen sheet va scope Google Sheets.');
+        }
+
+        $values = $response->json('values');
+
+        if (! is_array($values)) {
+            return [];
+        }
+
+        return array_map(
+            fn (array $row): array => array_map(fn (mixed $value): string => trim((string) $value), $row),
+            $values,
+        );
+    }
+
+    /**
+     * @param  array<int, array<int, string>>  $values
+     */
+    public function updateSheetValues(string $spreadsheetId, string $range, array $values): void
+    {
+        $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
+            ->timeout(60)
+            ->put('https://sheets.googleapis.com/v4/spreadsheets/'.rawurlencode($spreadsheetId).'/values/'.rawurlencode($range).'?valueInputOption=RAW', [
+                'values' => $values,
+            ]);
+
+        if ($response->failed()) {
+            $this->logExternalApiFailure('Google Sheets values update failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong update duoc Google Sheet. Hay kiem tra quyen sheet va scope Google Sheets.');
+        }
+    }
+
+    /**
+     * @param  array<int, array<int, string>>  $values
+     */
+    public function appendSheetValues(string $spreadsheetId, string $range, array $values): void
+    {
+        $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
+            ->timeout(60)
+            ->post('https://sheets.googleapis.com/v4/spreadsheets/'.rawurlencode($spreadsheetId).'/values/'.rawurlencode($range).':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', [
+                'values' => $values,
+            ]);
+
+        if ($response->failed()) {
+            $this->logExternalApiFailure('Google Sheets values append failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong append duoc Google Sheet. Hay kiem tra quyen sheet va scope Google Sheets.');
+        }
+    }
+
     private function makePublic(string $fileId): void
     {
         $response = Http::withToken($this->accessToken())
@@ -264,7 +353,7 @@ class GoogleDriveService
             'typ' => 'JWT',
         ], JSON_THROW_ON_ERROR)).'.'.$this->base64UrlEncode(json_encode([
             'iss' => $clientEmail,
-            'scope' => 'https://www.googleapis.com/auth/drive.file',
+            'scope' => 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
             'aud' => 'https://oauth2.googleapis.com/token',
             'iat' => $now,
             'exp' => $now + 3600,

@@ -73,7 +73,7 @@ return [
         'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
         'redirect_uri' => env('GOOGLE_DRIVE_REDIRECT_URI'),
-        'scopes' => env('GOOGLE_DRIVE_SCOPES', 'https://www.googleapis.com/auth/drive.file'),
+        'scopes' => env('GOOGLE_DRIVE_SCOPES', 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets'),
     ],
     'background_removal' => [
         'enabled' => env('OFFOREST_REMOVE_VERTEX_BACKGROUND', false),

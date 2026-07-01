@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\DataImportUser;
 
 class Product extends Model
 {
@@ -46,5 +47,13 @@ class Product extends Model
     public function designAssets(): HasMany
     {
         return $this->hasMany(ProductDesignAsset::class);
+    }
+
+    /**
+     * Data import sheet configs for this product.
+     */
+    public function dataImportUsers(): HasMany
+    {
+        return $this->hasMany(DataImportUser::class);
     }
 }

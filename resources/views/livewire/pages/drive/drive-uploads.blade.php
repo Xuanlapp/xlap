@@ -207,7 +207,7 @@
 
                     <div class="flex shrink-0 items-center gap-2">
                         @if ($selectedUpload->drive_folder_link)
-                            <a href="{{ $selectedUpload->drive_folder_link }}" target="_blank" rel="noopener" class="hidden rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-700 sm:inline-flex">
+                            <a href="{{ $selectedUpload->drive_folder_link }}" target="_blank" rel="noopener" class="hidden rounded-md bg-green-400 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-700 sm:inline-flex">
                                 Open folder
                             </a>
                         @endif

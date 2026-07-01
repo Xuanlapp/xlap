@@ -86,7 +86,9 @@
                     </div>
                     <div class="min-w-0">
                         <h1 class="text-base font-bold text-slate-950">{{ $pageTitle }}</h1>
-                        <p class="mt-0.5 text-xs text-slate-500">{{ $pageSubtitle }}</p>
+                        @if (filled($pageSubtitle))
+                            <p class="mt-0.5 text-xs text-slate-500">{{ $pageSubtitle }}</p>
+                        @endif
                     </div>
                 </div>
 
@@ -194,6 +196,17 @@
                         </svg>
                         Import Excel
                     </button>
+
+                    <button
+                        type="button"
+                        wire:click="$dispatch('openModal', { component: 'modals.ornament-amazon-two.import-sheet' })"
+                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-3 text-xs font-bold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-100 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                    >
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5V6.75A2.25 2.25 0 0 1 6.25 4.5H18a2 2 0 0 1 2 2V17M4 19.5A2.5 2.5 0 0 0 6.5 22H20" />
+                        </svg>
+                        Import Sheet
+                    </button>
                 </div>
             </div>
         </div>
@@ -223,6 +236,8 @@
 
     <livewire:modals.ornament-amazon-two.add-product-design />
     <livewire:modals.ornament-amazon-two.excel-import-ornament />
+    <livewire:modals.ornament-amazon-two.import-sheet />
+    <livewire:modals.ornament-amazon-two.edit-import-sheet />
     <livewire:modals.ornament-amazon-two.edit-product-detail />
     <livewire:modals.ornament-amazon-two.psd-mockup-template />
     <livewire:modals.product-design.delete-idea-confirm />

@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Pages\Marketplace;
 
+use App\Models\DataImportUser;
+use App\Models\Product;
 use App\Models\ProductDesignAsset;
 use App\Services\Google\GoogleDriveService;
 use Illuminate\Contracts\View\View;
@@ -42,12 +44,11 @@ class MarketplaceExports extends Component
     ];
 
     private const EXPORT_FIELDS = [
-        'id',
-        'user_id',
-        'product_id',
-        'item_number',
+        'sku',
         'keyword',
         'image_link',
+        'image_sub',
+        'data_item_add',
         'title',
         'description',
         'bullet_point_1',
@@ -73,19 +74,7 @@ class MarketplaceExports extends Component
         'mockup9',
         'mockup10',
         'mockup11',
-        'is_approved',
-        'approved_at',
-        'drive_uploaded_at',
-        'marketplace_listing_status',
-        'marketplace_listing_marketplace',
-        'marketplace_listing_attempts',
-        'marketplace_listing_started_at',
-        'marketplace_listing_completed_at',
         'marketplace_listing_error',
-        'marketplace_exported_at',
-        'marketplace_export_filename',
-        'created_at',
-        'updated_at',
     ];
 
     #[Session(key: 'marketplace-export.status')]
@@ -147,6 +136,23 @@ class MarketplaceExports extends Component
                 ? $selected->reject(fn (string $selectedId): bool => $selectedId === $id)->values()->all()
                 : $selected->push($id)->unique()->values()->all()
         );
+    }
+
+
+    public function openExportToSheet(): void
+    {
+        $selectedIds = $this->selectedIds();
+
+        if ($selectedIds->isEmpty()) {
+            $this->message = 'Hay chon it nhat 1 item de export len sheet.';
+
+            return;
+        }
+
+        $this->dispatch('openModal', component: 'modals.marketplace.export-to-sheet', arguments: [
+            'selectedIds' => $selectedIds->all(),
+            'marketplace' => 'amazon',
+        ]);
     }
 
     public function exportSelected(): ?Response
@@ -238,7 +244,23 @@ class MarketplaceExports extends Component
             'selectedCount' => $selectedIds->count(),
             'allVisibleSelected' => $visibleIds->isNotEmpty() && $visibleIds->diff($selectedIds)->isEmpty(),
             'selectedIds' => $selectedIds->all(),
+            'sheetUrl' => $this->ornamentAmazonTwoSheetUrl(),
         ])->layout('layouts.app');
+    }
+
+
+    private function ornamentAmazonTwoSheetUrl(): ?string
+    {
+        $productId = Product::query()->where('slug', 'ornament-amazon-2')->value('id');
+
+        if (! $productId) {
+            return null;
+        }
+
+        return DataImportUser::query()
+            ->where('user_id', auth()->id())
+            ->where('product_id', $productId)
+            ->value('sheet_url');
     }
 
     private function filteredReadyQuery(): Builder
