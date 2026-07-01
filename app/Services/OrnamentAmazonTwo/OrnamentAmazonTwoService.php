@@ -2801,37 +2801,104 @@ TEXT;
      */
     private function parseWorkflowScriptSections(string $text): array
     {
-        $text = trim(preg_replace('/^```(?:text)?\s*|\s*```$/i', '', trim($text)) ?? $text);
+        $text = $this->normalizeWorkflowScriptText($text);
+        $sections = $this->extractWorkflowScriptSections($text);
 
-        preg_match_all(
-            '/^===SECTION:([A-Z0-9_]+)===\s*(.*?)(?=^===SECTION:[A-Z0-9_]+===|\z)/ms',
-            $text,
-            $matches,
-            PREG_SET_ORDER,
-        );
-
-        if ($matches === []) {
-            throw new RuntimeException('Provider khong tra ve B1 theo format ===SECTION:NAME===. Hay regenerate lai.');
-        }
-
-        $sections = [];
-
-        foreach ($matches as $match) {
-            $key = Str::lower(trim($match[1]));
-            $content = trim($match[2]);
-
-            if ($content !== '') {
-                $sections[$key] = $content;
-            }
+        if ($sections === []) {
+            throw new RuntimeException('Provider khong tra ve B1 theo format section. Hay regenerate lai. Raw preview: '.Str::limit($text, 500));
         }
 
         foreach (['audience', 'style', 'main', 'usp', 'before_after', 'comparison', 'features', 'details', 'custom_guide'] as $required) {
             if (! isset($sections[$required]) || trim($sections[$required]) === '') {
-                throw new RuntimeException('Provider thieu B1 section '.$required.'. Hay regenerate lai.');
+                throw new RuntimeException('Provider thieu B1 section '.$required.'. Hay regenerate lai. Raw preview: '.Str::limit($text, 500));
             }
         }
 
         return $sections;
+    }
+
+    private function normalizeWorkflowScriptText(string $text): string
+    {
+        $text = trim($text);
+        $text = preg_replace('/^```(?:json|text)?\s*|\s*```$/i', '', $text) ?? $text;
+        $text = trim($text);
+
+        if (str_starts_with($text, '{')) {
+            try {
+                $payload = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+                $script = data_get($payload, 'script.content')
+                    ?? data_get($payload, 'script')
+                    ?? data_get($payload, 'b1')
+                    ?? data_get($payload, 'content');
+
+                if (is_string($script) && trim($script) !== '') {
+                    return trim($script);
+                }
+            } catch (JsonException) {
+                // Keep original text and let the section parser/reporting handle it.
+            }
+        }
+
+        return $text;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function extractWorkflowScriptSections(string $text): array
+    {
+        $patterns = [
+            '/^\s*={3}\s*(?:SECTION\s*:\s*)?([A-Z0-9_ -]+)\s*={3}\s*(.*?)(?=^\s*={3}\s*(?:SECTION\s*:\s*)?[A-Z0-9_ -]+\s*={3}\s*|\z)/ims',
+            '/^\s*(?:SECTION\s*:\s*)?([A-Z][A-Z0-9_ -]{2,})\s*:\s*\R(.*?)(?=^\s*(?:SECTION\s*:\s*)?[A-Z][A-Z0-9_ -]{2,}\s*:\s*\R|\z)/ms',
+        ];
+
+        foreach ($patterns as $pattern) {
+            preg_match_all($pattern, $text, $matches, PREG_SET_ORDER);
+
+            if ($matches === []) {
+                continue;
+            }
+
+            $sections = [];
+
+            foreach ($matches as $match) {
+                $key = $this->normalizeWorkflowSectionKey((string) $match[1]);
+                $content = trim((string) $match[2]);
+
+                if ($key !== '' && $content !== '') {
+                    $sections[$key] = $content;
+                }
+            }
+
+            if ($sections !== []) {
+                return $sections;
+            }
+        }
+
+        return [];
+    }
+
+    private function normalizeWorkflowSectionKey(string $key): string
+    {
+        $normalized = Str::of($key)
+            ->lower()
+            ->ascii()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->toString();
+
+        return match ($normalized) {
+            'audience', 'target_audience' => 'audience',
+            'style', 'visual_style', 'art_style' => 'style',
+            'main', 'main_image', 'hero', 'hero_image' => 'main',
+            'usp', 'unique_selling_point', 'unique_selling_points' => 'usp',
+            'before_after', 'before_and_after' => 'before_after',
+            'comparison', 'compare' => 'comparison',
+            'features', 'feature', 'benefits', 'features_benefits' => 'features',
+            'details', 'product_details', 'detail' => 'details',
+            'custom_guide', 'guide', 'customization_guide', 'personalization_guide' => 'custom_guide',
+            default => $normalized,
+        };
     }
 
     /**
@@ -3203,7 +3270,7 @@ PROMPT
 You are an Amazon listing image strategist and consumer psychologist.
 
 Based on the competitor product info below, generate a STRUCTURED analysis.
-Use EXACTLY this format: each section starts with ===SECTION:NAME=== on its own line.
+Return ONLY plain text, no JSON and no markdown. Use EXACTLY this format: each section starts with ===SECTION:NAME=== on its own line. Do not rename, skip, wrap, or translate section headers.
 
 {REVIEW_INSIGHTS}
 
