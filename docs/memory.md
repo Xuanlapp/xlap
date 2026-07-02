@@ -31,6 +31,13 @@
 
 ---
 
+## 🖼️ Image Import & PSD Render Notes
+
+- Sticker/Ornament PSD renderer khong duoc truyen truc tiep Google Drive share URL vao Node renderer.
+- Renderer PHP phai doi link remote sang preview/downloadable image URL truoc, sau do download ve `storage/app/tmp/psd-renderer/`.
+- File tam phai luu dung extension anh that (`.jpg`, `.png`, `.webp`, `.gif`) thay vi `.img`, neu khong `@napi-rs/canvas` co the bao `Unsupported image type`.
+- Neu VPS van loi voi Google Drive, kiem tra `Content-Type` thuc te tra ve co phai `image/*` hay dang la HTML/login page.
+
 ## 🎯 Key Business Rules
 
 ### Invoice Management
@@ -413,4 +420,5 @@ ormalizeKeyword(). Keywords from import/product titles are accepted as-is if non
 - Supported columns: `Source Image` (optional), `Create Master` (required), `Mockup 1`..`Mockup 6` (optional), `Keyword` (optional).
 - `Keyword` is required in Sticker import and must be provided in the spreadsheet.
 - Import persists `redesign` directly from `Create Master` and maps `Mockup 1..6` into `mockup1..mockup6`.
-- If Source Image is empty, Sticker import stores Create Master into both image_link and edesign.
+- If Source Image is empty, Sticker import stores Create Master into both image_link and 
+edesign.

@@ -231,6 +231,10 @@ app/Services/Ornament/PsdMockupTemplateService.php
 app/Services/Ornament/PsdMockupRenderer.php
 app/Services/User/UserAccessService.php
 app/Services/Image/ImageLinkPreviewService.php
+app/Services/Sticker/PsdMockupRenderer.php
+app/Services/OrnamentAmazon/PsdMockupRenderer.php
+app/Services/OrnamentAmazonTwo/PsdMockupRenderer.php
+app/Services/OrnamentEtsy/PsdMockupRenderer.php
 app/Services/Vertex/VertexImageGenerator.php
 app/Support/ProductRegistry.php
 app/Http/Middleware/EnsureUserHasProductAccess.php

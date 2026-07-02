@@ -3,6 +3,7 @@
 namespace App\Services\OrnamentAmazonTwo;
 
 use App\Models\PsdMockupTemplate;
+use App\Services\Image\ImageLinkPreviewService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -110,7 +111,16 @@ class PsdMockupRenderer
         }
 
         if (filter_var($imageUri, FILTER_VALIDATE_URL)) {
-            return $this->downloadRemoteImageToTempFile($imageUri);
+            return $this->downloadRemoteImageToTempFile($this->normalizeRenderableImageUrl($imageUri));
+        }
+
+        return $imageUri;
+    }
+
+    private function normalizeRenderableImageUrl(string $imageUri): string
+    {
+        if (str_contains(strtolower($imageUri), 'drive.google.com')) {
+            return app(ImageLinkPreviewService::class)->previewUrl($imageUri) ?: $imageUri;
         }
 
         return $imageUri;
@@ -120,14 +130,9 @@ class PsdMockupRenderer
     {
         $directory = storage_path('app/tmp/psd-renderer');
         File::ensureDirectoryExists($directory);
-        $filePath = $directory.'/'.sha1($imageUri).'.img';
-
-        if (File::exists($filePath) && File::size($filePath) > 0) {
-            return $filePath;
-        }
 
         $response = Http::withHeaders([
-            'Accept' => 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'Accept' => 'image/png,image/jpeg,image/webp,image/*,*/*;q=0.8',
             'User-Agent' => 'Mozilla/5.0 Offorest PSD Renderer',
         ])->timeout(30)->retry(1, 500)->get($imageUri);
 
@@ -135,13 +140,51 @@ class PsdMockupRenderer
             throw new RuntimeException('Khong tai duoc master_image tu URL: '.$imageUri);
         }
 
+        $contentType = strtolower(trim(explode(';', (string) $response->header('Content-Type', ''))[0]));
+        if (! str_starts_with($contentType, 'image/')) {
+            throw new RuntimeException('URL khong tra ve image hop le: '.$imageUri.' ('.$contentType.')');
+        }
+
         $body = $response->body();
         if ($body === '') {
             throw new RuntimeException('Master_image rong sau khi download: '.$imageUri);
         }
 
+        $filePath = $directory.'/'.sha1($imageUri).$this->extensionFromImageResponse($contentType, $body);
         File::put($filePath, $body);
 
         return $filePath;
+    }
+
+    private function extensionFromImageResponse(string $contentType, string $body): string
+    {
+        return match ($contentType) {
+            'image/jpeg', 'image/jpg' => '.jpg',
+            'image/png' => '.png',
+            'image/webp' => '.webp',
+            'image/gif' => '.gif',
+            default => $this->extensionFromImageBytes($body),
+        };
+    }
+
+    private function extensionFromImageBytes(string $body): string
+    {
+        if (str_starts_with($body, "\x89PNG\r\n\x1a\n")) {
+            return '.png';
+        }
+
+        if (str_starts_with($body, "\xff\xd8\xff")) {
+            return '.jpg';
+        }
+
+        if (str_starts_with($body, 'RIFF') && substr($body, 8, 4) === 'WEBP') {
+            return '.webp';
+        }
+
+        if (str_starts_with($body, 'GIF87a') || str_starts_with($body, 'GIF89a')) {
+            return '.gif';
+        }
+
+        throw new RuntimeException('Unsupported image type tu URL master_image. Hay dung JPG/PNG/WebP hop le.');
     }
 }
