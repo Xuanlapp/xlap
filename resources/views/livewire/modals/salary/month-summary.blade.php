@@ -32,14 +32,14 @@
                         @foreach ($rows as $index => $row)
                             <tr wire:key="month-summary-row-{{ $salaryMonth }}-{{ $row['employee_id'] }}-{{ $index }}">
                                 <td class="px-2 py-2 font-semibold text-slate-900">{{ $row['employee_name'] }}</td>
-                                <td class="px-2 py-2"><input type="text" inputmode="decimal" wire:model.live.debounce.300ms="rows.{{ $index }}.performance_score" class="w-28 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
-                                <td class="px-2 py-2"><input type="text" inputmode="numeric" wire:model.live.debounce.300ms="rows.{{ $index }}.late_minutes" class="w-20 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
-                                <td class="px-2 py-2"><input type="text" inputmode="numeric" wire:model.live.debounce.300ms="rows.{{ $index }}.leave_days" class="w-20 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
-                                <td class="px-2 py-2"><input type="text" inputmode="numeric" wire:model.live.debounce.300ms="rows.{{ $index }}.allowed_leave_days" class="w-20 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
+                                <td class="px-2 py-2"><input type="text" inputmode="decimal" wire:model.blur="rows.{{ $index }}.performance_score" class="w-28 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
+                                <td class="px-2 py-2"><input type="text" inputmode="numeric" wire:model.blur="rows.{{ $index }}.late_minutes" class="w-20 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
+                                <td class="px-2 py-2"><input type="text" inputmode="numeric" wire:model.blur="rows.{{ $index }}.leave_days" class="w-20 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
+                                <td class="px-2 py-2"><input type="text" inputmode="numeric" wire:model.blur="rows.{{ $index }}.allowed_leave_days" class="w-20 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
                                 <td class="px-2 py-2"><input type="text" inputmode="numeric" value="{{ $row['daily_bonus'] }}" wire:model.blur="rows.{{ $index }}.daily_bonus" oninput="this.value = this.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')" class="w-28 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
                                 <td class="px-2 py-2"><input type="text" inputmode="numeric" value="{{ $row['supplement'] }}" wire:model.blur="rows.{{ $index }}.supplement" oninput="this.value = this.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')" class="w-28 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
                                 <td class="px-2 py-2"><input type="text" inputmode="numeric" value="{{ $row['other_money'] }}" wire:model.blur="rows.{{ $index }}.other_money" oninput="this.value = this.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')" class="w-28 rounded-md border border-slate-200 px-2 py-1 text-right"></td>
-                                <td class="px-2 py-2"><textarea wire:model.live.debounce.300ms="rows.{{ $index }}.note" class="min-w-[300px] rounded-md border border-slate-200 px-2 py-1 text-[11px]"></textarea></td>
+                                <td class="px-2 py-2"><textarea wire:model.blur="rows.{{ $index }}.note" class="min-w-[300px] rounded-md border border-slate-200 px-2 py-1 text-[11px]"></textarea></td>
                                 <td class="px-2 py-2 text-right tabular-nums font-semibold">{{ number_format((float) $row['total_salary'], 0, ',', '.') }}</td>
                                 <td class="px-2 py-2 text-right tabular-nums font-bold text-emerald-600">{{ number_format((float) $row['net_received'], 0, ',', '.') }}</td>
                             </tr>

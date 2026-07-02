@@ -14,12 +14,12 @@
             <div class="space-y-4 px-5 py-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-700">Tên nhân viên *</label>
-                    <input type="text" wire:model.live.debounce.300ms="employeeName" class="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                    <input type="text" wire:model.blur="employeeName" class="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
                     @error('employeeName') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-700">Lương cơ bản *</label>
-                    <input type="text" inputmode="numeric" wire:model.live.debounce.300ms="baseSalary" oninput="this.value = this.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')" class="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                    <input type="text" inputmode="numeric" wire:model.blur="baseSalary" oninput="this.value = this.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')" class="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
                     @error('baseSalary') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
