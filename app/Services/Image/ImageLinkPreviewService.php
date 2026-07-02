@@ -7,6 +7,43 @@ use Illuminate\Support\Facades\URL;
 
 class ImageLinkPreviewService
 {
+    public function renderableUrl(?string $url): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        $url = trim($url);
+
+        if (str_starts_with($url, '/storage/')) {
+            return $url;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        $path = parse_url($url, PHP_URL_PATH) ?: '';
+
+        if (! is_string($host)) {
+            return $url;
+        }
+
+        $host = strtolower($host);
+        $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+        if (is_string($appHost) && $host === strtolower($appHost) && str_starts_with($path, '/storage/')) {
+            return $path;
+        }
+
+        if (str_contains($host, 'drive.google.com')) {
+            return $this->googleDrivePreviewUrl($url) ?? $url;
+        }
+
+        if (str_contains($host, 'dropbox.com')) {
+            return $this->dropboxPreviewUrl($url);
+        }
+
+        return $url;
+    }
+
     public function previewUrl(?string $url): ?string
     {
         if (! $url) {

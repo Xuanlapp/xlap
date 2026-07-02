@@ -36,7 +36,8 @@
 - Sticker/Ornament PSD renderer khong duoc truyen truc tiep Google Drive share URL vao Node renderer.
 - Renderer PHP phai doi link remote sang preview/downloadable image URL truoc, sau do download ve `storage/app/tmp/psd-renderer/`.
 - File tam phai luu dung extension anh that (`.jpg`, `.png`, `.webp`, `.gif`) thay vi `.img`, neu khong `@napi-rs/canvas` co the bao `Unsupported image type`.
-- Neu VPS van loi voi Google Drive, kiem tra `Content-Type` thuc te tra ve co phai `image/*` hay dang la HTML/login page.
+- Renderer thu tai public thumbnail truoc; neu Drive thumbnail khong tra `image/*`, fallback sang `GoogleDriveService::downloadImageFile()` bang Drive API/service account.
+- Neu VPS van loi voi Google Drive, kiem tra file co phai anh that va service account/OAuth co quyen doc file Drive do.
 
 ## 🎯 Key Business Rules
 

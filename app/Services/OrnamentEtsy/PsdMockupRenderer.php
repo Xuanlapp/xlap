@@ -3,6 +3,7 @@
 namespace App\Services\OrnamentEtsy;
 
 use App\Models\PsdMockupTemplate;
+use App\Services\Google\GoogleDriveService;
 use App\Services\Image\ImageLinkPreviewService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -116,7 +117,7 @@ class PsdMockupRenderer
     private function normalizeRenderableImageUrl(string $imageUri): string
     {
         if (str_contains(strtolower($imageUri), 'drive.google.com')) {
-            return app(ImageLinkPreviewService::class)->previewUrl($imageUri) ?: $imageUri;
+            return app(ImageLinkPreviewService::class)->renderableUrl($imageUri) ?: $imageUri;
         }
 
         return $imageUri;
@@ -132,24 +133,61 @@ class PsdMockupRenderer
             'User-Agent' => 'Mozilla/5.0 Offorest PSD Renderer',
         ])->timeout(30)->retry(1, 500)->get($imageUri);
 
+        if ($response->successful()) {
+            $contentType = strtolower(trim(explode(';', (string) $response->header('Content-Type', ''))[0]));
+            if (str_starts_with($contentType, 'image/')) {
+                $body = $response->body();
+
+                if ($body !== '') {
+                    $filePath = $directory.'/'.sha1($imageUri).$this->extensionFromImageResponse($contentType, $body);
+                    File::put($filePath, $body);
+
+                    return $filePath;
+                }
+            }
+        }
+
+        if ($driveFileId = $this->googleDriveFileId($imageUri)) {
+            $image = app(GoogleDriveService::class)->downloadImageFile($driveFileId);
+            $body = $image['body'];
+            $contentType = strtolower(trim(explode(';', (string) $image['content_type'])[0]));
+
+            if ($body === '') {
+                throw new RuntimeException('Master_image rong sau khi download tu Google Drive API: '.$imageUri);
+            }
+
+            $filePath = $directory.'/'.sha1($imageUri).$this->extensionFromImageResponse($contentType, $body);
+            File::put($filePath, $body);
+
+            return $filePath;
+        }
+
         if (! $response->successful()) {
             throw new RuntimeException('Khong tai duoc master_image tu URL: '.$imageUri);
         }
 
         $contentType = strtolower(trim(explode(';', (string) $response->header('Content-Type', ''))[0]));
-        if (! str_starts_with($contentType, 'image/')) {
-            throw new RuntimeException('URL khong tra ve image hop le: '.$imageUri.' ('.$contentType.')');
+
+        throw new RuntimeException('URL khong tra ve image hop le: '.$imageUri.' ('.$contentType.')');
+    }
+
+    private function googleDriveFileId(string $url): ?string
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        $path = parse_url($url, PHP_URL_PATH) ?: '';
+        $query = parse_url($url, PHP_URL_QUERY) ?: '';
+
+        if (! is_string($host) || ! str_contains(strtolower($host), 'drive.google.com')) {
+            return null;
         }
 
-        $body = $response->body();
-        if ($body === '') {
-            throw new RuntimeException('Master_image rong sau khi download: '.$imageUri);
+        if (preg_match('#/file/d/([^/]+)#', $path, $matches) === 1) {
+            return $matches[1];
         }
 
-        $filePath = $directory.'/'.sha1($imageUri).$this->extensionFromImageResponse($contentType, $body);
-        File::put($filePath, $body);
+        parse_str($query, $params);
 
-        return $filePath;
+        return ! empty($params['id']) && is_string($params['id']) ? $params['id'] : null;
     }
 
     private function extensionFromImageResponse(string $contentType, string $body): string
