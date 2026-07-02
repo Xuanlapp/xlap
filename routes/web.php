@@ -124,6 +124,7 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
         ->name('offorest.drive-uploads');
 
     Route::get('salary/wali', Wali::class)
+        ->middleware('wali')
         ->name('offorest.salary.wali');
 
     Route::get('idea-etsy/extension/download', IdeaEtsyExtensionDownloadController::class)

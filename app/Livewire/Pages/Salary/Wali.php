@@ -8,6 +8,7 @@ use App\Livewire\Modals\Salary\EditEmployeeSalary;
 use App\Livewire\Modals\Salary\MonthSummary;
 use App\Models\DataSalaryZhuzhu;
 use App\Models\DataSalaryZhuzhuEmployee;
+use App\Models\DataSalaryZhuzhuPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -85,9 +86,16 @@ class Wali extends Component
     }
 
     #[On('wali-salary-updated')]
-    public function salaryUpdated(): void
+    public function salaryUpdated(?string $salaryMonth = null): void
     {
-        // Refresh render after modal save.
+        if (! $salaryMonth) {
+            return;
+        }
+
+        $month = CarbonImmutable::createFromFormat('Y-m', $salaryMonth)->startOfMonth();
+
+        $this->selectedYear = (int) $month->year;
+        $this->selectedMonth = (int) $month->month;
     }
 
     public function render(): View
@@ -109,7 +117,7 @@ class Wali extends Component
 
     private function availableMonths(): Collection
     {
-        return DataSalaryZhuzhu::query()
+        return DataSalaryZhuzhuPeriod::query()
             ->where('user_id', auth()->id())
             ->selectRaw('YEAR(salary_month) as year, MONTH(salary_month) as month')
             ->distinct()
@@ -147,13 +155,21 @@ class Wali extends Component
             ->get()
             ->keyBy(fn (DataSalaryZhuzhu $row) => (string) ($row->employee_id ?? $row->id));
 
-        $activeEmployees = DataSalaryZhuzhuEmployee::query()
+        $employees = DataSalaryZhuzhuEmployee::query()
             ->where('user_id', auth()->id())
-            ->where('is_active', true)
             ->orderBy('employee_name')
-            ->get();
+            ->get()
+            ->keyBy(fn (DataSalaryZhuzhuEmployee $employee) => (string) $employee->id);
 
-        foreach ($activeEmployees as $employee) {
+        foreach ($salaryRows as $row) {
+            $employee = $employees->get((string) $row->employee_id);
+
+            if ($employee) {
+                $row->setAttribute('avatar_path', $employee->avatar_path);
+            }
+        }
+
+        foreach ($employees->where('is_active', true) as $employee) {
             if ($salaryRows->has((string) $employee->id)) {
                 continue;
             }
@@ -163,6 +179,7 @@ class Wali extends Component
                 'employee_id' => $employee->id,
                 'employee_name' => $employee->employee_name,
                 'salary_month' => $month->toDateString(),
+                'avatar_path' => $employee->avatar_path,
             ]));
         }
 

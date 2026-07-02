@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureUserHasProductAccess;
+use App\Http\Middleware\EnsureUserHasWaliAccess;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Services\Monitoring\TelegramErrorReporter;
 use Illuminate\Foundation\Application;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
             'product' => EnsureUserHasProductAccess::class,
+            'wali' => EnsureUserHasWaliAccess::class,
         ]);
 
         $csrfExcept = [

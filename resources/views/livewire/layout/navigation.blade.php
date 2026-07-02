@@ -26,9 +26,13 @@ new class extends Component
         $products = $user
             ? $user->products()->where('is_active', true)->orderBy('name')->get()
             : collect();
+        $canAccessWali = (bool) ($user && ((bool) $user->is_admin || (bool) $user->can_access_wali));
+        $isWaliOnly = (bool) ($user && (bool) $user->can_access_wali && ! (bool) $user->is_admin && $products->isEmpty());
 
         return [
             'products' => $products,
+            'canAccessWali' => $canAccessWali,
+            'isWaliOnly' => $isWaliOnly,
             'userInitials' => $user ? mb_strtoupper(mb_substr($user->name, 0, 1)) : '?',
         ];
     }
@@ -274,7 +278,7 @@ new class extends Component
                     </div>
                 </div>
 
-                @if ((auth()->user()->is_admin || auth()->user()->can_access_wali))
+                @if ($canAccessWali)
                 <div class="mt-6">
                     <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Salary</p>
                     <div class="mt-2 space-y-1">
@@ -382,6 +386,7 @@ new class extends Component
                 </div>
 
                 <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                    @if ($pageProducts->isNotEmpty())
                     <div>
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Page</p>
                         <div class="mt-3 space-y-3">
@@ -392,6 +397,7 @@ new class extends Component
                             @endforeach
                         </div>
                     </div>
+                    @endif
                     @if ($ideaProducts->isNotEmpty())
                         <div class="mt-6 border-t border-slate-200 pt-3">
                             <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Idea</p>
@@ -404,7 +410,7 @@ new class extends Component
                             </div>
                         </div>
                     @endif
-                    @if (! (auth()->user()->can_access_wali && ! auth()->user()->is_admin && $products->isEmpty()))
+                    @if (! $isWaliOnly)
                     <div class="mt-6 border-t border-slate-200 pt-3">
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Catalog</p>
                         <div class="mt-3 space-y-3">
@@ -415,7 +421,7 @@ new class extends Component
                         </div>
                     </div>
                     @endif
-                    @if ((auth()->user()->is_admin || auth()->user()->can_access_wali))
+                    @if ($canAccessWali)
                     <div class="mt-6 border-t border-slate-200 pt-3">
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Salary</p>
                         <div class="mt-3 space-y-3">

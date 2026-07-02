@@ -5,6 +5,7 @@ namespace App\Livewire\Modals\Salary;
 use App\Livewire\Pages\Salary\Wali;
 use App\Models\DataSalaryZhuzhu;
 use App\Models\DataSalaryZhuzhuEmployee;
+use App\Models\DataSalaryZhuzhuPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Storage;
@@ -12,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
-use Livewire\TemporaryUploadedFile;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Throwable;
 
 class AddEmployee extends Component
@@ -56,11 +57,12 @@ class AddEmployee extends Component
         try {
             $validated = $this->validate([
                 'employeeName' => ['required', 'string', 'max:255'],
-                'baseSalary' => ['required', 'numeric', 'min:0'],
+                'baseSalary' => ['required', 'string'],
                 'avatar' => ['nullable', 'image', 'max:4096'],
             ], [
                 'employeeName.required' => 'Ten nhan vien la bat buoc.',
                 'baseSalary.required' => 'Luong co ban la bat buoc.',
+                'baseSalary.string' => 'Luong co ban khong hop le.',
                 'avatar.image' => 'Anh nhan vien phai la file hinh.',
                 'avatar.max' => 'Anh nhan vien toi da 4MB.',
             ]);
@@ -70,7 +72,7 @@ class AddEmployee extends Component
             $employee = DataSalaryZhuzhuEmployee::updateOrCreate(
                 ['user_id' => auth()->id(), 'employee_name' => trim($validated['employeeName'])],
                 [
-                    'base_salary' => (float) $validated['baseSalary'],
+                    'base_salary' => $this->parseMoney($validated['baseSalary']),
                     'is_active' => true,
                     'avatar_path' => $avatarPath,
                 ]
@@ -81,6 +83,11 @@ class AddEmployee extends Component
             }
 
             $month = CarbonImmutable::createFromFormat('Y-m', $this->salaryMonth)->startOfMonth();
+
+            DataSalaryZhuzhuPeriod::updateOrCreate([
+                'user_id' => auth()->id(),
+                'salary_month' => $month->toDateString(),
+            ]);
 
             DataSalaryZhuzhu::updateOrCreate(
                 [
@@ -111,6 +118,32 @@ class AddEmployee extends Component
     public function render(): View
     {
         return view('livewire.modals.salary.add-employee');
+    }
+
+    private function parseMoney(mixed $value): float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        $normalized = trim((string) $value);
+        $normalized = str_replace(' ', '', $normalized);
+
+        if (str_contains($normalized, ',') && str_contains($normalized, '.')) {
+            if (strrpos($normalized, ',') > strrpos($normalized, '.')) {
+                $normalized = str_replace('.', '', $normalized);
+                $normalized = str_replace(',', '.', $normalized);
+            } else {
+                $normalized = str_replace(',', '', $normalized);
+            }
+        } elseif (str_contains($normalized, ',')) {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $normalized)) {
+            $normalized = str_replace('.', '', $normalized);
+        }
+
+        return is_numeric($normalized) ? (float) $normalized : 0.0;
     }
 
     private function storeOptimizedAvatar(?TemporaryUploadedFile $file): ?string

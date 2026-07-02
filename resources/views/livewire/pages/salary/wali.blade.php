@@ -1,4 +1,4 @@
-<div class="min-h-[calc(100vh-4rem)] bg-[#f3f4f6] text-slate-950">
+<div x-data="{ previewImage: null, previewName: '' }" class="min-h-[calc(100vh-4rem)] bg-[#f3f4f6] text-slate-950">
     <div class="mx-auto max-w-[1520px] px-4 py-5 sm:px-6 lg:px-8">
         <div class="mb-4 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -13,13 +13,28 @@
                     </div>
                     <div class="min-w-0">
                         <h1 class="text-base font-bold text-slate-950">Wali ZhuZhu</h1>
-                        <p class="mt-0.5 text-xs text-slate-500">Quản lý theo tháng</p>
+                        <p class="mt-0.5 text-xs text-slate-500">Quản lý theo <tháng></tháng></p>
                     </div>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        wire:click="openCreatePeriod"
+                        wire:loading.attr="disabled"
+                        wire:target="openCreatePeriod"
+                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <svg wire:loading wire:target="openCreatePeriod" class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                        </svg>
+                        <span wire:loading.remove wire:target="openCreatePeriod">Tạo kỳ lương</span>
+                        <span wire:loading wire:target="openCreatePeriod">Loading...</span>
+                    </button>
+
                     <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
-                        <span>Nam</span>
+                        <span>Năm</span>
                         <select
                             wire:model.live="selectedYear"
                             class="h-7 rounded-md border-0 bg-slate-100 py-0 pl-2 pr-7 text-xs font-semibold text-slate-700 focus:ring-1 focus:ring-blue-300"
@@ -31,7 +46,7 @@
                     </label>
 
                     <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
-                        <span>Thang</span>
+                        <span>Tháng</span>
                         <select
                             wire:model.live="selectedMonth"
                             class="h-7 rounded-md border-0 bg-slate-100 py-0 pl-2 pr-7 text-xs font-semibold text-slate-700 focus:ring-1 focus:ring-blue-300"
@@ -137,9 +152,21 @@
                             <tr wire:key="salary-row-{{ $selectedYear }}-{{ $selectedMonth }}-{{ $row->employee_id ?? $row->id }}" wire:click="openEmployeeSalary({{ $row->employee_id ?? $row->id }})" class="cursor-pointer hover:bg-slate-50">
                                 <td class="px-2 py-2 align-top">
                                     <div class="flex items-center gap-3">
-                                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-600">
-                                            {{ mb_strtoupper(mb_substr((string) $row->employee_name, 0, 2)) }}
-                                        </div>
+                                        @if ($row->avatar_path)
+                                            <button
+                                                type="button"
+                                                wire:click.stop
+                                                x-on:click.stop="previewImage = '{{ \Illuminate\Support\Facades\Storage::url($row->avatar_path) }}'; previewName = @js($row->employee_name)"
+                                                class="h-8 w-8 overflow-hidden rounded-full border border-slate-200 bg-slate-100 shadow-sm ring-2 ring-white transition hover:scale-105"
+                                                title="Xem anh {{ $row->employee_name }}"
+                                            >
+                                                <img src="{{ \Illuminate\Support\Facades\Storage::url($row->avatar_path) }}" alt="{{ $row->employee_name }}" class="h-full w-full object-cover">
+                                            </button>
+                                        @else
+                                            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-600">
+                                                {{ mb_strtoupper(mb_substr((string) $row->employee_name, 0, 2)) }}
+                                            </div>
+                                        @endif
                                         <div>
                                             <p class="font-semibold text-[10px] text-slate-950">{{ $row->employee_name }}</p>
                                         </div>
@@ -177,6 +204,18 @@
             </div>
         </div>
     </div>
+
+    <div x-show="previewImage" x-cloak x-transition class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4" x-on:keydown.escape.window="previewImage = null">
+        <button type="button" class="absolute inset-0" x-on:click="previewImage = null" aria-label="Dong anh"></button>
+        <div class="relative z-[121] max-h-[92vh] max-w-[92vw] overflow-hidden rounded-xl bg-white p-3 shadow-2xl">
+            <div class="mb-2 flex items-center justify-between gap-3">
+                <p class="text-sm font-bold text-slate-900" x-text="previewName"></p>
+                <button type="button" class="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800" x-on:click="previewImage = null">✕</button>
+            </div>
+            <img x-bind:src="previewImage" x-bind:alt="previewName" class="max-h-[82vh] max-w-[88vw] rounded-lg object-contain">
+        </div>
+    </div>
+    <livewire:modals.salary.create-period />
     <livewire:modals.salary.month-summary />
     <livewire:modals.salary.add-employee />
     <livewire:modals.salary.edit-employee-salary />

@@ -39,7 +39,7 @@ class UserAccessService
     }
 
     /**
-     * @param  array{name: string, username?: string|null, email: string, password: string, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
+     * @param  array{name: string, username?: string|null, email: string, password: string, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, can_access_wali?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
      */
     public function createUser(array $data): User
     {
@@ -57,7 +57,7 @@ class UserAccessService
     /**
      * Update account details and access for a managed user.
      *
-     * @param  array{name: string, username?: string|null, email: string, password?: string|null, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
+     * @param  array{name: string, username?: string|null, email: string, password?: string|null, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, can_access_wali?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
      */
     public function updateUser(User $targetUser, array $data): User
     {
@@ -69,6 +69,7 @@ class UserAccessService
             'is_admin' => (bool) ($data['is_admin'] ?? false),
             'can_generate_amazon_listing' => (bool) ($data['can_generate_amazon_listing'] ?? false),
             'can_generate_etsy_listing' => (bool) ($data['can_generate_etsy_listing'] ?? false),
+            'can_access_wali' => (bool) ($data['can_access_wali'] ?? false),
         ];
 
         if (! empty($data['password'])) {
