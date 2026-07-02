@@ -22,6 +22,8 @@ class ExportToSheet extends Component
     public string $sheetName = '';
     public string $marketplace = 'amazon';
 
+    public ?int $ownerUserId = null;
+
     /** @var array<int, string> */
     public array $selectedAssetIds = [];
 
@@ -83,6 +85,8 @@ class ExportToSheet extends Component
                 return;
             }
 
+            $this->ownerUserId = $this->resolveOwnerUserId();
+
             $config = $this->sheetConfig();
             $this->sheetUrl = (string) ($config?->sheet_url ?? '');
             $this->sheetId = (string) ($config?->sheet_id ?? '');
@@ -131,13 +135,13 @@ class ExportToSheet extends Component
         $header = $rows[0] ?? [];
         $headerIndexes = $this->headerIndexes($header);
 
-        $duplicateIds = collect($this->duplicateRows)->pluck('asset_id')->map(fn ($id): int => (int) $id)->all();
-            $newIds = collect($this->newRows)->pluck('asset_id')->map(fn ($id): int => (int) $id)->all();
-            $duplicateAssets = $this->selectedAssets()->whereIn('id', $duplicateIds)->values();
-            $newAssets = $this->selectedAssets()->whereIn('id', $newIds)->values();
+        $duplicateSkus = collect($this->duplicateRows)->pluck('sku')->filter()->map(fn ($sku): string => strtolower(trim((string) $sku)))->all();
+        $newSkus = collect($this->newRows)->pluck('sku')->filter()->map(fn ($sku): string => strtolower(trim((string) $sku)))->all();
+        $duplicateAssets = $this->selectedAssets()->filter(fn (ProductDesignAsset $asset): bool => in_array(strtolower(trim((string) $asset->sku)), $duplicateSkus, true))->values();
+        $newAssets = $this->selectedAssets()->filter(fn (ProductDesignAsset $asset): bool => in_array(strtolower(trim((string) $asset->sku)), $newSkus, true))->values();
 
         foreach ($duplicateAssets as $asset) {
-            $sheetRow = $this->duplicateRowIndex((string) $asset->id);
+            $sheetRow = $this->duplicateRowIndex((string) $asset->sku);
             if ($sheetRow === null) {
                 continue;
             }
@@ -172,7 +176,7 @@ class ExportToSheet extends Component
     {
         $drive = app(GoogleDriveService::class);
         $spreadsheet = $drive->spreadsheet($this->sheetId);
-        $sheet = data_get($spreadsheet, 'sheets.0.properties.title');
+        $sheet = $this->sheetTitleFromSpreadsheet($spreadsheet, $this->sheetUrl);
 
         if (! is_string($sheet) || trim($sheet) === '') {
             throw new RuntimeException('Google Sheet khong co tab nao.');
@@ -208,6 +212,8 @@ class ExportToSheet extends Component
 
             $row = [
                 'asset_id' => $asset->id,
+                'sku' => strtolower(trim((string) $asset->sku)),
+                'sheet_row' => null,
                 'asset' => $asset,
             ];
 
@@ -218,6 +224,43 @@ class ExportToSheet extends Component
                 $this->newRows[] = $row;
             }
         }
+    }
+
+    /** @param array<string, mixed> $spreadsheet */
+    private function sheetTitleFromSpreadsheet(array $spreadsheet, string $sheetUrl): ?string
+    {
+        $sheets = data_get($spreadsheet, 'sheets', []);
+
+        if (! is_array($sheets) || $sheets === []) {
+            return null;
+        }
+
+        $gid = $this->extractGid($sheetUrl);
+
+        if ($gid !== null) {
+            foreach ($sheets as $sheet) {
+                $sheetId = data_get($sheet, 'properties.sheetId');
+
+                if ((string) $sheetId === $gid) {
+                    $title = data_get($sheet, 'properties.title');
+
+                    return is_string($title) ? $title : null;
+                }
+            }
+        }
+
+        $title = data_get($sheets, '0.properties.title');
+
+        return is_string($title) ? $title : null;
+    }
+
+    private function extractGid(string $url): ?string
+    {
+        if (preg_match('/[#&?]gid=([0-9]+)/', $url, $matches) === 1) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     /** @return Collection<int, ProductDesignAsset> */
@@ -251,14 +294,33 @@ class ExportToSheet extends Component
     {
         $productId = Product::query()->where('slug', 'ornament-amazon-2')->value('id');
 
-        if (! $productId) {
+        if (! $productId || ! $this->ownerUserId) {
             return null;
         }
 
         return DataImportUser::query()
-            ->where('user_id', auth()->id())
+            ->where('user_id', $this->ownerUserId)
             ->where('product_id', $productId)
             ->first();
+    }
+
+    private function resolveOwnerUserId(): int
+    {
+        $userIds = $this->selectedAssets()
+            ->pluck('user_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($userIds->isEmpty()) {
+            throw new RuntimeException('Khong tim thay user so huu cac item duoc chon de export sheet.');
+        }
+
+        if ($userIds->count() > 1) {
+            throw new RuntimeException('Chi duoc Export to Sheet cac item cua cung 1 user trong moi lan.');
+        }
+
+        return (int) $userIds->first();
     }
 
     /** @param array<int, string> $header */
@@ -293,8 +355,15 @@ class ExportToSheet extends Component
     /** @param array<int, string> $header */
     private function buildRow(array $header, array $headerIndexes, ProductDesignAsset $asset, array $existingRow = []): array
     {
+        $itemData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
+
         $record = [
             'sku' => (string) $asset->sku,
+            'image_link' => (string) $asset->image_link,
+            'link_product' => (string) ($asset->getAttribute('source_link') ?: data_get($itemData, 'source_link', '')),
+            'link_main_image' => (string) ($asset->getAttribute('main_image_link') ?: data_get($itemData, 'main_image_link', '')),
+            'product' => (string) ($asset->product?->name ?? data_get($itemData, 'product', '')),
+            'keyword_phrase' => (string) ($asset->getAttribute('keyword_phrase') ?: data_get($itemData, 'keyword_phrase', '')),
             'title' => (string) $asset->title,
             'description' => (string) $asset->description,
             'bullet_point_1' => (string) $asset->bullet_point_1,
@@ -353,10 +422,10 @@ class ExportToSheet extends Component
         return null;
     }
 
-    private function duplicateRowIndex(string $assetId): ?int
+    private function duplicateRowIndex(string $sku): ?int
     {
         foreach ($this->duplicateRows as $row) {
-            if ((string) ($row['asset_id'] ?? '') === $assetId) {
+            if (strtolower(trim((string) ($row['sku'] ?? ''))) === strtolower(trim($sku))) {
                 return (int) ($row['sheet_row'] ?? 0);
             }
         }
@@ -382,6 +451,7 @@ class ExportToSheet extends Component
         $this->sheetId = '';
         $this->sheetName = '';
         $this->marketplace = 'amazon';
+        $this->ownerUserId = null;
         $this->selectedAssetIds = [];
         $this->duplicateRows = [];
         $this->newRows = [];

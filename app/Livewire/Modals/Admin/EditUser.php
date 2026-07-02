@@ -11,7 +11,6 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -39,6 +38,8 @@ class EditUser extends Component
     public bool $can_generate_amazon_listing = false;
 
     public bool $can_generate_etsy_listing = false;
+
+    public bool $can_access_wali = false;
 
     /** @var array<int, int|string> */
     public array $selectedProducts = [];
@@ -98,6 +99,7 @@ class EditUser extends Component
         $this->is_admin = (bool) $user->is_admin;
         $this->can_generate_amazon_listing = (bool) $user->can_generate_amazon_listing;
         $this->can_generate_etsy_listing = (bool) $user->can_generate_etsy_listing;
+        $this->can_access_wali = (bool) $user->can_access_wali;
         $this->selectedProducts = $user->products->pluck('id')->map(fn ($id) => (int) $id)->all();
         $this->selectedAiProviders = $user->aiProviders
             ->where('is_enabled', true)
@@ -137,11 +139,12 @@ class EditUser extends Component
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'alpha_dash', 'max:255', Rule::unique('users', 'username')->ignore($this->userId)],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->userId)],
-            'password' => ['nullable', 'string', Password::min(12)->mixedCase()->numbers()],
+            'password' => ['nullable', 'string', 'min:8'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'is_admin' => ['boolean'],
             'can_generate_amazon_listing' => ['boolean'],
             'can_generate_etsy_listing' => ['boolean'],
+            'can_access_wali' => ['boolean'],
             'selectedProducts' => ['array'],
             'selectedProducts.*' => ['integer', 'exists:products,id'],
             'selectedAiProviders' => ['array'],
@@ -215,6 +218,7 @@ class EditUser extends Component
                 'is_admin' => (bool) ($validated['is_admin'] ?? false),
                 'can_generate_amazon_listing' => (bool) ($validated['can_generate_amazon_listing'] ?? false),
                 'can_generate_etsy_listing' => (bool) ($validated['can_generate_etsy_listing'] ?? false),
+                'can_access_wali' => (bool) ($validated['can_access_wali'] ?? false),
                 'selected_products' => $validated['selectedProducts'] ?? [],
                 'selected_ai_providers' => $validated['selectedAiProviders'] ?? [],
                 'preferred_ai_provider' => $validated['preferredAiProvider'] ?? null,

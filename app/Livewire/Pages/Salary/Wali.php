@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Salary;
 
 use App\Livewire\Modals\Salary\AddEmployee;
+use App\Livewire\Modals\Salary\CreatePeriod;
 use App\Livewire\Modals\Salary\EditEmployeeSalary;
 use App\Livewire\Modals\Salary\MonthSummary;
 use App\Models\DataSalaryZhuzhu;
@@ -49,6 +50,16 @@ class Wali extends Component
     public function updatedSelectedMonth(int $value): void
     {
         $this->selectedMonth = $value;
+    }
+
+    public function openCreatePeriod(): void
+    {
+        $default = CarbonImmutable::now()->subMonth()->startOfMonth();
+
+        $this->dispatch('openModal', component: 'modals.salary.create-period', arguments: [
+            'year' => (string) $default->year,
+            'month' => str_pad((string) $default->month, 2, '0', STR_PAD_LEFT),
+        ])->to(CreatePeriod::class);
     }
 
     public function openMonthSummary(): void

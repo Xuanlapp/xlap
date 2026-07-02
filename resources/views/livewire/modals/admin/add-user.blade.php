@@ -163,10 +163,15 @@
                                     <input wire:model="can_generate_etsy_listing" type="checkbox" class="rounded border-slate-300 text-cyan-600">
                                     <span>Etsy listing metadata</span>
                                 </label>
+                                <label class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm shadow-sm">
+                                    <input wire:model="can_access_wali" type="checkbox" class="rounded border-slate-300 text-cyan-600">
+                                    <span>Wali</span>
+                                </label>
                             </div>
                             @error('status') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                             @error('can_generate_amazon_listing') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                             @error('can_generate_etsy_listing') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                            @error('can_access_wali') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                         </section>
 
                         <section class="rounded-xl border border-slate-200 bg-slate-50 p-4">

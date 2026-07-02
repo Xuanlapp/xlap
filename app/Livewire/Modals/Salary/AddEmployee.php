@@ -7,15 +7,23 @@ use App\Models\DataSalaryZhuzhu;
 use App\Models\DataSalaryZhuzhuEmployee;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\WithFileUploads;
+use Livewire\TemporaryUploadedFile;
+use Throwable;
 
 class AddEmployee extends Component
 {
+    use WithFileUploads;
+
     public bool $isOpen = false;
     public string $employeeName = '';
     public string $baseSalary = '';
     public string $salaryMonth = '';
+    public TemporaryUploadedFile|null $avatar = null;
 
     #[On('openModal')]
     public function openModal(string $component, array $arguments = []): void
@@ -33,51 +41,129 @@ class AddEmployee extends Component
         $this->salaryMonth = preg_match('/^\d{4}-\d{2}$/', $salaryMonth) ? $salaryMonth : now()->format('Y-m');
         $this->employeeName = '';
         $this->baseSalary = '';
+        $this->avatar = null;
         $this->isOpen = true;
     }
 
     public function close(): void
     {
         $this->resetValidation();
-        $this->reset(['isOpen', 'employeeName', 'baseSalary', 'salaryMonth']);
+        $this->reset(['isOpen', 'employeeName', 'baseSalary', 'salaryMonth', 'avatar']);
     }
 
     public function save(): void
     {
-        $validated = $this->validate([
-            'employeeName' => ['required', 'string', 'max:255'],
-            'baseSalary' => ['required', 'numeric', 'min:0'],
-        ]);
+        try {
+            $validated = $this->validate([
+                'employeeName' => ['required', 'string', 'max:255'],
+                'baseSalary' => ['required', 'numeric', 'min:0'],
+                'avatar' => ['nullable', 'image', 'max:4096'],
+            ], [
+                'employeeName.required' => 'Ten nhan vien la bat buoc.',
+                'baseSalary.required' => 'Luong co ban la bat buoc.',
+                'avatar.image' => 'Anh nhan vien phai la file hinh.',
+                'avatar.max' => 'Anh nhan vien toi da 4MB.',
+            ]);
 
-        $employee = DataSalaryZhuzhuEmployee::updateOrCreate(
-            ['user_id' => auth()->id(), 'employee_name' => trim($validated['employeeName'])],
-            ['base_salary' => (float) $validated['baseSalary'], 'is_active' => true]
-        );
+            $avatarPath = $this->storeOptimizedAvatar($this->avatar);
 
-        $month = CarbonImmutable::createFromFormat('Y-m', $this->salaryMonth)->startOfMonth();
+            $employee = DataSalaryZhuzhuEmployee::updateOrCreate(
+                ['user_id' => auth()->id(), 'employee_name' => trim($validated['employeeName'])],
+                [
+                    'base_salary' => (float) $validated['baseSalary'],
+                    'is_active' => true,
+                    'avatar_path' => $avatarPath,
+                ]
+            );
 
-        DataSalaryZhuzhu::updateOrCreate(
-            [
-                'user_id' => auth()->id(),
-                'employee_id' => $employee->id,
-                'salary_month' => $month->toDateString(),
-            ],
-            [
-                'user_id' => auth()->id(),
-                'employee_id' => $employee->id,
-                'employee_name' => $employee->employee_name,
-                'salary_month' => $month->toDateString(),
-                'base_salary' => (float) $employee->base_salary,
-            ]
-        );
+            if ($avatarPath === null && $employee->avatar_path === null && $this->avatar !== null) {
+                $this->dispatch('toast', type: 'warning', title: 'Canh bao', message: 'Khong toi uu duoc anh, vui long thu file khac.');
+            }
 
-        $this->dispatch('toast', type: 'success', title: 'Da them!', message: 'Da tao nhan vien moi thanh cong.');
-        $this->dispatch('wali-salary-updated')->to(Wali::class);
-        $this->close();
+            $month = CarbonImmutable::createFromFormat('Y-m', $this->salaryMonth)->startOfMonth();
+
+            DataSalaryZhuzhu::updateOrCreate(
+                [
+                    'user_id' => auth()->id(),
+                    'employee_id' => $employee->id,
+                    'salary_month' => $month->toDateString(),
+                ],
+                [
+                    'user_id' => auth()->id(),
+                    'employee_id' => $employee->id,
+                    'employee_name' => $employee->employee_name,
+                    'salary_month' => $month->toDateString(),
+                    'base_salary' => (float) $employee->base_salary,
+                ]
+            );
+
+            $this->dispatch('toast', type: 'success', title: 'Da them!', message: 'Da tao nhan vien moi thanh cong.');
+            $this->dispatch('wali-salary-updated')->to(Wali::class);
+            $this->close();
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->dispatch('toast', type: 'error', title: 'Loi', message: 'Khong the them nhan vien. Vui long thu lai.');
+        }
     }
 
     public function render(): View
     {
         return view('livewire.modals.salary.add-employee');
+    }
+
+    private function storeOptimizedAvatar(?TemporaryUploadedFile $file): ?string
+    {
+        if (! $file) {
+            return null;
+        }
+
+        $source = $file->getRealPath();
+        if (! $source) {
+            return null;
+        }
+
+        $imageInfo = @getimagesize($source);
+        if (! $imageInfo) {
+            return null;
+        }
+
+        [$width, $height, $imageType] = $imageInfo;
+
+        $image = match ($imageType) {
+            IMAGETYPE_JPEG => @imagecreatefromjpeg($source),
+            IMAGETYPE_PNG => @imagecreatefrompng($source),
+            IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($source) : null,
+            default => null,
+        };
+
+        if (! $image) {
+            $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+            return $file->storeAs('salary-employees', uniqid('avatar_', true).'.'.$extension, 'public');
+        }
+
+        $maxDimension = 1200;
+        $ratio = min($maxDimension / max($width, 1), $maxDimension / max($height, 1), 1);
+        $targetWidth = max((int) round($width * $ratio), 1);
+        $targetHeight = max((int) round($height * $ratio), 1);
+
+        $canvas = imagecreatetruecolor($targetWidth, $targetHeight);
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefill($canvas, 0, 0, $white);
+        imagecopyresampled($canvas, $image, 0, 0, 0, 0, $targetWidth, $targetHeight, $width, $height);
+
+        $relativePath = 'salary-employees/'.uniqid('avatar_', true).'.jpg';
+        $fullPath = Storage::disk('public')->path($relativePath);
+        $dir = dirname($fullPath);
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        imagejpeg($canvas, $fullPath, 78);
+        imagedestroy($canvas);
+        imagedestroy($image);
+
+        return $relativePath;
     }
 }

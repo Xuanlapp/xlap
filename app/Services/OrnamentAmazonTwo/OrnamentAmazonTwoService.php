@@ -595,6 +595,7 @@ class OrnamentAmazonTwoService
             providerKey: $providerKey,
             prompt: $this->workflowScriptPrompt($asset),
             model: $textModel,
+            json: false,
         );
         $script = $this->parseWorkflowScriptSections($rawScript);
 

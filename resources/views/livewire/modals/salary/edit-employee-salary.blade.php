@@ -8,7 +8,7 @@
                     <h3 class="text-base font-bold text-slate-950">Edit nhan vien {{ $row['employee_name'] ?? '' }} - {{ $monthLabel }}</h3>
                     <p class="mt-1 text-xs text-slate-500">Cap nhat thong tin luong chi tiet cho tung nhan vien.</p>
                 </div>
-                <button type="button" wire:click="close" class="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">✕</button>
+                <button type="button" wire:click="close" class="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">âœ•</button>
             </div>
 
             <div class="overflow-auto px-5 py-4">

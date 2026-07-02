@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -40,6 +39,8 @@ class AddUser extends Component
     public bool $can_generate_amazon_listing = false;
 
     public bool $can_generate_etsy_listing = false;
+
+    public bool $can_access_wali = false;
 
     /** @var array<int, int|string> */
     public array $selectedProducts = [];
@@ -93,11 +94,12 @@ class AddUser extends Component
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'alpha_dash', 'max:255', 'unique:users,username'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', Password::min(12)->mixedCase()->numbers()],
+            'password' => ['required', 'string', 'min:8'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'is_admin' => ['boolean'],
             'can_generate_amazon_listing' => ['boolean'],
             'can_generate_etsy_listing' => ['boolean'],
+            'can_access_wali' => ['boolean'],
             'selectedProducts' => ['array'],
             'selectedProducts.*' => ['integer', 'exists:products,id'],
             'selectedAiProviders' => ['array'],
@@ -150,6 +152,7 @@ class AddUser extends Component
                 'is_admin' => (bool) ($validated['is_admin'] ?? false),
                 'can_generate_amazon_listing' => (bool) ($validated['can_generate_amazon_listing'] ?? false),
                 'can_generate_etsy_listing' => (bool) ($validated['can_generate_etsy_listing'] ?? false),
+                'can_access_wali' => (bool) ($validated['can_access_wali'] ?? false),
                 'selected_products' => $validated['selectedProducts'] ?? [],
                 'selected_ai_providers' => $validated['selectedAiProviders'] ?? [],
                 'preferred_ai_provider' => $validated['preferredAiProvider'] ?? null,
@@ -206,6 +209,7 @@ class AddUser extends Component
             'is_admin',
             'can_generate_amazon_listing',
             'can_generate_etsy_listing',
+            'can_access_wali',
             'selectedProducts',
             'selectedAiProviders',
             'preferredAiProvider',

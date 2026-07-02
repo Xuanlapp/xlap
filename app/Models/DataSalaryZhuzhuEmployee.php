@@ -12,6 +12,7 @@ class DataSalaryZhuzhuEmployee extends Model
     protected $fillable = [
         'user_id',
         'employee_name',
+        'avatar_path',
         'base_salary',
         'allowed_leave_days',
         'is_active',

@@ -148,6 +148,7 @@ class ApiKeyImageGenerator
         string $providerKey,
         string $prompt,
         ?string $model = null,
+        bool $json = true,
     ): string {
         $providerKey = $this->normalizeProviderKey($providerKey);
         $endpoint = $this->textEndpoint($providerKey);
@@ -158,22 +159,27 @@ class ApiKeyImageGenerator
 
         $credential = $this->credentialFor($user, $providerKey);
 
+        $messages = [];
+
+        if ($json) {
+            $messages[] = [
+                'role' => 'system',
+                'content' => 'Return only valid JSON. Do not include markdown, explanations, code fences, or text outside the JSON object.',
+            ];
+        }
+
+        $messages[] = [
+            'role' => 'user',
+            'content' => $prompt,
+        ];
+
         $payload = [
             'model' => $this->textModel($providerKey, $model),
-            'messages' => [
-                [
-                    'role' => 'system',
-                    'content' => 'Return only valid JSON. Do not include markdown, explanations, code fences, or text outside the JSON object.',
-                ],
-                [
-                    'role' => 'user',
-                    'content' => $prompt,
-                ],
-            ],
+            'messages' => $messages,
             'temperature' => 0.4,
         ];
 
-        if ($providerKey === 'v98store') {
+        if ($json && $providerKey === 'v98store') {
             $payload['response_format'] = ['type' => 'json_object'];
         }
 

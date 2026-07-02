@@ -274,6 +274,7 @@ new class extends Component
                     </div>
                 </div>
 
+                @if ((auth()->user()->is_admin || auth()->user()->can_access_wali))
                 <div class="mt-6">
                     <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Salary</p>
                     <div class="mt-2 space-y-1">
@@ -289,6 +290,7 @@ new class extends Component
                         </a>
                     </div>
                 </div>
+                @endif
 
                 @if (auth()->user()->is_admin)
                     <div class="mt-6">
@@ -402,6 +404,7 @@ new class extends Component
                             </div>
                         </div>
                     @endif
+                    @if (! (auth()->user()->can_access_wali && ! auth()->user()->is_admin && $products->isEmpty()))
                     <div class="mt-6 border-t border-slate-200 pt-3">
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Catalog</p>
                         <div class="mt-3 space-y-3">
@@ -411,12 +414,15 @@ new class extends Component
                             <a href="{{ route('offorest.exports') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Export</a>
                         </div>
                     </div>
+                    @endif
+                    @if ((auth()->user()->is_admin || auth()->user()->can_access_wali))
                     <div class="mt-6 border-t border-slate-200 pt-3">
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Salary</p>
                         <div class="mt-3 space-y-3">
                             <a href="{{ route('offorest.salary.wali') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Wali</a>
                         </div>
                     </div>
+                    @endif
                     @if (auth()->user()->is_admin)
                         <div class="mt-6 border-t border-slate-200 pt-3">
                             <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Admin</p>
