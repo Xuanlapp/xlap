@@ -1,0 +1,22 @@
+﻿<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('data_salary_zhuzhu_employees', function (Blueprint $table): void {
+            $table->decimal('base_salary', 15, 2)->default(0)->after('employee_name');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('data_salary_zhuzhu_employees', function (Blueprint $table): void {
+            $table->dropColumn('base_salary');
+        });
+    }
+};

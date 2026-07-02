@@ -2,12 +2,9 @@
 
 namespace App\Support;
 
-use App\Livewire\Pages\Mockup\Index as MockupPage;
 use App\Livewire\Pages\OrnamentAmazon\ListOrnamentAmazon;
 use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
-use App\Livewire\Pages\Poster\Index as PosterPage;
-use App\Livewire\Pages\Redesign\Index as RedesignPage;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\YTrends\Index as YTrendsPage;
 use App\Livewire\Pages\IdeaEtsy\IdeaEtsy as IdeaEtsyPage;
@@ -23,26 +20,6 @@ class ProductRegistry
     public static function all(): array
     {
         return [
-            [
-                'name' => 'Redesign',
-                'slug' => 'redesign',
-                'description' => 'Create redesign outputs from the source image.',
-                'route_name' => 'offorest.products.redesign',
-                'path' => 'redesign',
-                'component' => RedesignPage::class,
-                'sort_order' => 10,
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Mockup',
-                'slug' => 'mockup',
-                'description' => 'Create product mockup images.',
-                'route_name' => 'offorest.products.mockup',
-                'path' => 'mockup',
-                'component' => MockupPage::class,
-                'sort_order' => 20,
-                'is_active' => true,
-            ],
             [
                 'name' => 'Sticker',
                 'slug' => 'sticker',
@@ -81,16 +58,6 @@ class ProductRegistry
                 'path' => 'ornament-amazon-2',
                 'component' => ListOrnamentAmazonTwo::class,
                 'sort_order' => 37,
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Poster',
-                'slug' => 'poster',
-                'description' => 'Create poster-style assets.',
-                'route_name' => 'offorest.products.poster',
-                'path' => 'poster',
-                'component' => PosterPage::class,
-                'sort_order' => 40,
                 'is_active' => true,
             ],
             [

@@ -4,6 +4,7 @@ namespace App\Services\OrnamentEtsy;
 
 use App\Models\PsdMockupTemplate;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use JsonException;
 use RuntimeException;
@@ -104,6 +105,39 @@ class PsdMockupRenderer
             return public_path(ltrim($path, '/'));
         }
 
+        if (filter_var($imageUri, FILTER_VALIDATE_URL)) {
+            return $this->downloadRemoteImageToTempFile($imageUri);
+        }
+
         return $imageUri;
+    }
+
+    private function downloadRemoteImageToTempFile(string $imageUri): string
+    {
+        $directory = storage_path('app/tmp/psd-renderer');
+        File::ensureDirectoryExists($directory);
+        $filePath = $directory.'/'.sha1($imageUri).'.img';
+
+        if (File::exists($filePath) && File::size($filePath) > 0) {
+            return $filePath;
+        }
+
+        $response = Http::withHeaders([
+            'Accept' => 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'User-Agent' => 'Mozilla/5.0 Offorest PSD Renderer',
+        ])->timeout(30)->retry(1, 500)->get($imageUri);
+
+        if (! $response->successful()) {
+            throw new RuntimeException('Khong tai duoc master_image tu URL: '.$imageUri);
+        }
+
+        $body = $response->body();
+        if ($body === '') {
+            throw new RuntimeException('Master_image rong sau khi download: '.$imageUri);
+        }
+
+        File::put($filePath, $body);
+
+        return $filePath;
     }
 }

@@ -16,6 +16,8 @@ use App\Livewire\Pages\Drive\DriveUploads;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
 use App\Livewire\Pages\OrnamentAmazon\AutomationCatalog;
+use App\Livewire\Pages\Salary\Wali;
+use App\Livewire\Modals\Salary\MonthSummary;
 use App\Support\ProductRegistry;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -120,6 +122,9 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
 
     Route::get('drive-uploads', DriveUploads::class)
         ->name('offorest.drive-uploads');
+
+    Route::get('salary/wali', Wali::class)
+        ->name('offorest.salary.wali');
 
     Route::get('idea-etsy/extension/download', IdeaEtsyExtensionDownloadController::class)
         ->middleware('product:idea-etsy')

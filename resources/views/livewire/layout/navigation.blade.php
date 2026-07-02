@@ -274,6 +274,22 @@ new class extends Component
                     </div>
                 </div>
 
+                <div class="mt-6">
+                    <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Salary</p>
+                    <div class="mt-2 space-y-1">
+                        <a href="{{ route('offorest.salary.wali') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.salary.wali') ? $activeClass : $inactiveClass }}">
+                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.salary.wali') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <path d="M4 19V5" />
+                                <path d="M4 19h16" />
+                                <path d="M8 16V10" />
+                                <path d="M12 16V7" />
+                                <path d="M16 16v-4" />
+                            </svg>
+                            <span>Wali</span>
+                        </a>
+                    </div>
+                </div>
+
                 @if (auth()->user()->is_admin)
                     <div class="mt-6">
                         <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Admin</p>
@@ -393,6 +409,12 @@ new class extends Component
                             <a href="{{ route('offorest.ornament-amazon.catalog') }}" x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Ornament Catalog</a>
                             <a href="{{ route('offorest.drive-uploads') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Uploads</a>
                             <a href="{{ route('offorest.exports') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Export</a>
+                        </div>
+                    </div>
+                    <div class="mt-6 border-t border-slate-200 pt-3">
+                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Salary</p>
+                        <div class="mt-3 space-y-3">
+                            <a href="{{ route('offorest.salary.wali') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Wali</a>
                         </div>
                     </div>
                     @if (auth()->user()->is_admin)

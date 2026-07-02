@@ -7,6 +7,14 @@ use Illuminate\Database\Eloquent\Collection;
 
 class ProductRepository
 {
+    /**
+     * @return array<int, string>
+     */
+    private function hiddenAdminProductSlugs(): array
+    {
+        return ['mockup', 'poster', 'redesign'];
+    }
+
     public function findActiveBySlug(string $slug): Product
     {
         return Product::query()
@@ -22,6 +30,7 @@ class ProductRepository
     {
         return Product::query()
             ->where('is_active', true)
+            ->whereNotIn('slug', $this->hiddenAdminProductSlugs())
             ->orderBy('name')
             ->get();
     }

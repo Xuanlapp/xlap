@@ -38,6 +38,8 @@ class ImportSheet extends Component
 
     public int $duplicationRows = 0;
 
+    public int $doneRows = 0;
+
     public int $importedRows = 0;
 
     public bool $showErrors = false;
@@ -107,7 +109,7 @@ class ImportSheet extends Component
         $this->rows = array_values($this->rows);
         $this->readyRows = count($this->rows);
         $this->errorRows = count($this->rowErrors);
-        $this->totalRows = $this->readyRows + $this->errorRows + $this->duplicationRows;
+        $this->totalRows = $this->readyRows + $this->errorRows + $this->duplicationRows + $this->doneRows;
         $this->statusMessage = "Checked {$this->totalRows} rows.";
     }
 
@@ -146,6 +148,7 @@ class ImportSheet extends Component
         $this->readyRows = 0;
         $this->errorRows = 0;
         $this->duplicationRows = 0;
+        $this->doneRows = 0;
         $this->importedRows = 0;
         $this->showErrors = false;
         $this->showRetry = false;
@@ -413,8 +416,16 @@ class ImportSheet extends Component
             $mainImage = trim((string) ($row[$headerIndexes['main_image']] ?? ''));
             $product = trim((string) ($row[$headerIndexes['product']] ?? ''));
             $keywordPhrase = trim((string) ($row[$headerIndexes['keyword_phrase']] ?? ''));
+            $sheetStatus = isset($headerIndexes['status'])
+                ? trim((string) ($row[$headerIndexes['status']] ?? ''))
+                : '';
 
             if ($sku === '' && $productLink === '' && $mainImage === '' && $product === '' && $keywordPhrase === '') {
+                continue;
+            }
+
+            if (Str::lower($sheetStatus) === 'done') {
+                $this->doneRows++;
                 continue;
             }
 
@@ -479,7 +490,7 @@ class ImportSheet extends Component
             ];
         }
 
-        $this->totalRows = count($parsedRows) + count($this->rowErrors) + $this->duplicationRows;
+        $this->totalRows = count($parsedRows) + count($this->rowErrors) + $this->duplicationRows + $this->doneRows;
 
         if ($parsedRows === [] && $this->rowErrors === []) {
             throw new RuntimeException('Khong co SKU moi nao de import.');
@@ -534,6 +545,10 @@ class ImportSheet extends Component
 
             if (in_array($normalized, ['keyword phrase', 'keywordphrase', 'phrase keyword', 'keyword_pharse'], true)) {
                 $indexes['keyword_phrase'] = $index;
+            }
+
+            if (in_array($normalized, ['status', 'trang thai'], true)) {
+                $indexes['status'] = $index;
             }
         }
 
