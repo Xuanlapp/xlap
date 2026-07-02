@@ -174,7 +174,7 @@
                                 </td>
                                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->base_salary, 0, ',', '.') }}</td>
                                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->variable_salary, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->performance_score, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->performance_score, 1, ',', '.') }}</td>
                                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->late_minutes, 0, ',', '.') }}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-right tabular-nums text-rose-600">{{ number_format((float) $row->late_days, 0, ',', '.') }}</td>
                                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->leave_days, 0, ',', '.') }}</td>
@@ -182,7 +182,7 @@
                                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-rose-600">{{ number_format(max(0, (float) $row->leave_days - (float) $row->allowed_leave_days), 0, ',', '.') }}</td>
                                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->standard_work_days, 0, ',', '.') }}</td>
                                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->actual_work_days, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-3 py-4 text-right tabular-nums font-semibold text-blue-600">{{ number_format((float) $row->score, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-right tabular-nums font-semibold text-blue-600">{{ number_format((float) $row->score, 1, ',', '.') }}</td>
                                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->daily_bonus, 0, ',', '.') }}</td>
                                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->supplement, 0, ',', '.') }}</td>
                                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->other_money, 0, ',', '.') }}</td>
