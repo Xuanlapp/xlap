@@ -16,7 +16,6 @@
             ->count();
         $hasAllDbMockups = ($dbMockupCount === 6);
         $scriptReady = !empty($workflow['script']) && is_array($workflow['script'] ?? null);
-
         if (! $currentAutomationStep && ($automationRunning || $automationFailed)) {
             foreach ($automationSteps as $stepKey => $stepLabel) {
                 if (($automationStepData[$stepKey]['status'] ?? null) !== 'done') {
@@ -29,11 +28,11 @@
         $currentAutomationLabel = $currentAutomationStep ? ($automationSteps[$currentAutomationStep] ?? $automation?->workflow_step_label) : ($automation?->workflow_step_label ?: 'Dang chay');
         $scriptGenerating = $automationRunning && $currentAutomationStep === 'script';
         $promptGenerating = $automationRunning && $currentAutomationStep === 'prompt';
-        $workflowLocked = in_array(($automation?->workflow_status ?? null), ['running', 'failed', 'completed'], true);
+        $workflowLocked = in_array(($automation?->workflow_status ?? null), ['running', 'failed', 'completed'], true) || $hasAllDbMockups;
         $canShowAuto = ! $asset->is_approved && $asset->redesign && ! $scriptReady && ! $automationRunning && ! $automationFailed && (($automation?->workflow_status ?? null) !== 'completed');
         $canShowContinue = false;
         $canShowRetry = ! $asset->is_approved && $asset->redesign && $automationFailed && $currentAutomationStep === 'mockup' && $dbMockupCount < 6;
-        $canShowApprove = ! $asset->is_approved && (($automation?->workflow_status ?? null) === 'completed') && $asset->redesign && $hasAllDbMockups;
+        $canShowApprove = ! $asset->is_approved && filled($asset->redesign) && $hasAllDbMockups;
     @endphp
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
