@@ -1591,11 +1591,6 @@ class OrnamentAmazonTwoService
     public function confirmApproval(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
-        $automation = $this->automationForAsset($asset);
-
-        if (($automation?->workflow_status ?? null) !== 'completed') {
-            throw new RuntimeException('Can hoan tat 6/6 Mockup truoc khi duyet.');
-        }
 
         if (! $this->hasAllWorkflowMockupImages($asset)) {
             throw new RuntimeException('Can du 6/6 mockup trong database truoc khi duyet.');

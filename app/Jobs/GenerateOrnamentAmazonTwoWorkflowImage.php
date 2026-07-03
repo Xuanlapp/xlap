@@ -38,6 +38,7 @@ class GenerateOrnamentAmazonTwoWorkflowImage implements ShouldQueue
      */
     public function handle(OrnamentAmazonTwoService $service): void
     {
+
         $service->markWorkflowImageBatchSlotGenerating($this->assetId, $this->slot, $this->attempts());
 
         $user = User::findOrFail($this->userId);

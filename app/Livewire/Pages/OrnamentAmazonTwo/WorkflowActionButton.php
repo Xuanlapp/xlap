@@ -43,8 +43,14 @@ class WorkflowActionButton extends Component
             $asset = $service->assetForUser(auth()->user(), $this->assetId);
             $automation = $service->automationForUser(auth()->user(), $this->assetId);
 
-            if (in_array(($automation?->workflow_status ?? null), ['running', 'failed', 'completed'], true)) {
-                $this->dispatch('toast', type: 'error', title: 'Action blocked!', message: 'Workflow auto da bat dau. Chi duoc Retry 6. Mockup khi workflow dung/lỗi.');
+            if (($automation?->workflow_status ?? null) === 'running') {
+                $this->dispatch('toast', type: 'error', title: 'Action blocked!', message: 'Workflow auto dang chay. Hay doi workflow dung xong roi tao lai.');
+
+                return;
+            }
+
+            if (($automation?->workflow_status ?? null) === 'failed' && $this->action !== 'person') {
+                $this->dispatch('toast', type: 'error', title: 'Action blocked!', message: 'Workflow dang loi. Chi duoc Retry/Continue hoac tao lai Person rieng neu can.');
 
                 return;
             }
@@ -80,7 +86,14 @@ class WorkflowActionButton extends Component
 
     private function isRunningStep(): bool
     {
-        return $this->runningStep !== null && $this->runningStep === $this->action;
+        if ($this->runningStep === null) {
+            return false;
+        }
+
+        return match ($this->action) {
+            'person' => $this->runningStep === 'person_'.strtolower((string) $this->person),
+            default => $this->runningStep === $this->action,
+        };
     }
 
     private function generateMainImage(): void

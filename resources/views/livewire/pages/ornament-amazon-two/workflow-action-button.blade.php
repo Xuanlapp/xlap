@@ -43,15 +43,16 @@
         x-bind:disabled="running || runningFromWorker || @js((bool) $disabled)"
         wire:click="run"
         wire:loading.attr="disabled"
+        wire:target="run"
         class="{{ $buttonClass }}"
         title="{{ $buttonTitle }}"
     >
-        <span x-show="! running && ! runningFromWorker" wire:loading.remove>{{ $label }}</span>
+        <span x-show="! running && ! runningFromWorker" wire:loading.remove wire:target="run">{{ $label }}</span>
         <span x-cloak x-show="running || runningFromWorker" class="inline-flex items-center gap-1.5">
             <span class="h-3 w-3 animate-spin rounded-full border-2 border-current/25 border-t-current"></span>
             <span>{{ $loadingLabel }}</span>
         </span>
-        <span wire:loading class="inline-flex items-center gap-1.5">
+        <span wire:loading wire:target="run" class="inline-flex items-center gap-1.5">
             <span class="h-3 w-3 animate-spin rounded-full border-2 border-current/25 border-t-current"></span>
             <span>{{ $loadingLabel }}</span>
         </span>
