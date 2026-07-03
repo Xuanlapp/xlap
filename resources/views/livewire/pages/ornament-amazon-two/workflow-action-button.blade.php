@@ -1,6 +1,7 @@
 <div
     x-data="{
         running: false,
+        runningFromWorker: @js((bool) $isRunningStep),
         assetId: @js($assetId),
         action: @js($action),
         person: @js($person),
@@ -39,14 +40,21 @@
                 }));
             }
         "
-        x-bind:disabled="running || @js((bool) $disabled)"
+        x-bind:disabled="running || runningFromWorker || @js((bool) $disabled)"
         wire:click="run"
         wire:loading.attr="disabled"
         class="{{ $buttonClass }}"
         title="{{ $buttonTitle }}"
     >
-        <span wire:loading.remove>{{ $label }}</span>
-        <span wire:loading>{{ $loadingLabel }}</span>
+        <span x-show="! running && ! runningFromWorker" wire:loading.remove>{{ $label }}</span>
+        <span x-cloak x-show="running || runningFromWorker" class="inline-flex items-center gap-1.5">
+            <span class="h-3 w-3 animate-spin rounded-full border-2 border-current/25 border-t-current"></span>
+            <span>{{ $loadingLabel }}</span>
+        </span>
+        <span wire:loading class="inline-flex items-center gap-1.5">
+            <span class="h-3 w-3 animate-spin rounded-full border-2 border-current/25 border-t-current"></span>
+            <span>{{ $loadingLabel }}</span>
+        </span>
     </button>
 </div>
 

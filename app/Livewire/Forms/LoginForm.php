@@ -50,7 +50,7 @@ class LoginForm extends Form
             app(LoginSecurity::class)->recordFailedAttempt($this->login);
 
             throw ValidationException::withMessages([
-                'form.password' => trans('auth.failed'),
+                'form.password' => 'Sai tài khoản hoặc mật khẩu.',
             ]);
         }
 

@@ -38,6 +38,7 @@ class UserAccessService
         return $this->users->allWithActiveProductsOrderedByName();
     }
 
+
     /**
      * @param  array{name: string, username?: string|null, email: string, password: string, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, can_access_wali?: bool, selectedProducts?: array<int, int|string>, selectedAiProviders?: array<int, string>, preferredAiProvider?: string|null}  $data
      */
@@ -50,6 +51,7 @@ class UserAccessService
             providerKeys: $data['selectedAiProviders'] ?? [],
             preferredProviderKey: $data['preferredAiProvider'] ?? null,
         );
+
 
         return $user->refresh();
     }
@@ -90,6 +92,7 @@ class UserAccessService
             providerKeys: $data['selectedAiProviders'] ?? [],
             preferredProviderKey: $data['preferredAiProvider'] ?? null,
         );
+
 
         return $targetUser->refresh();
     }

@@ -43,7 +43,7 @@
                 wire:model.live.debounce.400ms="search"
                 type="text"
                 class="mt-1 w-full rounded-md border-slate-300 bg-white text-slate-950"
-                placeholder="Keyword, title{{ auth()->user()->is_admin ? ', user email' : '' }}..."
+                placeholder="Keyword, title{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? ', user email' : '' }}..."
             >
         </div>
 
@@ -65,7 +65,7 @@
                     <thead class="bg-slate-50 text-left text-slate-500">
                         <tr>
                             <th class="px-4 py-3 font-medium">Item</th>
-                            @if (auth()->user()->is_admin)
+                            @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                                 <th class="px-4 py-3 font-medium">User</th>
                             @endif
                             <th class="px-4 py-3 font-medium">Marketplace</th>
@@ -93,7 +93,7 @@
                                     <p class="font-semibold text-slate-950">#{{ $asset->id }} - {{ $asset->keyword }}</p>
                                     <p class="mt-1 text-xs text-slate-400">{{ $asset->product?->name }} | approved {{ optional($asset->approved_at)->format('Y-m-d H:i') }}</p>
                                 </td>
-                                @if (auth()->user()->is_admin)
+                                @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                                     <td class="px-4 py-4 align-top">
                                         <p class="font-medium text-slate-700">{{ $asset->user?->name }}</p>
                                         <p class="mt-1 text-xs text-slate-400">{{ $asset->user?->email }}</p>
@@ -145,7 +145,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ auth()->user()->is_admin ? 6 : 5 }}" class="px-4 py-10 text-center text-slate-400">
+                                <td colspan="{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? 6 : 5 }}" class="px-4 py-10 text-center text-slate-400">
                                     Chua co listing metadata nao trong filter nay.
                                 </td>
                             </tr>

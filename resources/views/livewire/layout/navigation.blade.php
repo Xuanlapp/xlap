@@ -24,10 +24,12 @@ new class extends Component
     {
         $user = auth()->user();
         $products = $user
-            ? $user->products()->where('is_active', true)->orderBy('name')->get()
+            ? ($user->isManager()
+                ? \App\Models\Product::query()->where('is_active', true)->orderBy('name')->get()
+                : $user->products()->where('is_active', true)->orderBy('name')->get())
             : collect();
-        $canAccessWali = (bool) ($user && ((bool) $user->is_admin || (bool) $user->can_access_wali));
-        $isWaliOnly = (bool) ($user && (bool) $user->can_access_wali && ! (bool) $user->is_admin && $products->isEmpty());
+        $canAccessWali = (bool) ($user && ((bool) $user->can_access_wali));
+        $isWaliOnly = (bool) ($user && (bool) $user->can_access_wali && ! ((bool) $user->is_admin || $user->role === 'admin') && $products->isEmpty());
 
         return [
             'products' => $products,
@@ -43,7 +45,7 @@ new class extends Component
     $activeClass = 'bg-blue-600 text-white shadow-lg shadow-blue-600/18';
     $inactiveClass = 'text-slate-600 hover:bg-slate-100 hover:text-slate-950';
     $iconClass = 'h-5 w-5 shrink-0';
-    $pageProducts = $products->whereIn('slug', ['ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker']);
+    $pageProducts = $products->whereIn('slug', ['ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'proxy']);
     $ideaProducts = $products->whereIn('slug', ['ytrends', 'idea-etsy', 'idea-amazon']);
     $avatarPalettes = [
         'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600',
@@ -119,7 +121,7 @@ new class extends Component
                 </div>
                 <div class="mt-3 flex items-center gap-2">
                     <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Active</span>
-                    @if (auth()->user()->is_admin)
+                    @if (auth()->user()->role === 'admin' || auth()->user()->is_admin)
                         <span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-bold text-blue-700">Admin</span>
                     @endif
                 </div>
@@ -296,7 +298,7 @@ new class extends Component
                 </div>
                 @endif
 
-                @if (auth()->user()->is_admin)
+                @if (auth()->user()->role === 'admin' || auth()->user()->is_admin)
                     <div class="mt-6">
                         <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Admin</p>
                         <div class="mt-2 space-y-1">
@@ -429,7 +431,7 @@ new class extends Component
                         </div>
                     </div>
                     @endif
-                    @if (auth()->user()->is_admin)
+                    @if (auth()->user()->role === 'admin' || auth()->user()->is_admin)
                         <div class="mt-6 border-t border-slate-200 pt-3">
                             <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Admin</p>
                             <div class="mt-3 space-y-3">

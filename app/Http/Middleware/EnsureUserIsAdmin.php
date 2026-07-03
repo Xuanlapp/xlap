@@ -13,7 +13,9 @@ class EnsureUserIsAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        abort_unless((bool) $request->user()?->is_admin, 403);
+        $user = $request->user();
+
+        abort_unless($user && ((bool) $user->is_admin || $user->role === 'admin'), 403);
 
         return $next($request);
     }

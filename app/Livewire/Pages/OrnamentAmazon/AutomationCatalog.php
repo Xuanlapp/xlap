@@ -57,7 +57,7 @@ class AutomationCatalog extends Component
     {
         return DataOrnamentAmazon::query()
             ->with(['asset:id,item_number,keyword,user_id,product_id,is_approved', 'user:id,name,email'])
-            ->when(! auth()->user()->is_admin, fn (Builder $query) => $query->where('user_id', auth()->id()))
+            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()))
             ->when($this->normalizedSearch() !== null, function (Builder $query): void {
                 $search = $this->normalizedSearch();
 
@@ -67,7 +67,7 @@ class AutomationCatalog extends Component
                         ->orWhere('status', 'like', '%'.$this->escapeLike($search).'%')
                         ->orWhereHas('asset', fn (Builder $query) => $query->where('keyword', 'like', '%'.$this->escapeLike($search).'%'));
 
-                    if (auth()->user()->is_admin) {
+                    if (auth()->user()->is_admin || auth()->user()->isManager()) {
                         $query->orWhereHas('user', function (Builder $query) use ($search): void {
                             $query
                                 ->where('name', 'like', '%'.$this->escapeLike($search).'%')
@@ -95,7 +95,7 @@ class AutomationCatalog extends Component
      */
     private function statusCounts(): array
     {
-        $query = DataOrnamentAmazon::query()->when(! auth()->user()->is_admin, fn (Builder $query) => $query->where('user_id', auth()->id()));
+        $query = DataOrnamentAmazon::query()->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()));
 
         return [
             'all' => (clone $query)->count(),

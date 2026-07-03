@@ -33,6 +33,8 @@ class EditUser extends Component
 
     public string $status = 'active';
 
+    public string $role = 'user';
+
     public bool $is_admin = false;
 
     public bool $can_generate_amazon_listing = false;
@@ -96,6 +98,7 @@ class EditUser extends Component
         $this->email = $user->email;
         $this->password = '';
         $this->status = $user->status ?: 'active';
+        $this->role = $user->role ?: ((bool) $user->is_admin ? 'admin' : 'user');
         $this->is_admin = (bool) $user->is_admin;
         $this->can_generate_amazon_listing = (bool) $user->can_generate_amazon_listing;
         $this->can_generate_etsy_listing = (bool) $user->can_generate_etsy_listing;
@@ -141,6 +144,7 @@ class EditUser extends Component
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->userId)],
             'password' => ['nullable', 'string', 'min:8'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'role' => ['required', Rule::in(['user', 'manager', 'admin'])],
             'is_admin' => ['boolean'],
             'can_generate_amazon_listing' => ['boolean'],
             'can_generate_etsy_listing' => ['boolean'],
@@ -215,7 +219,8 @@ class EditUser extends Component
                 'email' => $validated['email'],
                 'username' => $validated['username'],
                 'status' => $validated['status'],
-                'is_admin' => (bool) ($validated['is_admin'] ?? false),
+                'role' => $validated['role'],
+                'is_admin' => (bool) ($validated['is_admin'] ?? false) || $validated['role'] === 'admin',
                 'can_generate_amazon_listing' => (bool) ($validated['can_generate_amazon_listing'] ?? false),
                 'can_generate_etsy_listing' => (bool) ($validated['can_generate_etsy_listing'] ?? false),
                 'can_access_wali' => (bool) ($validated['can_access_wali'] ?? false),

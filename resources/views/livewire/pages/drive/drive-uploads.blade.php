@@ -43,7 +43,7 @@
                 wire:model.live.debounce.400ms="search"
                 type="text"
                 class="mt-1 w-full rounded-md border-slate-300 bg-white text-slate-950"
-                placeholder="Asset id, keyword{{ auth()->user()->is_admin ? ', user email' : '' }}..."
+                placeholder="Asset id, keyword{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? ', user email' : '' }}..."
             >
         </div>
 
@@ -65,7 +65,7 @@
                     <thead class="bg-slate-50 text-left text-slate-500">
                         <tr>
                             <th class="px-4 py-3 font-medium">ID</th>
-                            @if (auth()->user()->is_admin)
+                            @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                                 <th class="px-4 py-3 font-medium">User</th>
                             @endif
                             <th class="px-4 py-3 font-medium">File info</th>
@@ -91,7 +91,7 @@
                                     <p class="font-semibold text-slate-950">#{{ $upload->product_design_asset_id }}</p>
                                     <p class="mt-1 text-xs text-slate-400">{{ $upload->product?->name }} | {{ $upload->asset?->keyword }}</p>
                                 </td>
-                                @if (auth()->user()->is_admin)
+                                @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                                     <td class="px-4 py-4 align-top">
                                         <p class="font-medium text-slate-700">{{ $upload->user?->name }}</p>
                                         <p class="mt-1 text-xs text-slate-400">{{ $upload->user?->email }}</p>
@@ -159,7 +159,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ auth()->user()->is_admin ? 6 : 5 }}" class="px-4 py-10 text-center text-slate-400">
+                                <td colspan="{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? 6 : 5 }}" class="px-4 py-10 text-center text-slate-400">
                                     Chua co upload Drive nao trong filter nay.
                                 </td>
                             </tr>

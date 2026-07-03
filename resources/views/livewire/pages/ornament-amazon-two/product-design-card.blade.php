@@ -27,8 +27,11 @@
         }
 
         $currentAutomationLabel = $currentAutomationStep ? ($automationSteps[$currentAutomationStep] ?? $automation?->workflow_step_label) : ($automation?->workflow_step_label ?: 'Dang chay');
+        $scriptGenerating = $automationRunning && $currentAutomationStep === 'script';
+        $promptGenerating = $automationRunning && $currentAutomationStep === 'prompt';
+        $workflowLocked = in_array(($automation?->workflow_status ?? null), ['running', 'failed', 'completed'], true);
         $canShowAuto = ! $asset->is_approved && $asset->redesign && ! $scriptReady && ! $automationRunning && ! $automationFailed && (($automation?->workflow_status ?? null) !== 'completed');
-        $canShowContinue = ! $asset->is_approved && $asset->redesign && $automationFailed && in_array($currentAutomationStep, ['person_a', 'person_b', 'prompt'], true);
+        $canShowContinue = false;
         $canShowRetry = ! $asset->is_approved && $asset->redesign && $automationFailed && $currentAutomationStep === 'mockup' && $dbMockupCount < 6;
         $canShowApprove = ! $asset->is_approved && (($automation?->workflow_status ?? null) === 'completed') && $asset->redesign && $hasAllDbMockups;
     @endphp
@@ -262,9 +265,13 @@
             ->filter(fn (array $tab): bool => trim($tab['content']) !== '');
         $hasWorkflowScript = $topScriptTabs->isNotEmpty();
         $hasPersonRefs = filled($personARef) && filled($personBRef);
-        $promptCreateDisabledReason = ! $hasWorkflowScript
-            ? 'Can tao 3. Script truoc.'
-            : (! $hasPersonRefs ? 'Can tao du 4. Person A/B truoc.' : null);
+        $promptCreateDisabledReason = $automationRunning
+            ? 'Workflow auto dang chay.'
+            : ($automationFailed
+                ? 'Workflow dang loi. Chi duoc Retry 6. Mockup.'
+                : (! $hasWorkflowScript
+                    ? 'Can tao 3. Script truoc.'
+                    : (! $hasPersonRefs ? 'Can tao du 4. Person A/B truoc.' : null)));
     @endphp
 
     <div class="grid gap-5 lg:grid-cols-3">
@@ -324,7 +331,8 @@
                                 action="main"
                                 :provider-key="$providerKey"
                                 :image-model="$imageModel"
-                                :disabled="$automationRunning"
+                                :running-step="$automationRunning ? $currentAutomationStep : null"
+                                :disabled="$workflowLocked"
                                 :key="'ornament-amazon-two-main-action-'.$asset->id.'-'.$providerKey.'-'.$imageModel"
                             />
                         @endif
@@ -360,13 +368,22 @@
                         action="script"
                         :provider-key="$providerKey"
                         :text-model="$textModel"
-                        :disabled="$automationRunning"
+                        :running-step="$automationRunning ? $currentAutomationStep : null"
+                        :disabled="$workflowLocked"
                         :key="'ornament-amazon-two-script-action-'.$asset->id.'-'.$providerKey.'-'.$textModel"
                     />
                 @endif
             </div>
 
             <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-violet-100 bg-white shadow-sm ring-1 ring-violet-950/[0.03]">
+                @if ($scriptGenerating)
+                    <div class="absolute inset-0 z-20 flex items-center justify-center bg-white/92 backdrop-blur-sm">
+                        <div class="flex flex-col items-center gap-2 text-center text-violet-700">
+                            <span class="h-9 w-9 animate-spin rounded-full border-4 border-violet-200 border-t-violet-700"></span>
+                            <span class="text-xs font-bold text-slate-700">Writing script...</span>
+                        </div>
+                    </div>
+                @endif
                 <div class="h-full w-full">
                     @if ($topScriptTabs->isNotEmpty())
                         <div
@@ -435,9 +452,9 @@
                         @endphp
 
                         <div
-                            x-data="{
-                                showUrl: false,
-                                personGenerating: false,
+                                x-data="{
+                                    showUrl: false,
+                                personGenerating: @js($automationRunning && $currentAutomationStep === ('person_'.$personKey)),
                                 startedHandler: null,
                                 finishedHandler: null,
                                 assetId: @js($asset->id),
@@ -468,7 +485,7 @@
                                     }
                                 },
                                 async generatePerson() {
-                                    if (this.personGenerating || @js(! $hasWorkflowScript || $asset->is_approved)) {
+                                    if (this.personGenerating || @js(! $hasWorkflowScript || $asset->is_approved || $automationRunning || $automationFailed)) {
                                         return;
                                     }
 
@@ -618,12 +635,15 @@
                                             <button
                                                 type="button"
                                                 x-on:click="generatePerson()"
-                                                x-bind:disabled="personGenerating || @js(! $hasWorkflowScript || $asset->is_approved)"
+                                                x-bind:disabled="personGenerating || @js(! $hasWorkflowScript || $asset->is_approved || $automationRunning || $automationFailed)"
                                                 class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                                                 title="{{ $hasWorkflowScript ? 'Generate '.$personLabel.' prompt' : 'Can tao 3. Script truoc.' }}"
                                             >
                                                 <span x-show="! personGenerating">Prompt</span>
-                                                <span x-cloak x-show="personGenerating">...</span>
+                                                <span x-cloak x-show="personGenerating" class="inline-flex items-center gap-1.5">
+                                                    <span class="h-3 w-3 animate-spin rounded-full border-2 border-current/25 border-t-current"></span>
+                                                    <span>...</span>
+                                                </span>
                                             </button>
                                         @endif
 
@@ -696,7 +716,7 @@
         </div>
 
         <div
-            x-data="{ promptCreating: false }"
+            x-data="{ promptCreating: @js($promptGenerating) }"
             x-on:ornament-amazon-two-generation-finished.window="promptCreating = false"
             class="min-w-0 {{ $promptCreateDisabledReason ? 'opacity-55' : '' }}"
         >
@@ -832,11 +852,13 @@
                     $key => is_string($workflow['prompts'][$key] ?? null) ? trim($workflow['prompts'][$key]) : '',
                 ])
                 ->all();
-            $generateDisabledReason = $asset->is_approved
-                ? 'Item da duyet.'
-                : (! $asset->redesign
-                    ? 'Can tao anh Create Master truoc.'
-                    : ($mockupB5PromptSlots === [] ? 'Can tao B4 prompt truoc.' : null));
+            $generateDisabledReason = $automationRunning
+                ? 'Workflow auto dang chay.'
+                : ($asset->is_approved
+                    ? 'Item da duyet.'
+                    : (! $asset->redesign
+                        ? 'Can tao anh Create Master truoc.'
+                        : ($mockupB5PromptSlots === [] ? 'Can tao B4 prompt truoc.' : null)));
             $mockupCreateDisabled = (bool) $generateDisabledReason;
             $mockupBatch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
             $mockupBatchStates = is_array($mockupBatch['slot_states'] ?? null) ? $mockupBatch['slot_states'] : [];

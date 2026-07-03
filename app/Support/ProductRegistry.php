@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Livewire\Pages\OrnamentAmazon\ListOrnamentAmazon;
 use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
+use App\Livewire\Pages\Proxy\Index as ProxyPage;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\YTrends\Index as YTrendsPage;
 use App\Livewire\Pages\IdeaEtsy\IdeaEtsy as IdeaEtsyPage;
@@ -58,6 +59,16 @@ class ProductRegistry
                 'path' => 'ornament-amazon-2',
                 'component' => ListOrnamentAmazonTwo::class,
                 'sort_order' => 37,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Proxy',
+                'slug' => 'proxy',
+                'description' => 'Monitor proxy sources and changes.',
+                'route_name' => 'offorest.products.proxy',
+                'path' => 'proxy',
+                'component' => ProxyPage::class,
+                'sort_order' => 45,
                 'is_active' => true,
             ],
             [

@@ -12,7 +12,7 @@ class EnsureUserHasWaliAccess
     {
         $user = $request->user();
 
-        abort_unless($user && ((bool) $user->is_admin || (bool) $user->can_access_wali), 403);
+        abort_unless($user && ((bool) $user->can_access_wali || $user->role === 'admin'), 403);
 
         return $next($request);
     }

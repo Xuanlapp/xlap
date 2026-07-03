@@ -77,7 +77,7 @@ class ListingMetadataStatus extends Component
         return ProductDesignAsset::query()
             ->with(['user:id,name,email,can_generate_amazon_listing,can_generate_etsy_listing', 'product:id,name,slug'])
             ->where('is_approved', true)
-            ->when(! auth()->user()->is_admin, fn (Builder $query) => $query->where('user_id', auth()->id()))
+            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()))
             ->when($this->normalizedSearch() !== null, function (Builder $query): void {
                 $search = $this->normalizedSearch();
 
@@ -86,7 +86,7 @@ class ListingMetadataStatus extends Component
                         ->where('keyword', 'like', '%'.$this->escapeLike($search).'%')
                         ->orWhere('title', 'like', '%'.$this->escapeLike($search).'%');
 
-                    if (auth()->user()->is_admin) {
+                    if (auth()->user()->is_admin || auth()->user()->isManager()) {
                         $query->orWhereHas('user', function (Builder $query) use ($search): void {
                             $query
                                 ->where('email', 'like', '%'.$this->escapeLike($search).'%')
@@ -126,7 +126,7 @@ class ListingMetadataStatus extends Component
     {
         $query = ProductDesignAsset::query()
             ->where('is_approved', true)
-            ->when(! auth()->user()->is_admin, fn (Builder $query) => $query->where('user_id', auth()->id()));
+            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()));
 
         return [
             'all' => (clone $query)->count(),

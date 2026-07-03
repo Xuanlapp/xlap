@@ -155,6 +155,22 @@
                                     <input wire:model="is_admin" type="checkbox" class="rounded border-slate-300 text-cyan-600">
                                     <span>Cho phep vao Admin</span>
                                 </label>
+                                <div class="rounded-lg bg-white px-3 py-2 shadow-sm">
+                                    <label class="text-xs font-semibold text-slate-500">Role</label>
+                                    <select wire:model="role" class="mt-1 h-9 w-full rounded-md border-slate-200 text-sm text-slate-950">
+                                        <option value="user">User</option>
+                                        <option value="manager">Manager</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                <div class="rounded-lg bg-white px-3 py-2 shadow-sm">
+                                    <label class="text-xs font-semibold text-slate-500">Role</label>
+                                    <select wire:model="role" class="mt-1 h-9 w-full rounded-md border-slate-200 text-sm text-slate-950">
+                                        <option value="user">User</option>
+                                        <option value="manager">Manager</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
                                 <label class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm shadow-sm">
                                     <input wire:model="can_generate_amazon_listing" type="checkbox" class="rounded border-slate-300 text-cyan-600">
                                     <span>Amazon listing metadata</span>
@@ -213,7 +229,8 @@
                             @error('selectedProducts') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                             @error('selectedProducts.*') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                         </section>
-                    </div>
+
+                                            </div>
                 </div>
 
                 <div class="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">

@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'username', 'email', 'password', 'avatar_path', 'status', 'is_admin', 'can_generate_amazon_listing', 'can_generate_etsy_listing', 'can_access_wali'])]
+#[Fillable(['name', 'username', 'email', 'password', 'avatar_path', 'status', 'role', 'is_admin', 'can_generate_amazon_listing', 'can_generate_etsy_listing', 'can_access_wali'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -32,11 +32,17 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => 'string',
             'is_admin' => 'boolean',
             'can_generate_amazon_listing' => 'boolean',
             'can_generate_etsy_listing' => 'boolean',
             'can_access_wali' => 'boolean',
         ];
+    }
+
+    public function isManager(): bool
+    {
+        return $this->role === 'manager';
     }
 
     /**
@@ -48,10 +54,25 @@ class User extends Authenticatable
     }
 
     /**
+     * Proxy sources this user can view.
+     */
+    public function dataHubProxies(): BelongsToMany
+    {
+        return $this->belongsToMany(DataHubProxy::class, 'data_hub_proxy_user')->withTimestamps();
+    }
+
+    /**
      * Determine whether the user can access a product page.
      */
     public function canAccessProduct(string $slug): bool
     {
+        if ($this->isManager()) {
+            return Product::query()
+                ->where('slug', $slug)
+                ->where('is_active', true)
+                ->exists();
+        }
+
         return $this->products()
             ->where('slug', $slug)
             ->where('is_active', true)

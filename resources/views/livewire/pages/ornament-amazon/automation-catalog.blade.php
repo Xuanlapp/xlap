@@ -1,4 +1,4 @@
-﻿<section class="space-y-6">
+<section class="space-y-6">
     <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -74,7 +74,7 @@
                         <tr>
                             <th class="px-4 py-3 font-semibold">ID</th>
                             <th class="px-4 py-3 font-semibold">Item</th>
-                            @if (auth()->user()->is_admin)
+                            @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                                 <th class="px-4 py-3 font-semibold">User</th>
                             @endif
                             @foreach ($stepColumns as $label)
@@ -99,7 +99,7 @@
                                     <p class="max-w-md font-medium text-slate-950">{{ $asset?->keyword ?: '-' }}</p>
                                     <p class="mt-1 text-xs text-slate-400">Approved: {{ $asset?->is_approved ? 'yes' : 'no' }}</p>
                                 </td>
-                                @if (auth()->user()->is_admin)
+                                @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                                     <td class="px-4 py-4 align-top">
                                         <p class="font-medium text-slate-700">{{ $row->user?->name }}</p>
                                         <p class="mt-1 text-xs text-slate-400">{{ $row->user?->email }}</p>
@@ -142,7 +142,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ auth()->user()->is_admin ? 10 : 9 }}" class="px-4 py-10 text-center text-slate-400">
+                                <td colspan="{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? 10 : 9 }}" class="px-4 py-10 text-center text-slate-400">
                                     Chua co automation log nao trong filter nay.
                                 </td>
                             </tr>

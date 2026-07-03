@@ -12,7 +12,7 @@ class LoginSecurity
 {
     private const MAX_ACCOUNT_ATTEMPTS = 5;
 
-    private const MAX_IP_ATTEMPTS = 20;
+    private const MAX_IP_ATTEMPTS = 10;
 
     private const DECAY_SECONDS = 60;
 
@@ -40,7 +40,7 @@ class LoginSecurity
             ]);
 
             throw ValidationException::withMessages([
-                $errorKey => trans('auth.failed'),
+                $errorKey => 'Sai tài khoản hoặc mật khẩu.',
             ]);
         }
 
@@ -49,7 +49,7 @@ class LoginSecurity
             RateLimiter::hit($this->accountKey($login), self::DECAY_SECONDS);
 
             throw ValidationException::withMessages([
-                $errorKey => 'Vui lòng hoàn tất xác minh bảo mật.',
+                $errorKey => 'Vui lòng tích xác minh bảo mật Cloudflare.',
             ]);
         }
 
@@ -125,11 +125,9 @@ class LoginSecurity
     private function throttleMessage(string $key): string
     {
         $seconds = RateLimiter::availableIn($key);
+        $minutes = max(1, (int) ceil($seconds / 60));
 
-        return trans('auth.throttle', [
-            'seconds' => $seconds,
-            'minutes' => ceil($seconds / 60),
-        ]);
+        return "Bạn đăng nhập sai quá nhiều lần nên IP/tài khoản tạm bị khóa. Vui lòng thử lại sau {$minutes} phút.";
     }
 
     private function decaySecondsFor(int $attempts): int

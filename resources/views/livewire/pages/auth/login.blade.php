@@ -57,18 +57,17 @@ new #[Layout('layouts.guest')] class extends Component
 
             <x-auth-session-status class="mt-5" :status="session('status')" />
 
-            <form class="mt-6 space-y-4" method="POST" action="{{ route('login', absolute: false) }}">
-                @csrf
+            <form class="mt-6 space-y-4" wire:submit.prevent="login">
                 <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden" wire:model="form.website">
                 <input type="hidden" name="started_at" value="{{ $form->startedAt }}" wire:model="form.startedAt">
 
                 @php
-                    $authFailedMessage = trans('auth.failed');
+                    $authFailedMessage = 'Sai tài khoản hoặc mật khẩu.';
                     $loginMessages = collect($errors->get('form.login'));
                     $credentialMessages = collect($errors->get('form.password'))
                         ->merge($loginMessages->filter(fn ($message) => $message === $authFailedMessage));
                     $turnstileMessages = collect($errors->get('form.turnstileToken'))
-                        ->merge($loginMessages->filter(fn ($message) => str_contains($message, 'xac minh') || str_contains($message, 'xÃƒÂ¡c minh') || str_contains($message, 'security')));
+                        ->merge($loginMessages->filter(fn ($message) => str_contains($message, 'xác minh') || str_contains($message, 'Cloudflare') || str_contains($message, 'security')));
                     $visibleLoginMessages = $loginMessages->reject(fn ($message) => $message === $authFailedMessage || $turnstileMessages->contains($message));
                 @endphp
 
@@ -82,6 +81,8 @@ new #[Layout('layouts.guest')] class extends Component
                         </span>
                         <input
                             wire:model="form.login"
+                            wire:loading.attr="disabled"
+                            wire:target="login"
                             id="login"
                             type="text"
                             name="login"
@@ -104,6 +105,8 @@ new #[Layout('layouts.guest')] class extends Component
                         </span>
                         <input
                             wire:model="form.password"
+                            wire:loading.attr="disabled"
+                            wire:target="login"
                             id="password"
                             type="password"
                             name="password"
@@ -144,6 +147,8 @@ new #[Layout('layouts.guest')] class extends Component
                     <label for="remember" class="inline-flex items-center gap-2 text-sm text-slate-600">
                         <input
                             wire:model="form.remember"
+                            wire:loading.attr="disabled"
+                            wire:target="login"
                             id="remember"
                             type="checkbox"
                             class="h-4 w-4 rounded border-slate-300 text-sky-500 focus:ring-sky-400"

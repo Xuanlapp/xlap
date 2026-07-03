@@ -34,6 +34,8 @@ class AddUser extends Component
 
     public string $status = 'active';
 
+    public string $role = 'user';
+
     public bool $is_admin = false;
 
     public bool $can_generate_amazon_listing = false;
@@ -96,6 +98,7 @@ class AddUser extends Component
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'role' => ['required', Rule::in(['user', 'manager', 'admin'])],
             'is_admin' => ['boolean'],
             'can_generate_amazon_listing' => ['boolean'],
             'can_generate_etsy_listing' => ['boolean'],

@@ -143,6 +143,10 @@ class MarketplaceExports extends Component
     {
         $selectedIds = $this->selectedIds();
 
+        if (auth()->user()->isManager()) {
+            $selectedIds = $this->exportableQuery()->whereKey($selectedIds->all())->pluck('id');
+        }
+
         if ($selectedIds->isEmpty()) {
             $this->message = 'Hay chon it nhat 1 item de export len sheet.';
 
@@ -159,7 +163,7 @@ class MarketplaceExports extends Component
     {
         $selectedIds = $this->selectedIds();
 
-        $assets = $this->readyQuery()
+        $assets = $this->exportableQuery()
             ->whereKey($selectedIds->all())
             ->orderBy('id')
             ->get();
@@ -273,6 +277,22 @@ class MarketplaceExports extends Component
             );
     }
 
+    private function filteredExportableQuery(): Builder
+    {
+        return $this->exportableQuery()
+            ->when(
+                $this->status === 'exported',
+                fn (Builder $query) => $query->whereNotNull('marketplace_exported_at'),
+                fn (Builder $query) => $query->whereNull('marketplace_exported_at'),
+            );
+    }
+
+    private function exportableQuery(): Builder
+    {
+        return $this->readyQuery()
+            ->when(auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()));
+    }
+
     private function readyQuery(): Builder
     {
         return ProductDesignAsset::query()
@@ -299,7 +319,7 @@ class MarketplaceExports extends Component
                     $query->orWhere($field, 'like', 'https://drive.google.com/%');
                 }
             })
-            ->when(! auth()->user()->is_admin, fn (Builder $query) => $query->where('user_id', auth()->id()))
+            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()))
             ->when($this->marketplace !== 'all', fn (Builder $query) => $this->applyMarketplaceFilter($query, $this->marketplace))
             ->when($this->normalizedSearch() !== null, function (Builder $query): void {
                 $search = $this->normalizedSearch();
@@ -310,7 +330,7 @@ class MarketplaceExports extends Component
                         ->orWhere('title', 'like', '%'.$this->escapeLike($search).'%')
                         ->orWhere('id', ctype_digit($search) ? (int) $search : -1);
 
-                    if (auth()->user()->is_admin) {
+                    if (auth()->user()->is_admin || auth()->user()->isManager()) {
                         $query->orWhereHas('user', function (Builder $query) use ($search): void {
                             $query
                                 ->where('name', 'like', '%'.$this->escapeLike($search).'%')
@@ -404,7 +424,7 @@ class MarketplaceExports extends Component
      */
     private function visibleIds(): Collection
     {
-        return $this->filteredReadyQuery()
+        return $this->filteredExportableQuery()
             ->latest('marketplace_exported_at')
             ->latest('approved_at')
             ->latest('id')

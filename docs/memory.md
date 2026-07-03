@@ -423,3 +423,11 @@ ormalizeKeyword(). Keywords from import/product titles are accepted as-is if non
 - Import persists `redesign` directly from `Create Master` and maps `Mockup 1..6` into `mockup1..mockup6`.
 - If Source Image is empty, Sticker import stores Create Master into both image_link and 
 edesign.
+
+## Proxy Data Hub
+
+- Proxy page is registered as product slug `proxy` in `app/Support/ProductRegistry.php`, so access follows the existing `products` / `product_user` permission flow like Sticker and Ornament Amazon 2.
+- Proxy source records live in `data_hub_proxy`; per-user proxy visibility lives in `data_hub_proxy_user`; check history lives in `data_hub_proxy_snapshots`.
+- Default source is `http://offorest.ddns.net:16869/proxy_list` and is seeded by migration `2026_07_03_090000_add_proxy_product_and_data_hub_proxy_tables.php`.
+- Scheduled refresh runs via `offorest:refresh-proxy-data`; interval defaults to 5 minutes and can be changed with `OFFOREST_PROXY_REFRESH_EVERY_MINUTES`.
+- Admin user add/edit modals expose both product access and proxy-specific access.

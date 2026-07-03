@@ -43,7 +43,7 @@ class LoginController extends Controller
             $security->recordFailedAttempt($login);
 
             throw ValidationException::withMessages([
-                'password' => trans('auth.failed'),
+                'password' => 'Sai tài khoản hoặc mật khẩu.',
             ]);
         }
 

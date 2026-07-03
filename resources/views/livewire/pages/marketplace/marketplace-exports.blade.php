@@ -135,12 +135,12 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="text-sm" style="width: 100%; min-width: {{ auth()->user()->is_admin ? '1500px' : '1280px' }}; table-layout: fixed;">
+                <table class="text-sm" style="width: 100%; min-width: {{ (auth()->user()->is_admin || auth()->user()->isManager()) ? '1500px' : '1280px' }}; table-layout: fixed;">
                 <colgroup>
                     <col style="width: 60px;">
                     <col style="width: 160px;">
                     <col style="width: 430px;">
-                    @if (auth()->user()->is_admin)
+                    @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                         <col style="width: 240px;">
                     @endif
                     <col style="width: 170px;">
@@ -161,7 +161,7 @@
                         </th>
                         <th class="px-5 py-4">SKU</th>
                         <th class="px-5 py-4">Item</th>
-                        @if (auth()->user()->is_admin)
+                        @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                             <th class="px-5 py-4">User</th>
                         @endif
                         <th class="px-5 py-4">Category</th>
@@ -193,6 +193,7 @@
                                 ->map(fn ($field) => ['field' => $field, 'url' => $asset->{$field}])
                                 ->filter(fn ($image) => is_string($image['url']) && str_starts_with($image['url'], 'https://drive.google.com/'))
                                 ->values();
+                            $canExportAsset = ! $currentUser->isManager() || (int) $asset->user_id === (int) $currentUser->id;
                         @endphp
                         <tr wire:key="marketplace-export-row-{{ $asset->id }}" class="border-b border-slate-200 text-slate-500 transition hover:bg-slate-50">
                             <td class="px-5 py-5 align-middle">
@@ -200,7 +201,9 @@
                                     type="checkbox"
                                     wire:key="marketplace-export-checkbox-{{ $status }}-{{ $asset->id }}"
                                     value="{{ $asset->id }}"
-                                    data-marketplace-export-checkbox
+                                    @if ($canExportAsset) data-marketplace-export-checkbox @endif
+                                    @disabled(! $canExportAsset)
+                                    title="{{ $canExportAsset ? '' : 'Manager chi duoc export item cua minh' }}"
                                     @if ($status === 'exported')
                                         wire:model.live="selectedExported"
                                     @else
@@ -225,7 +228,7 @@
                                     </div>
                                 </div>
                             </td>
-                            @if (auth()->user()->is_admin)
+                            @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                                 <td class="px-5 py-5 align-middle">
                                     <p class="font-medium text-slate-600">{{ $asset->user?->name }}</p>
                                     <p class="mt-1 text-xs text-slate-400">{{ $asset->user?->email }}</p>
@@ -255,7 +258,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ auth()->user()->is_admin ? 7 : 6 }}" class="px-5 py-12 text-center text-slate-400">
+                            <td colspan="{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? 7 : 6 }}" class="px-5 py-12 text-center text-slate-400">
                                 Khong co item nao trong filter nay.
                             </td>
                         </tr>

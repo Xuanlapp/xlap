@@ -60,6 +60,10 @@ class DriveUploads extends Component
         $upload = $this->visibleQuery()->whereKey($uploadId)->firstOrFail();
 
         try {
+            if (auth()->user()->isManager() && $upload->user_id !== auth()->id()) {
+                throw new \RuntimeException('Manager chỉ được export dữ liệu của chính mình.');
+            }
+
             $count = app(ApprovedAssetDriveExportService::class)->exportAssetById(
                 $upload->product_design_asset_id,
                 auth()->user(),
@@ -90,7 +94,7 @@ class DriveUploads extends Component
     {
         return ProductDriveUpload::query()
             ->with(['asset:id,item_number,keyword,approved_at,drive_uploaded_at', 'user:id,name,email', 'product:id,name,slug'])
-            ->when(! auth()->user()->is_admin, fn (Builder $query) => $query->where('user_id', auth()->id()))
+            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()))
             ->when($this->status !== 'all', fn (Builder $query) => $query->where('status', $this->status))
             ->when($this->normalizedSearch() !== null, function (Builder $query): void {
                 $search = $this->normalizedSearch();
@@ -100,7 +104,7 @@ class DriveUploads extends Component
                         ->where('product_design_asset_id', ctype_digit($search) ? (int) $search : -1)
                         ->orWhereHas('asset', fn (Builder $query) => $query->where('keyword', 'like', '%'.$this->escapeLike($search).'%'));
 
-                    if (auth()->user()->is_admin) {
+                    if (auth()->user()->is_admin || auth()->user()->isManager()) {
                         $query->orWhereHas('user', function (Builder $query) use ($search): void {
                             $query
                                 ->where('name', 'like', '%'.$this->escapeLike($search).'%')
@@ -117,7 +121,7 @@ class DriveUploads extends Component
     private function statusCounts(): array
     {
         $query = ProductDriveUpload::query()
-            ->when(! auth()->user()->is_admin, fn (Builder $query) => $query->where('user_id', auth()->id()));
+            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()));
 
         return [
             'all' => (clone $query)->count(),

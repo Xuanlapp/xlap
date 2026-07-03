@@ -1,0 +1,5 @@
+﻿from pathlib import Path
+p = Path('resources/views/livewire/pages/proxy/index.blade.php')
+text = p.read_text(encoding='utf-8')
+text = text.replace('<td class="px-4 py-3 text-slate-700">{{ $item->public_ip ?: \'-\' }}</td>', '<td class="px-4 py-3 text-slate-700">\n                                                @if ($item->public_ip)\n                                                    <button type="button" class="font-mono text-xs font-semibold text-cyan-700 underline decoration-dotted decoration-cyan-300 underline-offset-2 hover:text-cyan-900" x-on:click.stop="navigator.clipboard.writeText(@js($item->public_ip)).then(() => window.dispatchEvent(new CustomEvent(\'toast\', { detail: { type: \'success\', title: \'Copied\', message: \'Da copy Public IP vao clipboard.\' } })))">{{ $item->public_ip }}</button>\n                                                @else\n                                                    -\n                                                @endif\n                                            </td>')
+p.write_text(text, encoding='utf-8')

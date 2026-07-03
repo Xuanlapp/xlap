@@ -1,0 +1,3 @@
+﻿Project: XLAP
+Group ID: xlap
+Memory MCP: http://localhost:8010/mcp/

@@ -2,8 +2,9 @@
 
 namespace App\Services\OrnamentAmazonTwo;
 
-use App\Jobs\RunOrnamentAmazonTwoAutomation;
 use App\Jobs\GenerateOrnamentAmazonTwoWorkflowImage;
+use App\Jobs\RunOrnamentAmazonTwoAutomation;
+use App\Jobs\RunOrnamentAmazonTwoItemPipeline;
 use App\Models\DataOrnamentAmazon;
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
@@ -1627,6 +1628,12 @@ class OrnamentAmazonTwoService
             throw new RuntimeException('Can co 2. Main Image truoc khi chay automation.');
         }
 
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+
+        if ($this->isProviderPausedForUser($user, $providerKey)) {
+            throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
+        }
+
         $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
         $sourceLink = is_string($sourceData['link'] ?? null) ? $sourceData['link'] : null;
 
@@ -1654,11 +1661,44 @@ class OrnamentAmazonTwoService
         ]);
 
         if ($dispatch) {
-            RunOrnamentAmazonTwoAutomation::dispatch($user->id, $asset->id, $providerKey, $imageModel, $textModel)
-                ->onQueue('default');
+            RunOrnamentAmazonTwoItemPipeline::dispatch($user->id, $asset->id, $providerKey, $imageModel, $textModel)
+                ->onQueue('ornament-pipeline');
         }
 
         return $record;
+    }
+
+    public function queueAutomationPipeline(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null, bool $manual = false): void
+    {
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+
+        if ($this->isProviderPausedForUser($user, $providerKey)) {
+            throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
+        }
+
+        RunOrnamentAmazonTwoItemPipeline::dispatch($user->id, $assetId, $providerKey, $imageModel, $textModel, $manual)
+            ->onQueue($manual ? 'ornament-priority' : 'ornament-pipeline');
+    }
+
+    public function runAutomationItemPipeline(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void
+    {
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+
+        if ($this->isProviderPausedForUser($user, $providerKey)) {
+            throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
+        }
+
+        $assetLock = Cache::lock("ornament-amazon-two:item-pipeline:{$assetId}", 3600);
+
+        if (! $assetLock->get()) {
+            throw new RuntimeException('Item dang duoc worker khac xu ly. Hay doi ket qua truoc khi chay lai.');
+        }
+
+        try {
+            $this->runAutomationPipeline($user, $assetId, $providerKey, $imageModel, $textModel);
+        } finally {
+            optional($assetLock)->release();
+        }
     }
 
     public function runAutomationPipeline(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void
@@ -1682,13 +1722,9 @@ class OrnamentAmazonTwoService
                     'person_a' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'a', $providerKey, $imageModel),
                     'person_b' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'b', $providerKey, $imageModel),
                     'prompt' => $asset = $this->generateWorkflowPrompts($user, $asset->id, $providerKey, $textModel),
-                    'mockup' => $asset = $this->startWorkflowImagesGeneration($user, $asset->id, $providerKey, $imageModel),
+                    'mockup' => $asset = $this->generateAllWorkflowImages($user, $asset->id, $providerKey, $imageModel),
                     default => null,
                 };
-
-                if ($step === 'mockup') {
-                    return;
-                }
 
                 $this->markAutomationStepFinished($asset, $step);
             } catch (Throwable $exception) {
@@ -1711,7 +1747,10 @@ class OrnamentAmazonTwoService
         $record = $this->automationForAsset($asset);
 
         if (! $record) {
-            return $this->startAutomation($user, $assetId, $providerKey, $imageModel, $textModel);
+            $record = $this->startAutomation($user, $assetId, $providerKey, $imageModel, $textModel, false);
+            $this->queueAutomationPipeline($user, $assetId, $providerKey, $imageModel, $textModel, true);
+
+            return $record;
         }
 
         if (($record->workflow_status ?? null) === 'running') {
@@ -1749,8 +1788,8 @@ class OrnamentAmazonTwoService
             'workflow_paused_at' => null,
         ]);
 
-        RunOrnamentAmazonTwoAutomation::dispatch($user->id, $asset->id, $providerKey, $imageModel, $textModel, $step)
-            ->onQueue('default');
+        RunOrnamentAmazonTwoItemPipeline::dispatch($user->id, $asset->id, $providerKey, $imageModel, $textModel, true)
+            ->onQueue('ornament-priority');
 
         return $updated;
     }
@@ -1975,7 +2014,20 @@ class OrnamentAmazonTwoService
             ? $record->workflow_step_key
             : 'script';
 
-        $this->runAutomationStep($user, $assetId, $step, $providerKey, $imageModel, $textModel);
+        $this->upsertAutomationRecord($asset, [
+            'workflow_status' => 'running',
+            'workflow_step_key' => $step,
+            'workflow_step_label' => $this->automationStepLabel($step),
+            'workflow_step_number' => $this->automationStepNumber($step),
+            'status' => 'running',
+            'current_step' => $step,
+            'current_step_number' => $this->automationStepNumber($step),
+            'paused_at' => null,
+            'workflow_paused_at' => null,
+            'last_error' => null,
+        ]);
+
+        $this->queueAutomationPipeline($user, $assetId, $providerKey, $imageModel, $textModel, true);
     }
 
     public function runAutomationStep(User $user, int $assetId, string $step, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void
@@ -2063,8 +2115,8 @@ class OrnamentAmazonTwoService
             'workflow_paused_at' => null,
         ]);
 
-        RunOrnamentAmazonTwoAutomation::dispatch($user->id, $asset->id, $providerKey, $imageModel, $textModel, $nextStep)
-            ->onQueue('default');
+        RunOrnamentAmazonTwoItemPipeline::dispatch($user->id, $asset->id, $providerKey, $imageModel, $textModel, true)
+            ->onQueue('ornament-priority');
     }
 
     private function nextAutomationStep(string $step): ?string
@@ -2251,7 +2303,7 @@ PROMPT;
         $balance = $this->v98StoreBalanceForUser($user, $providerKey);
 
         if (! is_array($balance) || ($balance['ok'] ?? false) !== true) {
-            throw new RuntimeException('Khong kiem tra duoc so du v98Store. Tam dung automation de tranh loi API.');
+            return;
         }
 
         $remaining = is_numeric($balance['remain_quota'] ?? null) ? (float) $balance['remain_quota'] : 0.0;
@@ -2268,6 +2320,8 @@ PROMPT;
      */
     private function notifyV98StoreBalanceExhausted(User $user, array $balance): void
     {
+        $this->pauseProviderForUser($user, 'v98store');
+
         $credentialId = (string) ($balance['credential_id'] ?? 'unknown');
         $alertKey = "v98store-balance-alert:{$credentialId}";
 
@@ -2319,6 +2373,43 @@ PROMPT;
                 ->filter(fn (mixed $label, mixed $model): bool => is_string($model) && is_string($label))
                 ->all()
             : [];
+    }
+
+    public function clearProviderPause(User $user, ?string $providerKey = 'v98store'): void
+    {
+        $this->clearProviderPausedFlag($user, $providerKey);
+    }
+
+    private function providerPauseCacheKey(User $user, ?string $providerKey): string
+    {
+        return 'provider-pause:'.strtolower(trim((string) $providerKey)).':user:'.$user->id;
+    }
+
+    private function pauseProviderForUser(User $user, ?string $providerKey): void
+    {
+        if (! $providerKey) {
+            return;
+        }
+
+        Cache::put($this->providerPauseCacheKey($user, $providerKey), true, now()->addHours(6));
+    }
+
+    private function clearProviderPausedFlag(User $user, ?string $providerKey): void
+    {
+        if (! $providerKey) {
+            return;
+        }
+
+        Cache::forget($this->providerPauseCacheKey($user, $providerKey));
+    }
+
+    private function isProviderPausedForUser(User $user, ?string $providerKey): bool
+    {
+        if (! $providerKey) {
+            return false;
+        }
+
+        return Cache::has($this->providerPauseCacheKey($user, $providerKey));
     }
 
     private function normalizeKeyword(string $keyword): string

@@ -17,6 +17,7 @@ class UserRepository
                 'aiProviders',
                 'vertexApiCredential',
                 'products' => fn ($query) => $query->where('is_active', true),
+                'dataHubProxies' => fn ($query) => $query->where('is_active', true),
             ])
             ->orderBy('name')
             ->get();
