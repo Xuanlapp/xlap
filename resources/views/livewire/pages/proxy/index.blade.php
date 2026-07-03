@@ -41,9 +41,13 @@
                                         <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">On dinh</span>
                                     @endif
                                 </div>
-                                <a href="{{ $proxy->source_url }}" target="_blank" rel="noopener noreferrer" class="mt-1 block truncate text-sm font-semibold text-cyan-700 hover:text-cyan-900">
-                                    {{ $proxy->source_url }}
-                                </a>
+                                @if (auth()->user()?->is_admin)
+                                    <a href="{{ $proxy->source_url }}" target="_blank" rel="noopener noreferrer" class="mt-1 block truncate text-sm font-semibold text-cyan-700 hover:text-cyan-900">
+                                        {{ $proxy->source_url }}
+                                    </a>
+                                @else
+                                    <p class="mt-1 text-sm font-semibold text-slate-400">Nguon proxy chi admin moi xem duoc</p>
+                                @endif
                                 <div class="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2 lg:grid-cols-4">
                                     <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
                                         <span class="block text-xs font-bold uppercase text-slate-400">Lan check cuoi</span>
