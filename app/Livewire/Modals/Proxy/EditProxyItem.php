@@ -20,6 +20,8 @@ class EditProxyItem extends Component
 
     public string $ppp = '';
 
+    public ?int $port = null;
+
     public string $note = '';
 
     public ?int $assignedUserId = null;
@@ -42,6 +44,7 @@ class EditProxyItem extends Component
         $this->itemId = $itemId;
         $this->publicIp = '';
         $this->ppp = '';
+        $this->port = null;
         $this->note = '';
         $this->assignedUserId = null;
 
@@ -51,6 +54,7 @@ class EditProxyItem extends Component
 
         $this->publicIp = (string) ($item->public_ip ?? '');
         $this->ppp = (string) ($item->ppp ?? '');
+        $this->port = $item->port;
         $this->note = (string) ($item->note ?? '');
         $this->assignedUserId = $item->assigned_user_id;
         $this->isLoading = false;
@@ -70,6 +74,7 @@ class EditProxyItem extends Component
 
         $validated = $this->validate([
             'note' => ['nullable', 'string', 'max:5000'],
+            'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'assignedUserId' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
@@ -79,6 +84,7 @@ class EditProxyItem extends Component
 
         $item->update([
             'note' => $validated['note'] ?? null,
+            'port' => $validated['port'] ?? null,
             'assigned_user_id' => $validated['assignedUserId'] ?? null,
         ]);
 

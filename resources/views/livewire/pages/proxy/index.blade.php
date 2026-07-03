@@ -29,14 +29,14 @@
 
             <div class="divide-y divide-slate-200">
                 @forelse ($proxies as $proxy)
-                    @php($hasRecentChange = $proxy->snapshots->contains('is_changed', true))
-                    <section class="p-6 {{ $hasRecentChange ? 'bg-red-50/70' : 'bg-white' }}">
+                    @php($proxyLastChangedAt = optional($proxy->last_changed_at)?->format('Y-m-d H:i:s'))
+                    <section class="p-6 bg-white">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <h2 class="text-lg font-bold text-slate-950">{{ $proxy->name }}</h2>
-                                    @if ($hasRecentChange)
-                                        <span class="inline-flex rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">Da thay doi</span>
+                                    @if ($proxyLastChangedAt)
+                                        <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">Changed At: {{ $proxyLastChangedAt }}</span>
                                     @else
                                         <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">On dinh</span>
                                     @endif
@@ -49,9 +49,9 @@
                                         <span class="block text-xs font-bold uppercase text-slate-400">Lan check cuoi</span>
                                         <span class="font-semibold text-slate-900">{{ optional($proxy->last_checked_at)?->format('Y-m-d H:i:s') ?? 'Chua check' }}</span>
                                     </div>
-                                    <div class="rounded-lg border {{ $hasRecentChange ? 'border-red-200 bg-red-100' : 'border-slate-200 bg-white' }} px-3 py-2">
-                                        <span class="block text-xs font-bold uppercase {{ $hasRecentChange ? 'text-red-500' : 'text-slate-400' }}">Lan thay doi cuoi</span>
-                                        <span class="font-semibold {{ $hasRecentChange ? 'text-red-700' : 'text-slate-900' }}">{{ optional($proxy->last_changed_at)?->format('Y-m-d H:i:s') ?? 'Chua co thay doi' }}</span>
+                                    <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                                        <span class="block text-xs font-bold uppercase text-slate-400">Lan thay doi cuoi</span>
+                                        <span class="font-semibold text-slate-900">{{ optional($proxy->last_changed_at)?->format('Y-m-d H:i:s') ?? 'Chua co thay doi' }}</span>
                                     </div>
                                     <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
                                         <span class="block text-xs font-bold uppercase text-slate-400">Tong proxy</span>
@@ -59,7 +59,7 @@
                                     </div>
                                     <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
                                         <span class="block text-xs font-bold uppercase text-slate-400">IP da doi</span>
-                                        <span class="font-semibold text-slate-900">{{ $proxy->items->filter(fn ($item) => filled($item->public_ip_change))->count() }}</span>
+                                        <span class="font-semibold text-slate-900">{{ $proxy->items->filter(fn ($item) => filled($item->changed_at))->count() }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -79,8 +79,8 @@
                                             <th class="px-4 py-3 text-left font-semibold">PPP</th>
                                             <th class="px-4 py-3 text-left font-semibold">Public IP Change</th>
                                             <th class="px-4 py-3 text-left font-semibold">Port</th>
-                                            <th class="px-4 py-3 text-left font-semibold">User</th>
                                             <th class="px-4 py-3 text-left font-semibold">Note</th>
+                                            <th class="px-4 py-3 text-left font-semibold">User</th>
                                             <th class="px-4 py-3 text-center font-semibold">Resetting</th>
                                             <th class="px-4 py-3 text-left font-semibold">Changed At</th>
                                             <th class="px-4 py-3 text-left font-semibold">Last Seen</th>
@@ -88,8 +88,8 @@
                                     </thead>
                                     <tbody class="divide-y divide-slate-200 bg-white">
                                         @forelse ($proxy->items as $item)
-                                            @php($publicIpChanged = filled($item->public_ip_change))
-                                            <tr @if (auth()->user()?->is_admin) x-on:click="openingProxyModal = true; setTimeout(() => openingProxyModal = false, 900)" wire:click="$dispatch('openModal', { component: 'modals.proxy.edit-proxy-item', arguments: { itemId: {{ $item->id }} } })" @endif class="{{ auth()->user()?->is_admin ? 'cursor-pointer hover:bg-cyan-50' : '' }} transition {{ $publicIpChanged ? 'bg-red-50' : '' }}">
+                                            @php($hasChangedAt = filled($item->changed_at))
+                                            <tr @if (auth()->user()?->is_admin) x-on:click="openingProxyModal = true; setTimeout(() => openingProxyModal = false, 900)" wire:click="$dispatch('openModal', { component: 'modals.proxy.edit-proxy-item', arguments: { itemId: {{ $item->id }} } })" @endif class="{{ auth()->user()?->is_admin ? 'cursor-pointer hover:bg-cyan-50' : '' }} transition {{ $hasChangedAt ? 'bg-red-50' : '' }}">
                                                 <td class="px-4 py-3 text-slate-700">
                                                 @if ($item->public_ip)
                                                     <button
@@ -128,10 +128,10 @@
                                                 @endif
                                             </td>
                                                 <td class="px-4 py-3 text-slate-700">{{ $item->ppp ?: '-' }}</td>
-                                                <td class="px-4 py-3 text-slate-700 {{ $publicIpChanged ? 'font-semibold text-red-700' : '' }}">{{ $item->public_ip_change ?: '-' }}</td>
-                                                <td class="px-4 py-3 text-slate-700">{{ 9801 + $loop->index }}</td>
-                                                <td class="px-4 py-3 text-slate-700">{{ $item->assignedUser?->name ?: '-' }}</td>
+                                                <td class="px-4 py-3 text-slate-700 {{ $hasChangedAt ? 'font-semibold text-red-700' : '' }}">{{ $item->public_ip_change ?: '-' }}</td>
+                                                <td class="px-4 py-3 text-slate-700">{{ $item->port ?? (preg_match('/mvlan(\d+)/i', (string) $item->ppp, $matches) ? 9800 + (int) $matches[1] : '-') }}</td>
                                                 <td class="px-4 py-3 text-slate-700">{{ $item->note ?: '-' }}</td>
+                                                <td class="px-4 py-3 text-slate-700">{{ $item->assignedUser?->name ?: '-' }}</td>
                                                 <td class="px-4 py-3 text-center">
                                                     @if ($item->resetting)
                                                         <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">Yes</span>
@@ -139,7 +139,7 @@
                                                         <span class="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">No</span>
                                                     @endif
                                                 </td>
-                                                <td class="px-4 py-3 text-slate-700 {{ $publicIpChanged ? 'font-semibold text-red-700' : '' }}">{{ optional($item->changed_at)?->format('Y-m-d H:i:s') ?: '-' }}</td>
+                                                <td class="px-4 py-3 text-slate-700 {{ $hasChangedAt ? 'font-semibold text-red-700' : '' }}">{{ optional($item->changed_at)?->format('Y-m-d H:i:s') ?: '-' }}</td>
                                                 <td class="px-4 py-3 text-slate-700">{{ optional($item->last_seen_at)?->format('Y-m-d H:i:s') ?: '-' }}</td>
                                             </tr>
                                         @empty

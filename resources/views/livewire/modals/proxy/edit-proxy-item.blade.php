@@ -37,6 +37,10 @@
                         </select>
                         @error('assignedUserId') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
 
+                        <label for="proxyPort" class="mt-4 block text-sm font-bold text-slate-900">Port</label>
+                        <input id="proxyPort" type="number" wire:model="port" min="1" max="65535" class="mt-2 w-full rounded-xl border-slate-200 text-sm text-slate-950 shadow-sm focus:border-cyan-500 focus:ring-cyan-500" placeholder="9808">
+                        @error('port') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+
                         <label for="proxyNote" class="mt-4 block text-sm font-bold text-slate-900">Note</label>
                         <textarea id="proxyNote" wire:model="note" rows="7" class="mt-2 w-full rounded-xl border-slate-200 text-sm text-slate-950 shadow-sm focus:border-cyan-500 focus:ring-cyan-500" placeholder="Nhap note cho proxy nay..."></textarea>
                         @error('note') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror

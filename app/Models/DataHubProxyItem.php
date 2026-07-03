@@ -15,6 +15,7 @@ class DataHubProxyItem extends Model
         'ipv6',
         'proxy_port',
         'proxy_port_v6',
+        'port',
         'system',
         'public_ip',
         'public_ip_change',
@@ -36,6 +37,7 @@ class DataHubProxyItem extends Model
         return [
             'proxy_port' => 'integer',
             'proxy_port_v6' => 'integer',
+            'port' => 'integer',
             'resetting' => 'boolean',
             'payload' => 'array',
             'first_seen_at' => 'datetime',

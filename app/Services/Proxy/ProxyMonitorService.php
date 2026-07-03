@@ -117,6 +117,7 @@ class ProxyMonitorService
             'ipv6' => $this->nullableString($record['ipv6'] ?? null),
             'proxy_port' => $this->nullableInt($record['proxy_port'] ?? null),
             'proxy_port_v6' => $this->nullableInt($record['proxy_port_v6'] ?? null),
+            'port' => $this->derivePort($record),
             'system' => $this->nullableString($record['system'] ?? null),
             'public_ip' => $this->nullableString($record['public_ip'] ?? null),
             'public_ip_v6' => $this->nullableString($record['public_ip_v6'] ?? null),
@@ -147,6 +148,7 @@ class ProxyMonitorService
 
             $item->fill([
                 ...$record,
+                'port' => $item->port ?? $record['port'],
                 'public_ip_change' => $publicIpChange,
                 'payload' => $record,
                 'payload_hash' => $payloadHash,
@@ -213,5 +215,16 @@ class ProxyMonitorService
         }
 
         return (int) $value;
+    }
+
+    private function derivePort(array $record): ?int
+    {
+        $ppp = (string) ($record['ppp'] ?? '');
+
+        if (preg_match('/mvlan(\d+)/i', $ppp, $matches) === 1) {
+            return 9800 + (int) $matches[1];
+        }
+
+        return null;
     }
 }
