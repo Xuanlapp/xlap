@@ -24,7 +24,26 @@ class EditProxyItem extends Component
 
     public string $note = '';
 
+    /** @var array<int, int|string> */
+    public array $sharedManagerIds = [];
+
+    /** @var array<int, int|string> */
+    public array $fullAccessManagerIds = [];
+
     public ?int $assignedUserId = null;
+
+    public function updatedFullAccessManagerIds(): void
+    {
+        $fullIds = array_map('intval', $this->fullAccessManagerIds);
+        $this->sharedManagerIds = array_values(array_diff(array_map('intval', $this->sharedManagerIds), $fullIds));
+    }
+
+
+    public function updatedSharedManagerIds(): void
+    {
+        $sharedIds = array_map('intval', $this->sharedManagerIds);
+        $this->fullAccessManagerIds = array_values(array_diff(array_map('intval', $this->fullAccessManagerIds), $sharedIds));
+    }
 
     #[On('openModal')]
     public function openModal(string $component, array $arguments = []): void
@@ -46,6 +65,8 @@ class EditProxyItem extends Component
         $this->ppp = '';
         $this->port = null;
         $this->note = '';
+        $this->sharedManagerIds = [];
+        $this->fullAccessManagerIds = [];
         $this->assignedUserId = null;
 
         abort_unless(auth()->user()?->is_admin, 403);
@@ -57,6 +78,14 @@ class EditProxyItem extends Component
         $this->port = $item->port;
         $this->note = (string) ($item->note ?? '');
         $this->assignedUserId = $item->assigned_user_id;
+        $this->sharedManagerIds = $item->managerAccesses()->wherePivot('access_type', 'shared')->pluck('users.id')->map(fn ($id) => (int) $id)->all();
+        $this->fullAccessManagerIds = User::query()
+            ->where('is_admin', false)
+            ->where('role', 'manager')
+            ->where('can_view_all_proxy', true)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
         $this->isLoading = false;
     }
 
@@ -76,6 +105,10 @@ class EditProxyItem extends Component
             'note' => ['nullable', 'string', 'max:5000'],
             'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'assignedUserId' => ['nullable', 'integer', 'exists:users,id'],
+            'sharedManagerIds' => ['array'],
+            'sharedManagerIds.*' => ['integer', 'exists:users,id'],
+            'fullAccessManagerIds' => ['array'],
+            'fullAccessManagerIds.*' => ['integer', 'exists:users,id'],
         ]);
 
         abort_unless(auth()->user()?->is_admin, 403);
@@ -88,6 +121,17 @@ class EditProxyItem extends Component
             'assigned_user_id' => $validated['assignedUserId'] ?? null,
         ]);
 
+        $sharedManagerIds = array_values(array_diff(array_unique(array_map('intval', $validated['sharedManagerIds'] ?? [])), array_unique(array_map('intval', $validated['fullAccessManagerIds'] ?? []))));
+        $fullAccessManagerIds = array_values(array_unique(array_map('intval', $validated['fullAccessManagerIds'] ?? [])));
+
+        $item->managerAccesses()->sync([]);
+        foreach ($sharedManagerIds as $managerId) {
+            $item->managerAccesses()->syncWithoutDetaching([$managerId => ['access_type' => 'shared']]);
+        }
+        foreach ($fullAccessManagerIds as $managerId) {
+            $item->managerAccesses()->syncWithoutDetaching([$managerId => ['access_type' => 'full']]);
+        }
+
         $this->dispatch('proxy-item-updated');
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da luu note proxy.');
         $this->close();
@@ -96,7 +140,8 @@ class EditProxyItem extends Component
     public function render(): View
     {
         return view('livewire.modals.proxy.edit-proxy-item', [
-            'users' => User::query()->where('is_admin', false)->orderBy('name')->get(['id', 'name']),
+            'users' => User::query()->where('is_admin', false)->where('role', 'user')->orderBy('name')->get(['id', 'name']),
+            'managers' => User::query()->where('is_admin', false)->where('role', 'manager')->orderBy('name')->get(['id', 'name']),
         ]);
     }
 }

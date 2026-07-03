@@ -124,6 +124,34 @@ class EditUser extends Component
         $this->isOpen = true;
     }
 
+
+    public function updatedCanGenerateAmazonListing(bool $value): void
+    {
+        if ($value) {
+            $this->can_generate_etsy_listing = false;
+        }
+    }
+
+    public function updatedCanGenerateEtsyListing(bool $value): void
+    {
+        if ($value) {
+            $this->can_generate_amazon_listing = false;
+        }
+    }
+
+
+    public function generatePassword(): void
+    {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+        $password = '';
+
+        for ($index = 0; $index < 8; $index++) {
+            $password .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+
+        $this->password = $password;
+    }
+
     public function close(): void
     {
         $this->isOpen = false;

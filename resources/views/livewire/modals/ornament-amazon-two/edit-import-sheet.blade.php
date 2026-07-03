@@ -3,7 +3,7 @@
         <div x-data x-on:keydown.escape.window="$wire.close()" tabindex="-1" aria-modal="true" role="dialog" style="z-index: 80" class="fixed inset-0 flex h-[calc(100%-1rem)] max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900/50 p-4 md:inset-0">
             <button type="button" class="fixed inset-0 cursor-default" wire:click="close" aria-label="Close edit sheet modal"></button>
 
-            <div style="z-index: 81" class="relative w-full max-w-2xl">
+            <div style="z-index: 81" class="relative overflow-y-auto w-full max-w-2xl">
                 <form wire:submit.prevent="save" class="rounded-2xl bg-white shadow-sm">
                     <div class="flex items-center justify-between rounded-t-2xl border-b border-slate-200 p-5">
                         <div>

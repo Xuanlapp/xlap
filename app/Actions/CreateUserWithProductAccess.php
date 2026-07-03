@@ -14,13 +14,16 @@ class CreateUserWithProductAccess
      */
     public function __invoke(array $data): User
     {
+        $role = (string) ($data['role'] ?? 'user');
+
         $user = User::create([
             'name' => $data['name'],
             'username' => $data['username'] ?? null,
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'status' => $data['status'] ?? 'active',
-            'is_admin' => (bool) ($data['is_admin'] ?? false),
+            'role' => $role,
+            'is_admin' => $role === 'admin' || (bool) ($data['is_admin'] ?? false),
             'can_generate_amazon_listing' => (bool) ($data['can_generate_amazon_listing'] ?? false),
             'can_generate_etsy_listing' => (bool) ($data['can_generate_etsy_listing'] ?? false),
             'can_access_wali' => (bool) ($data['can_access_wali'] ?? false),

@@ -2,7 +2,7 @@
     @if ($isOpen)
         <div wire:init="loadPreview" x-data x-on:keydown.escape.window="$wire.close()" tabindex="-1" aria-modal="true" role="dialog" class="fixed inset-0 z-50 flex h-[calc(100%-1rem)] max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900/50 p-4 md:inset-0">
             <button type="button" class="fixed inset-0 cursor-default" wire:click="close" aria-label="Close export to sheet modal"></button>
-            <div class="relative z-10 w-full max-w-6xl rounded-2xl bg-white shadow-sm">
+            <div class="relative overflow-y-auto z-10 w-full max-w-6xl rounded-2xl bg-white shadow-sm">
                 <div class="flex items-center justify-between rounded-t-2xl border-b border-slate-200 p-5">
                     <div>
                         <h3 class="text-xl font-semibold text-slate-900">Export to Sheet</h3>

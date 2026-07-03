@@ -435,3 +435,124 @@ Doi format loi Telegram cho de doc, giong card thong bao co tieu de va block chi
 **Viec can lam tiep:**  
 - Neu user muon dep hon nua co the them emoji theo tung loai action/status.
 - Test da chay: `php -l app/Services/Monitoring/TelegramErrorReporter.php`, `php artisan test tests/Unit/TelegramErrorReporterTest.php`, `php artisan test`.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Them nut xoa nhan vien ngay trong modal sua thong tin Wali, chi xoa du lieu o ky luong dang mo.
+
+**File da sua/tao:**  
+- `resources/views/livewire/modals/salary/edit-employee-salary.blade.php`
+- `app/Livewire/Modals/Salary/EditEmployeeSalary.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Viet lai Blade modal edit salary dung mot root element duy nhat de tranh loi Livewire root tag/multiple root.
+- Dua nut `Delete` len ngay canh tieu de `Sua thong tin ... - mm/yyyy`.
+- Them modal xac nhan rieng: hien ten user dang thao tac va ten nhan vien; `No` chi dong confirm, `Yes` xoa duy nhat dong luong cua ky dang mo.
+- Sau khi xoa: dong confirm, dong modal edit, dispatch refresh Wali va redirect ve page hien tai de reload sach du lieu.
+- Clear lai compiled views sau khi sua Blade.
+
+**Loi da gap va cach xu ly:**  
+- Confirm modal truoc do bi chen nham vao giua phan header, lam vo cau truc HTML cua component.
+- Mot lan ghi file bang PowerShell lam sinh BOM dau file PHP, gay loi `Namespace declaration statement has to be the very first statement`; da ghi lai UTF-8 khong BOM.
+
+**Logic can nho:**  
+- Xoa nhan vien trong modal edit chi dong vao `data_salary_zhuzhu` theo `user_id + employee_id + salary_month`; khong xoa nhan vien goc va khong anh huong cac ky khac.
+- Full-page va modal Livewire phai giu dung 1 root element.
+
+**Viec can lam tiep:**  
+- User test lai nut `Delete` trong modal sua thong tin Wali tren ky luong co du lieu.
+- Neu can, co the bo sung spinner to hon cho nut `Yes/Delete` de feedback ro hon.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Thu gon modal `Tong ket thang` va `Sua thong tin` cua Wali de giam keo ngang.
+
+**File da sua/tao:**  
+- `resources/views/livewire/modals/salary/month-summary.blade.php`
+- `resources/views/livewire/modals/salary/edit-employee-salary.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi bang trong 2 modal sang `table-fixed` va giam kich thuoc chu/xuong dong de cot deu hon.
+- Doi cac input tien/diem/ngay nghi sang `w-full` trong o hien tai thay vi dat width rem co dinh, giup modal tu can doi theo be rong bang.
+- Thu gon `padding` va o `note` de giam keo ngang nhung van giu du so de nhap.
+- Clear `view:clear` sau khi sua Blade.
+
+**Logic can nho:**  
+- Huong uu tien la `vua du de nhin`, khong mo rong modal qua muc gay roi layout; neu user can co the tang rieng tung cot sau.
+
+**Viec can lam tiep:**  
+- User refresh trang Wali va test lai 2 modal tren man hinh that; neu van con 1-2 cot bi chat qua thi chinh tiep theo cot cu the.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Dua modal xac nhan xoa nhan vien Wali len tren cung, khong bi che boi modal edit/table.
+
+**File da sua/tao:**  
+- `resources/views/livewire/modals/salary/edit-employee-salary.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Tang z-index modal edit len `z-[140]/z-[141]` va modal confirm xoa len `z-[260]/z-[261]`.
+- Doi backdrop confirm xoa sang nen toi hon kem `backdrop-blur-sm` de tach ro khoi modal edit dang nam ben duoi.
+- Clear compiled views sau khi sua Blade.
+
+**Logic can nho:**  
+- Modal xac nhan xoa la lop tren cung trong Wali edit flow; backdrop cua no phai che ca modal edit de user chi thao tac No/Yes.
+
+**Viec can lam tiep:**  
+- User refresh Wali va bam Delete de kiem tra confirm khong con bi sticky header/table che.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Sua Wali de xoa nhan vien khoi ky luong la mat luon trong danh sach ky do, khong tu dong hien lai vi list active.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Salary/Wali.php`
+- `app/Livewire/Modals/Salary/MonthSummary.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Bo logic tu dong chen nhan vien active vao `rowsForMonth()` cua Wali, nen danh sach luong chi hien cac dong co that trong ky dang chon.
+- Cap nhat `MonthSummary` de chi lay du lieu da co trong `data_salary_zhuzhu` cua ky luong, khong pull lai toan bo nhan vien active.
+- Giup nut xoa trong modal edit xoa xong la nhan vien bien mat khoi ky hien tai ngay khi tai lai.
+
+**Loi da gap va cach xu ly:**  
+- Ban dau `MonthSummary` van bi fallback sang danh sach active nen user xoa xong thay 3 nhan vien van con 3.
+- Da doi sang luong du lieu theo `salaryRows` cua ky hien tai, khong tao row gia.
+
+**Logic can nho:**  
+- `CreatePeriod`/`AddEmployee` van co the dung nhan vien active de tao ky moi; nhung view hien tai cua mot ky chi duoc render tu du lieu cua ky do.
+- Xoa 1 nhan vien chi tac dong ky dang mo, khong anh huong ky khac.
+
+**Viec can lam tiep:**  
+- User refresh Wali, mo lai ky luong va bam xoa 1 nhan vien de kiem tra so dong giam dung 1.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Fix truong hop nut Delete nhan vien `xlap` xoa xong van hien lai trong ky luong hien tai.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Salary/Wali.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Phat hien `exportRowsForMonth()` trong Wali van con logic auto-chen toan bo nhan vien active vao ky dang xem, nen sau khi xoa row luong thi nhan vien van duoc render lai nhu row rong.
+- Da bo han fallback nay de table chi hien cac dong salary ton tai that trong `data_salary_zhuzhu` cua ky duoc chon.
+- Lint lai PHP va clear Blade cache.
+
+**Loi da gap va cach xu ly:**  
+- Luc dau nghi la do query delete; kiem tra lai moi thay file `Wali.php` van con block active fallback do lan sua truoc chua an het.
+- Da regex-rewrite block do cho dung logic period-only.
+
+**Logic can nho:**  
+- Delete trong edit modal chi xoa row salary theo ky; view cung phai render tu row salary cua ky do thi moi thay mat dung.
+
+**Viec can lam tiep:**  
+- User refresh man hinh va xoa lai nhan vien `xlap`; neu van con thi can inspect truc tiep DB row cua `xlap` o ky dang test.

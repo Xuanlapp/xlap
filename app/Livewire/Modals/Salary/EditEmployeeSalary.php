@@ -21,6 +21,8 @@ class EditEmployeeSalary extends Component
 
     public array $row = [];
 
+    public bool $confirmingDelete = false;
+
     #[On('openModal')]
     public function openModal(string $component, array $arguments = []): void
     {
@@ -101,7 +103,39 @@ class EditEmployeeSalary extends Component
     public function close(): void
     {
         $this->resetValidation();
-        $this->reset(['isOpen', 'salaryMonth', 'employeeId', 'row']);
+        $this->reset(['isOpen', 'salaryMonth', 'employeeId', 'row', 'confirmingDelete']);
+    }
+
+
+    public function confirmDelete(): void
+    {
+        $this->confirmingDelete = true;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDelete = false;
+    }
+
+    public function deleteSalaryRow(): void
+    {
+        if (! $this->employeeId || $this->salaryMonth === '') {
+            return;
+        }
+
+        $month = CarbonImmutable::createFromFormat('Y-m', $this->salaryMonth)->startOfMonth();
+
+        DataSalaryZhuzhu::query()
+            ->where('user_id', auth()->id())
+            ->where('employee_id', $this->employeeId)
+            ->whereDate('salary_month', $month->toDateString())
+            ->delete();
+
+        $this->dispatch('toast', type: 'success', title: 'Da xoa!', message: 'Da xoa nhan vien khoi ky luong nay.');
+        $this->confirmingDelete = false;
+        $this->close();
+        $this->dispatch('wali-salary-updated', salaryMonth: $month->format('Y-m'))->to(Wali::class);
+        $this->redirect(request()->header('Referer') ?: route('offorest.salary.wali'), navigate: false);
     }
 
     public function save(): void
@@ -236,7 +270,7 @@ class EditEmployeeSalary extends Component
             return '';
         }
 
-        return rtrim(rtrim(number_format($amount, 2, ',', ''), '0'), ',');
+        return rtrim(rtrim(number_format($amount, 2, ',', '.'), '0'), ',');
     }
 
     private function numberInput(mixed $value): string
@@ -247,6 +281,6 @@ class EditEmployeeSalary extends Component
             return '';
         }
 
-        return rtrim(rtrim(number_format($amount, 2, ',', ''), '0'), ',');
+        return rtrim(rtrim(number_format($amount, 2, ',', '.'), '0'), ',');
     }
 }

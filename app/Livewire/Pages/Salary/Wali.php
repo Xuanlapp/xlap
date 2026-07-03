@@ -55,11 +55,11 @@ class Wali extends Component
 
     public function openCreatePeriod(): void
     {
-        $default = CarbonImmutable::now()->subMonth()->startOfMonth();
+        $base = CarbonImmutable::create($this->selectedYear ?: (int) now()->format('Y'), max($this->selectedMonth, 1), 1)->startOfMonth();
 
         $this->dispatch('openModal', component: 'modals.salary.create-period', arguments: [
-            'year' => (string) $default->year,
-            'month' => str_pad((string) $default->month, 2, '0', STR_PAD_LEFT),
+            'year' => (string) $base->year,
+            'month' => str_pad((string) $base->month, 2, '0', STR_PAD_LEFT),
         ])->to(CreatePeriod::class);
     }
 
@@ -75,6 +75,15 @@ class Wali extends Component
         $this->dispatch('openModal', component: 'modals.salary.add-employee', arguments: [
             'salaryMonth' => $this->selectedSalaryMonth(),
         ])->to(AddEmployee::class);
+    }
+
+
+    public function exportUrl(): string
+    {
+        return route('offorest.salary.wali.export', [
+            'year' => $this->selectedYear,
+            'month' => $this->selectedMonth,
+        ]);
     }
 
     public function openEmployeeSalary(int $employeeId): void
@@ -148,6 +157,11 @@ class Wali extends Component
 
     private function rowsForMonth(CarbonImmutable $month): Collection
     {
+        return $this->exportRowsForMonth($month);
+    }
+
+    public function exportRowsForMonth(CarbonImmutable $month): Collection
+    {
         $salaryRows = DataSalaryZhuzhu::query()
             ->where('user_id', auth()->id())
             ->whereDate('salary_month', $month->toDateString())
@@ -167,20 +181,6 @@ class Wali extends Component
             if ($employee) {
                 $row->setAttribute('avatar_path', $employee->avatar_path);
             }
-        }
-
-        foreach ($employees->where('is_active', true) as $employee) {
-            if ($salaryRows->has((string) $employee->id)) {
-                continue;
-            }
-
-            $salaryRows->put((string) $employee->id, new DataSalaryZhuzhu([
-                'user_id' => auth()->id(),
-                'employee_id' => $employee->id,
-                'employee_name' => $employee->employee_name,
-                'salary_month' => $month->toDateString(),
-                'avatar_path' => $employee->avatar_path,
-            ]));
         }
 
         return $salaryRows

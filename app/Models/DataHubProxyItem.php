@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class DataHubProxyItem extends Model
 {
@@ -55,5 +56,17 @@ class DataHubProxyItem extends Model
     public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+
+    public function viewers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'data_hub_proxy_item_user')->withTimestamps();
+    }
+
+    public function managerAccesses(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'data_hub_proxy_item_manager_access')
+            ->withPivot(['access_type'])
+            ->withTimestamps();
     }
 }

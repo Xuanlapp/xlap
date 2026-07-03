@@ -127,6 +127,25 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
         ->middleware('wali')
         ->name('offorest.salary.wali');
 
+    Route::get('salary/wali/export/{year}/{month}', function (int $year, int $month) {
+        abort_unless(auth()->user() && ((bool) auth()->user()->is_admin || (bool) auth()->user()->can_access_wali), 403);
+
+        $month = \Carbon\CarbonImmutable::create($year, max(1, min(12, $month)), 1)->startOfMonth();
+        $rows = app(\App\Livewire\Pages\Salary\Wali::class)->exportRowsForMonth($month);
+        $filename = 'wali-'.$month->format('m-Y').'.xlsx';
+        $tempPath = storage_path('app/tmp/'.$filename);
+
+        if (! is_dir(dirname($tempPath))) {
+            mkdir(dirname($tempPath), 0755, true);
+        }
+
+        app(\App\Support\Salary\WaliSalaryExcelExporter::class)->create($month, $rows, $tempPath);
+
+        return response()->download($tempPath, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    })->middleware('wali')->name('offorest.salary.wali.export');
+
     Route::get('idea-etsy/extension/download', IdeaEtsyExtensionDownloadController::class)
         ->middleware('product:idea-etsy')
         ->name('offorest.idea-etsy.extension.download');

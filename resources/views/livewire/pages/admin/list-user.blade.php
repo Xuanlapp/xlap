@@ -95,50 +95,8 @@
             <div x-show="error" x-cloak class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" x-text="error"></div>
         </div>
 
-        <form wire:submit.prevent="saveMarketplaceVertexCredential" class="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <h2 class="text-base font-bold text-slate-950">Vertex API cho title/listing</h2>
-                    <p class="mt-1 text-sm text-slate-500">Key nay chi dung de tao Amazon/Etsy title metadata. User khong dung key nay de tao anh.</p>
-                </div>
+        
 
-                <span class="inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold {{ $marketplaceVertexCredential ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                    {{ $marketplaceVertexCredential ? 'Configured' : 'Not configured' }}
-                </span>
-            </div>
-
-            @if ($marketplaceVertexCredential)
-                <p class="mt-3 break-all text-xs text-slate-400">
-                    Active credential: {{ $marketplaceVertexCredential->client_email }} | {{ $marketplaceVertexCredential->project_id ?: 'no project_id' }} | {{ $marketplaceVertexCredential->location ?: 'global' }}
-                </p>
-            @endif
-
-            <div class="mt-4 grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-                <div>
-                    <label for="marketplaceVertexLocation" class="text-sm text-slate-600">Location</label>
-                    <input id="marketplaceVertexLocation" wire:model="marketplaceVertexLocation" type="text" class="mt-1 w-full rounded-md border-slate-300 bg-white text-gray-950" placeholder="global hoac us-central1">
-                    @error('marketplaceVertexLocation') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
-                    <label for="marketplaceVertexJson" class="text-sm text-slate-600">Service account JSON rieng cho title/listing</label>
-                    <textarea
-                        id="marketplaceVertexJson"
-                        wire:model="marketplaceVertexJson"
-                        rows="5"
-                        class="mt-1 w-full rounded-md border-slate-300 bg-white font-mono text-xs text-gray-950"
-                        placeholder='{"type":"service_account","project_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...","client_email":"..."}'
-                    ></textarea>
-                    <p class="mt-1 text-xs text-slate-400">Paste JSON moi de thay the key title/listing hien tai. Private key se duoc encrypt.</p>
-                    @error('marketplaceVertexJson') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-            </div>
-
-            <x-ui.button color="cyan" type="submit" class="mt-4 shadow-lg shadow-cyan-500/20" wire:loading.attr="disabled" wire:target="saveMarketplaceVertexCredential">
-                <span wire:loading.remove wire:target="saveMarketplaceVertexCredential">Luu Vertex title/listing</span>
-                <span wire:loading wire:target="saveMarketplaceVertexCredential">Saving...</span>
-            </x-ui.button>
-        </form>
 
 
         <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -156,7 +114,6 @@
                             <th class="px-4 py-3">Template</th>
                             <th class="px-4 py-3">File</th>
                             <th class="px-4 py-3">Status</th>
-                            <th class="px-4 py-3 text-right">Edit</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
@@ -166,7 +123,10 @@
                                 $exists = \Illuminate\Support\Facades\File::exists($templatePath);
                                 $updatedAt = $exists ? \Illuminate\Support\Facades\File::lastModified($templatePath) : null;
                             @endphp
-                            <tr>
+                            <tr
+                                wire:click="$dispatch('openModal', { component: 'modals.admin.edit-import-template', arguments: { templateKey: '{{ $template['key'] }}' } })"
+                                class="cursor-pointer transition hover:bg-cyan-50"
+                            >
                                 <td class="px-4 py-3 font-semibold text-slate-900">{{ $template['label'] }}</td>
                                 <td class="px-4 py-3 text-slate-600">
                                     @if ($exists)
@@ -182,11 +142,6 @@
                                     @else
                                         <span class="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">Missing</span>
                                     @endif
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <button type="button" wire:click="$dispatch('openModal', { component: 'modals.admin.edit-import-template', arguments: { templateKey: '{{ $template['key'] }}' } })" class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700">
-                                        Edit
-                                    </button>
                                 </td>
                             </tr>
                         @endforeach
@@ -208,17 +163,20 @@
             </div>
 
             <div class="mt-4 overflow-hidden rounded-lg border border-slate-200">
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <table class="min-w-full table-auto divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-left text-slate-500">
                         <tr>
                             <th class="px-5 py-3 font-medium">Trang</th>
                             <th class="px-5 py-3 text-center font-medium">Auto tach nen</th>
-                            <th class="px-5 py-3 text-right font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200 bg-white">
                         @foreach ($products as $product)
-                            <tr wire:key="background-removal-product-{{ $product->id }}" class="transition hover:bg-slate-50">
+                            <tr
+                                wire:key="background-removal-product-{{ $product->id }}"
+                                wire:click="$dispatch('openModal', { component: 'modals.admin.edit-product-background-removal', arguments: { productId: {{ $product->id }} } })"
+                                class="cursor-pointer transition hover:bg-cyan-50"
+                            >
                                 <td class="px-5 py-4">
                                     <p class="font-semibold text-slate-950">{{ $product->name }}</p>
                                     <p class="mt-1 text-xs text-slate-400">{{ $product->slug }}</p>
@@ -233,15 +191,6 @@
                                     @else
                                         <span class="text-gray-700">-</span>
                                     @endif
-                                </td>
-                                <td class="px-5 py-4 text-right">
-                                    <button
-                                        type="button"
-                                        wire:click="$dispatch('openModal', { component: 'modals.admin.edit-product-background-removal', arguments: { productId: {{ $product->id }} } })"
-                                        class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
-                                    >
-                                        Edit
-                                    </button>
                                 </td>
                             </tr>
                         @endforeach
@@ -266,52 +215,50 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <table class="min-w-full table-auto divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-left text-slate-500">
                         <tr>
                             <th class="px-6 py-4 font-medium">User</th>
                             <th class="px-5 py-4 text-center font-medium">Status</th>
-                            <th class="px-5 py-4 text-center font-medium">Admin</th>
                             <th class="px-5 py-4 text-center font-medium">Vertex</th>
                             <th class="px-5 py-4 text-center font-medium">AI provider</th>
                             <th class="px-5 py-4 text-center font-medium">Listing</th>
                             @foreach ($products as $product)
                                 <th class="px-5 py-4 text-center font-medium">{{ $product->name }}</th>
                             @endforeach
-                            <th class="px-6 py-4 text-right font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
                         @forelse ($users as $user)
-                            <tr wire:key="user-access-{{ $user->id }}" class="transition hover:bg-slate-50">
-                                <td class="px-6 py-5">
-                                    <div class="flex min-w-64 items-center gap-3">
-                                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-sm font-bold text-cyan-700">
+                            <tr
+                                wire:key="user-access-{{ $user->id }}"
+                                wire:click="$dispatch('openModal', { component: 'modals.admin.edit-user', arguments: { userId: {{ $user->id }} } })"
+                                class="cursor-pointer transition hover:bg-cyan-50"
+                            >
+                                <td class="px-6 py-4">
+                                    <div class="flex min-w-[240px] items-center gap-3">
+                                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-sm font-bold text-cyan-700">
                                             {{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}
                                         </div>
                                         <div class="min-w-0">
-                                            <p class="truncate font-semibold text-slate-950">{{ $user->name }}</p>
+                                            <div class="flex items-center gap-2">
+                                                <p class="truncate font-semibold text-slate-950">{{ $user->name }}</p>
+                                                @if ($user->is_admin)
+                                                    <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-100 px-1.5 text-[10px] font-bold uppercase text-cyan-700">a</span>
+                                                @elseif ($user->isManager())
+                                                    <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-violet-100 px-1.5 text-[10px] font-bold uppercase text-violet-700">m</span>
+                                                @endif
+                                            </div>
                                             <p class="mt-1 truncate text-xs text-slate-400">{{ $user->email }}</p>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-5 py-5 text-center">
+                                <td class="px-4 py-4 text-center">
                                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $user->status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">
                                         {{ $user->status === 'active' ? 'Active' : '-' }}
                                     </span>
                                 </td>
-                                <td class="px-5 py-5 text-center">
-                                    @if ($user->is_admin)
-                                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-cyan-100 text-cyan-700">
-                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                                <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.32a1 1 0 0 1-1.421 0L3.29 9.23a1 1 0 1 1 1.42-1.408l4.04 4.08 6.54-6.606a1 1 0 0 1 1.414-.006Z" clip-rule="evenodd" />
-                                            </svg>
-                                        </span>
-                                    @else
-                                        <span class="text-gray-700">-</span>
-                                    @endif
-                                </td>
-                                <td class="px-5 py-5 text-center">
+                                <td class="px-4 py-4 text-center">
                                     @if ($user->vertexApiCredential)
                                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
                                             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -322,7 +269,7 @@
                                         <span class="text-gray-700">-</span>
                                     @endif
                                 </td>
-                                <td class="px-5 py-5 text-center">
+                                <td class="px-4 py-4 text-center">
                                     @php($activeAiProviderKey = $user->activeAiProviderKey())
                                     @if ($activeAiProviderKey)
                                         <span class="inline-flex rounded-full bg-cyan-100 px-2.5 py-1 text-xs font-semibold text-cyan-700">
@@ -332,7 +279,7 @@
                                         <span class="text-gray-700">-</span>
                                     @endif
                                 </td>
-                                <td class="px-5 py-5 text-center">
+                                <td class="px-4 py-4 text-center">
                                     @if ($user->can_generate_amazon_listing)
                                         <span class="inline-flex rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-700">Amazon</span>
                                     @elseif ($user->can_generate_etsy_listing)
@@ -343,7 +290,7 @@
                                 </td>
                                 @foreach ($products as $product)
                                     @php($enabled = $user->products->contains('id', $product->id))
-                                    <td class="px-5 py-5 text-center">
+                                    <td class="px-4 py-4 text-center">
                                         @if ($enabled)
                                             <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
                                                 <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -355,19 +302,10 @@
                                         @endif
                                     </td>
                                 @endforeach
-                                <td class="px-6 py-5 text-right">
-                                    <button
-                                        type="button"
-                                        wire:click="$dispatch('openModal', { component: 'modals.admin.edit-user', arguments: { userId: {{ $user->id }} } })"
-                                        class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
-                                    >
-                                        Edit
-                                    </button>
-                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ 7 + $products->count() }}" class="px-5 py-10 text-center text-sm text-slate-400">
+                                <td colspan="{{ 6 + $products->count() }}" class="px-5 py-10 text-center text-sm text-slate-400">
                                     Chua co user nao.
                                 </td>
                             </tr>

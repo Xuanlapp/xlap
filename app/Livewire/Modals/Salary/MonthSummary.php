@@ -47,43 +47,29 @@ class MonthSummary extends Component
         $employees = DataSalaryZhuzhuEmployee::query()
             ->where('user_id', auth()->id())
             ->orderBy('employee_name')
-            ->get();
+            ->get()
+            ->keyBy(fn (DataSalaryZhuzhuEmployee $employee) => (string) $employee->id);
 
         $calculator = app(WaliSalaryCalculator::class);
         $this->rows = [];
 
-        foreach ($salaryRows as $saved) {
-            if ($saved->employee_id && $employees->contains('id', $saved->employee_id)) {
-                continue;
-            }
-
-            $employees->push((object) [
-                'id' => $saved->employee_id ?? $saved->id,
-                'employee_name' => $saved->employee_name,
-                'allowed_leave_days' => (int) ($saved->allowed_leave_days ?? 0),
-                'base_salary' => (float) ($saved->base_salary ?? 0),
-            ]);
-        }
-
-        $employees = $employees->sortBy(fn ($employee) => mb_strtolower((string) $employee->employee_name))->values();
-
-        foreach ($employees as $employee) {
-            $saved = $salaryRows->get((string) $employee->id) ?? $salaryRows->firstWhere('employee_name', $employee->employee_name);
+        foreach ($salaryRows->values()->sortBy(fn (DataSalaryZhuzhu $saved) => mb_strtolower((string) $saved->employee_name)) as $saved) {
+            $employee = $employees->get((string) $saved->employee_id);
             $payload = [
-                'base_salary' => $this->parseMoney($saved?->base_salary ?? 0),
-                'performance_score' => $this->parseMoney($saved?->performance_score ?? 0),
-                'late_minutes' => (int) ($saved?->late_minutes ?? 0),
-                'leave_days' => $this->parseNumber($saved?->leave_days ?? 0),
-                'allowed_leave_days' => (int) ($saved?->allowed_leave_days ?? $employee->allowed_leave_days ?? 0),
-                'daily_bonus' => $this->moneyInput($saved?->daily_bonus ?? 0),
-                'supplement' => $this->moneyInput($saved?->supplement ?? 0),
-                'other_money' => $this->moneyInput($saved?->other_money ?? 0),
+                'base_salary' => $this->parseMoney($saved->base_salary ?? 0),
+                'performance_score' => $this->parseMoney($saved->performance_score ?? 0),
+                'late_minutes' => (int) ($saved->late_minutes ?? 0),
+                'leave_days' => $this->parseNumber($saved->leave_days ?? 0),
+                'allowed_leave_days' => (int) ($saved->allowed_leave_days ?? $employee?->allowed_leave_days ?? 0),
+                'daily_bonus' => $this->moneyInput($saved->daily_bonus ?? 0),
+                'supplement' => $this->moneyInput($saved->supplement ?? 0),
+                'other_money' => $this->moneyInput($saved->other_money ?? 0),
             ];
             $computed = $calculator->calculate($payload, $month);
 
             $this->rows[] = [
-                'employee_id' => $employee->id,
-                'employee_name' => $employee->employee_name,
+                'employee_id' => $saved->employee_id ?? $saved->id,
+                'employee_name' => $saved->employee_name,
                 'base_salary' => $payload['base_salary'],
                 'performance_score' => $payload['performance_score'],
                 'late_minutes' => $payload['late_minutes'],
@@ -92,7 +78,7 @@ class MonthSummary extends Component
                 'daily_bonus' => $payload['daily_bonus'],
                 'other_money' => $payload['other_money'],
                 'supplement' => $payload['supplement'],
-                'note' => (string) ($saved?->note ?? ''),
+                'note' => (string) ($saved->note ?? ''),
                 'standard_work_days' => $computed['standard_work_days'],
                 'actual_work_days' => $computed['actual_work_days'],
                 'late_penalty_score' => $computed['late_penalty_score'],

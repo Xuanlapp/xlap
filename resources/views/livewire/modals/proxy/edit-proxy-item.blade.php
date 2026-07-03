@@ -1,6 +1,6 @@
 <div>
     @if ($isOpen)
-        <div class="fixed inset-0 z-50 flex h-full w-full items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 z-50 flex h-full w-full items-start justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
             <button type="button" class="fixed inset-0 cursor-default focus:outline-none" wire:click="close" aria-label="Close edit proxy modal"></button>
 
             <form wire:submit.prevent="save" class="relative w-full max-w-7xl overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-2xl">
@@ -32,10 +32,36 @@
                         <select id="proxyAssignedUser" wire:model="assignedUserId" class="mt-2 w-full rounded-xl border-slate-200 text-sm text-slate-950 shadow-sm focus:border-cyan-500 focus:ring-cyan-500">
                             <option value="">-- Chua gan user --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }} @if($user->email) ({{ $user->email }}) @endif</option>
+                                <option value="{{ $user->id }}">{{ $user->name }}</option>
                             @endforeach
                         </select>
                         @error('assignedUserId') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+
+                        <label class="mt-4 block text-sm font-bold text-slate-900">Manager xem full proxy</label>
+                        <div class="mt-2 grid max-h-40 grid-cols-1 gap-2 overflow-auto rounded-xl border border-slate-200 p-3 sm:grid-cols-2">
+                            @php($visibleFullManagers = $managers->reject(fn ($manager) => in_array($manager->id, array_map('intval', $sharedManagerIds), true)))
+                            @forelse ($visibleFullManagers as $manager)
+                                <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                                    <input type="checkbox" wire:model.live="fullAccessManagerIds" value="{{ $manager->id }}" class="rounded border-slate-300 text-cyan-600">
+                                    <span>{{ $manager->name }}</span>
+                                </label>
+                            @empty
+                                <p class="text-sm text-slate-400">Khong con manager nao de cap full.</p>
+                            @endforelse
+                        </div>
+
+                        <label class="mt-4 block text-sm font-bold text-slate-900">Manager xem proxy</label>
+                        <div class="mt-2 grid max-h-56 grid-cols-1 gap-2 overflow-auto rounded-xl border border-slate-200 p-3 sm:grid-cols-2">
+                            @php($visibleSharedManagers = $managers->reject(fn ($manager) => in_array($manager->id, array_map('intval', $fullAccessManagerIds), true)))
+                            @forelse ($visibleSharedManagers as $manager)
+                                <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                                    <input type="checkbox" wire:model.live="sharedManagerIds" value="{{ $manager->id }}" class="rounded border-slate-300 text-cyan-600">
+                                    <span>{{ $manager->name }}</span>
+                                </label>
+                            @empty
+                                <p class="text-sm text-slate-400">Khong con manager nao de share rieng.</p>
+                            @endforelse
+                        </div>
 
                         <label for="proxyPort" class="mt-4 block text-sm font-bold text-slate-900">Port</label>
                         <input id="proxyPort" type="number" wire:model="port" min="1" max="65535" class="mt-2 w-full rounded-xl border-slate-200 text-sm text-slate-950 shadow-sm focus:border-cyan-500 focus:ring-cyan-500" placeholder="9808">

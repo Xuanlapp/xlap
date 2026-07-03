@@ -27,7 +27,7 @@ class Index extends Component
 
         $proxy = DataHubProxy::query()->findOrFail($proxyId);
 
-        abort_unless(auth()->user()?->is_admin || auth()->user()?->dataHubProxies()->whereKey($proxyId)->exists(), 403);
+        abort_unless(auth()->user()?->is_admin, 403);
 
         try {
             $result = app(ProxyMonitorService::class)->refreshProxy($proxy);

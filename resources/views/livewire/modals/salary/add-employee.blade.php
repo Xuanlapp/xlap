@@ -2,7 +2,7 @@
 @if ($isOpen)
     <div class="fixed inset-0 z-[90] flex items-center justify-center p-4">
         <button type="button" class="absolute inset-0 bg-slate-950/40" wire:click="close" aria-label="Close"></button>
-        <div class="relative z-[91] w-full max-w-lg overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+        <div class="relative overflow-y-auto z-[91] w-full max-w-lg overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
             <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                 <div>
                     <h3 class="text-base font-bold text-slate-950">Thêm nhân viên</h3>

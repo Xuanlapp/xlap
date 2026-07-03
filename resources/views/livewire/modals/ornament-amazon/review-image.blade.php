@@ -92,11 +92,11 @@
             tabindex="-1"
             aria-modal="true"
             role="dialog"
-            class="fixed inset-0 z-50 flex h-full w-full items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm"
+            class="fixed inset-0 z-50 flex h-full w-full items-start justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm"
         >
             <button type="button" class="fixed inset-0 cursor-default" wire:click="close" aria-label="Close image review"></button>
 
-            <div class="relative z-10 w-full max-w-[1500px]">
+            <div class="relative overflow-y-auto z-10 w-full max-w-[1500px]">
                 <div class="relative overflow-hidden rounded-2xl border border-white/70 bg-white shadow-2xl">
                     <button
                         type="button"

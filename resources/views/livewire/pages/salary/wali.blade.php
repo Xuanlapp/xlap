@@ -1,8 +1,8 @@
-<div x-data="{ previewImage: null, previewName: '' }" class="min-h-[calc(100vh-4rem)] bg-[#f3f4f6] text-slate-950">
+<div x-data="{ previewImage: null, previewName: '', openingEmployeeModal: false }" @if (auth()->user()) x-on:open-modal.window="if ($event.detail.component === 'modals.salary.edit-employee-salary') { openingEmployeeModal = true; setTimeout(() => openingEmployeeModal = false, 900) }" @endif class="min-h-[calc(100vh-4rem)] bg-[#f3f4f6] text-slate-950">
     <div class="mx-auto max-w-[1520px] px-4 py-5 sm:px-6 lg:px-8">
         <div class="mb-4 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex min-w-0 items-center gap-3">
+            <div class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex min-w-0 items-center gap-2">
                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M8 2v4" />
@@ -57,12 +57,12 @@
                         </select>
                     </label>
 
-                    <button
-                        type="button"
+                    <a
+                        href="{{ $this->exportUrl() }}"
                         class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                     >
                         Xuất excel
-                    </button>
+                    </a>
 
                     <button
                         type="button"
@@ -122,36 +122,36 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200 text-[10px] leading-tight">
+                <table class="w-full table-auto divide-y divide-slate-200 text-[10px] leading-tight">
                     <thead class="bg-slate-50 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
-                            <th class="px-2 py-2 text-left align-middle">Nhân viên</th>
-                            <th class="px-2 py-2 text-right align-middle">Lương cơ bản</th>
-                            <th class="px-2 py-2 text-right align-middle">Lương cứng biến động</th>
-                            <th class="px-2 py-2 text-right align-middle">Điểm hiệu suất</th>
-                            <th class="px-2 py-2 text-right align-middle">Đi trễ( Phút)</th>
-                            <th class="px-2 py-2 text-right align-middle">Điểm trừ</th>
-                            <th class="px-2 py-2 text-right align-middle">Xin Nghỉ</th>
-                            <th class="px-2 py-2 text-right align-middle">Số ngày được nghỉ</th>
-                            <th class="px-2 py-2 text-right align-middle">Nghỉ vượt</th>
-                            <th class="px-2 py-2 text-right align-middle">Công chuẩn</th>
-                            <th class="px-2 py-2 text-right align-middle">Công thực tế</th>
-                            <th class="px-2 py-2 text-right align-middle">Điểm tính lương</th>
-                            <th class="px-2 py-2 text-right align-middle">Thưởng ngày</th>
-                            <th class="px-2 py-2 text-right align-middle">Bổ sung</th>
-                            <th class="px-2 py-2 text-right align-middle">Tiền khác</th>
-                            <th class="px-2 py-2 text-left align-middle">Note</th>
-                            <th class="px-2 py-2 text-right align-middle">Tổng lương</th>
-                            <th class="px-2 py-2 text-right align-middle">Tiền điểm lẻ</th>
-                            <th class="px-2 py-2 text-right align-middle">Hoa hồng</th>
-                            <th class="px-2 py-2 text-right align-middle">Thực nhận</th>
+                            <th class="px-1.5 py-2 text-left align-middle whitespace-normal">Nhân viên</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Lương cơ bản</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Lương cứng biến động</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Điểm hiệu suất</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Đi trễ( Phút)</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Điểm trừ</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Xin Nghỉ</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Số ngày được nghỉ</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Nghỉ vượt</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Công chuẩn</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Công thực tế</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Điểm tính lương</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Thưởng ngày</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Bổ sung</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Tiền khác</th>
+                            <th class="px-1.5 py-2 text-left align-middle whitespace-normal">Note</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Tổng lương</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Tiền điểm lẻ</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Hoa hồng</th>
+                            <th class="px-1.5 py-2 text-right align-middle whitespace-normal">Thực nhận</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($rows as $row)
-                            <tr wire:key="salary-row-{{ $selectedYear }}-{{ $selectedMonth }}-{{ $row->employee_id ?? $row->id }}" wire:click="openEmployeeSalary({{ $row->employee_id ?? $row->id }})" class="cursor-pointer hover:bg-slate-50">
-                                <td class="px-2 py-2 align-top">
-                                    <div class="flex items-center gap-3">
+                            <tr wire:key="salary-row-{{ $selectedYear }}-{{ $selectedMonth }}-{{ $row->employee_id ?? $row->id }}" x-on:click="openingEmployeeModal = true; setTimeout(() => openingEmployeeModal = false, 900)" wire:click="$dispatch('openModal', { component: 'modals.salary.edit-employee-salary', arguments: { employeeId: {{ $row->employee_id ?? $row->id }}, salaryMonth: '{{ sprintf('%04d-%02d', $selectedYear, max($selectedMonth, 1)) }}' } })" class="cursor-pointer hover:bg-slate-50">
+                                <td class="w-[1%] px-1.5 py-2 align-top whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
                                         @if ($row->avatar_path)
                                             <button
                                                 type="button"
@@ -172,27 +172,27 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->base_salary, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->variable_salary, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->performance_score, 1, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->late_minutes, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-3 py-4 text-right tabular-nums text-rose-600">{{ number_format((float) $row->late_days, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->leave_days, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->allowed_leave_days, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-rose-600">{{ number_format(max(0, (float) $row->leave_days - (float) $row->allowed_leave_days), 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->standard_work_days, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->actual_work_days, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-3 py-4 text-right tabular-nums font-semibold text-blue-600">{{ number_format((float) $row->score, 1, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->daily_bonus, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->supplement, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->other_money, 0, ',', '.') }}</td>
-                                <td class="min-w-[180px] max-w-[220px] px-2 py-2 align-top text-[9px] leading-4 text-slate-500">
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->base_salary, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->variable_salary, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->performance_score, 1, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->late_minutes, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-rose-600">{{ number_format((float) $row->late_days, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->leave_days, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->allowed_leave_days, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-rose-600">{{ number_format(max(0, (float) $row->leave_days - (float) $row->allowed_leave_days), 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->standard_work_days, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->actual_work_days, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums font-semibold text-blue-600">{{ number_format((float) $row->score, 1, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->daily_bonus, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->supplement, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->other_money, 0, ',', '.') }}</td>
+                                <td class="px-1.5 py-2 align-top text-[9px] leading-4 text-slate-500">
                                     <div class="whitespace-pre-line">{{ $row->note ?: '-' }}</div>
                                 </td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums font-semibold text-slate-950">{{ number_format((float) $row->total_salary, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->odd_point_money, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->commission, 0, ',', '.') }}</td>
-                                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums font-bold text-emerald-600">{{ number_format((float) $row->net_received, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums font-semibold text-slate-950">{{ number_format((float) $row->total_salary, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->odd_point_money, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums text-slate-700">{{ number_format((float) $row->commission, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-1.5 py-2 text-right tabular-nums font-bold text-emerald-600">{{ number_format((float) $row->net_received, 0, ',', '.') }}</td>
                             </tr>
                         @empty
                             <tr>
@@ -205,10 +205,20 @@
         </div>
     </div>
 
+
+    <div x-show="openingEmployeeModal" x-cloak class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/35 backdrop-blur-[1px]">
+        <div class="flex items-center gap-2 rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-700 shadow-2xl">
+            <svg class="h-5 w-5 animate-spin text-cyan-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+            </svg>
+            Dang load data...
+        </div>
+    </div>
     <div x-show="previewImage" x-cloak x-transition class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4" x-on:keydown.escape.window="previewImage = null">
         <button type="button" class="absolute inset-0" x-on:click="previewImage = null" aria-label="Dong anh"></button>
         <div class="relative z-[121] max-h-[92vh] max-w-[92vw] overflow-hidden rounded-xl bg-white p-3 shadow-2xl">
-            <div class="mb-2 flex items-center justify-between gap-3">
+            <div class="mb-2 flex items-center justify-between gap-2">
                 <p class="text-sm font-bold text-slate-900" x-text="previewName"></p>
                 <button type="button" class="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800" x-on:click="previewImage = null">✕</button>
             </div>

@@ -1,9 +1,9 @@
 <div>
     @if ($isOpen)
-        <div class="fixed inset-0 z-50 flex h-full w-full items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 z-50 flex h-full w-full items-start justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
             <button type="button" class="fixed inset-0 cursor-default focus:outline-none" wire:click="close" aria-label="Close import template modal"></button>
 
-            <form wire:submit.prevent="save" class="relative my-6 w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-2xl">
+            <form wire:submit.prevent="save" class="relative overflow-y-auto my-6 w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-2xl">
                 <div class="flex items-start justify-between border-b border-slate-200 px-6 py-5">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-wide text-cyan-600">Admin</p>

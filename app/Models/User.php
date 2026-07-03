@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'username', 'email', 'password', 'avatar_path', 'status', 'role', 'is_admin', 'can_generate_amazon_listing', 'can_generate_etsy_listing', 'can_access_wali'])]
+#[Fillable(['name', 'username', 'email', 'password', 'avatar_path', 'status', 'role', 'is_admin', 'can_generate_amazon_listing', 'can_generate_etsy_listing', 'can_access_wali', 'can_view_all_proxy'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -37,6 +37,7 @@ class User extends Authenticatable
             'can_generate_amazon_listing' => 'boolean',
             'can_generate_etsy_listing' => 'boolean',
             'can_access_wali' => 'boolean',
+            'can_view_all_proxy' => 'boolean',
         ];
     }
 

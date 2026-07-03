@@ -8,6 +8,7 @@ use App\Models\DataSalaryZhuzhuEmployee;
 use App\Models\DataSalaryZhuzhuPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -37,20 +38,33 @@ class CreatePeriod extends Component
     public function open(string $year, string $month): void
     {
         $this->resetValidation();
-        $this->year = preg_match('/^\d{4}$/', $year) ? $year : now()->format('Y');
-        $this->month = preg_match('/^\d{1,2}$/', $month) ? str_pad($month, 2, '0', STR_PAD_LEFT) : now()->format('m');
+
+        $base = preg_match('/^\d{4}$/', $year) && preg_match('/^\d{1,2}$/', $month)
+            ? CarbonImmutable::createFromDate((int) $year, (int) $month, 1)->startOfMonth()
+            : CarbonImmutable::now()->startOfMonth();
+
+        if (! $this->periodExists($base)) {
+            $target = $base;
+        } else {
+            $target = $this->firstAvailablePeriodAround($base);
+        }
+
+        $this->year = (string) $target->year;
+        $this->month = str_pad((string) $target->month, 2, '0', STR_PAD_LEFT);
         $this->loadEmployees();
         $this->isOpen = true;
     }
 
     public function updatedYear(): void
     {
+        $this->normalizeYearForMonth();
         $this->loadEmployees();
     }
 
     public function updatedMonth(): void
     {
         $this->month = preg_match('/^\d{1,2}$/', $this->month) ? str_pad($this->month, 2, '0', STR_PAD_LEFT) : $this->month;
+        $this->normalizeYearForMonth();
         $this->loadEmployees();
     }
 
@@ -74,16 +88,23 @@ class CreatePeriod extends Component
             ]);
 
             $period = CarbonImmutable::createFromDate((int) $validated['year'], (int) $validated['month'], 1)->startOfMonth();
+
+            if ($this->periodExists($period)) {
+                throw ValidationException::withMessages([
+                    'month' => 'Ky luong nay da ton tai roi.',
+                ]);
+            }
+
+            DataSalaryZhuzhuPeriod::create([
+                'user_id' => auth()->id(),
+                'salary_month' => $period->toDateString(),
+            ]);
+
             $selectedIds = collect($this->selectedEmployees)
                 ->filter(fn (bool $isSelected): bool => $isSelected)
                 ->keys()
                 ->map(fn (int|string $id): int => (int) $id)
                 ->all();
-
-            DataSalaryZhuzhuPeriod::updateOrCreate([
-                'user_id' => auth()->id(),
-                'salary_month' => $period->toDateString(),
-            ]);
 
             if ($selectedIds === []) {
                 $this->dispatch('toast', type: 'warning', title: 'Da tao ky trong', message: 'Chua co nhan vien nao de copy sang ky nay.');
@@ -128,7 +149,10 @@ class CreatePeriod extends Component
 
     public function render(): View
     {
-        return view('livewire.modals.salary.create-period');
+        return view('livewire.modals.salary.create-period', [
+            'monthOptions' => $this->monthOptions(),
+            'yearOptions' => $this->yearOptions(),
+        ]);
     }
 
     private function loadEmployees(): void
@@ -184,17 +208,102 @@ class CreatePeriod extends Component
             $this->sourceLabel = 'Chua co ky truoc, lay danh sach nhan vien active.';
         }
 
-        $existingIds = DataSalaryZhuzhu::query()
-            ->where('user_id', auth()->id())
-            ->whereDate('salary_month', $targetPeriod->toDateString())
-            ->pluck('employee_id')
-            ->map(fn (int|string|null $id): int => (int) $id)
-            ->all();
-
         $this->selectedEmployees = collect($this->employees)
             ->mapWithKeys(fn (array $employee): array => [
-                (int) $employee['id'] => $existingIds === [] || in_array((int) $employee['id'], $existingIds, true),
+                (int) $employee['id'] => true,
             ])
             ->all();
+    }
+
+    private function monthOptions(): Collection
+    {
+        $allMonths = collect(range(1, 12))->map(fn (int $month): array => [
+            'value' => str_pad((string) $month, 2, '0', STR_PAD_LEFT),
+            'number' => $month,
+        ]);
+
+        return $allMonths
+            ->filter(function (array $month): bool {
+                $candidateYear = $this->candidateYearForMonth($month['number']);
+
+                return ! DataSalaryZhuzhuPeriod::query()
+                    ->where('user_id', auth()->id())
+                    ->whereDate('salary_month', CarbonImmutable::createFromDate($candidateYear, $month['number'], 1)->toDateString())
+                    ->exists();
+            })
+            ->values();
+    }
+
+    private function yearOptions(): array
+    {
+        $currentYear = (int) now()->format('Y');
+        $month = (int) ($this->month ?: now()->format('m'));
+
+        if ($month === 12) {
+            return [$currentYear, $currentYear + 1];
+        }
+
+        if ($month === 1) {
+            return [$currentYear - 1, $currentYear];
+        }
+
+        return [$currentYear];
+    }
+
+    private function normalizeYearForMonth(): void
+    {
+        $yearOptions = $this->yearOptions();
+
+        if (! in_array((int) $this->year, $yearOptions, true)) {
+            $this->year = (string) $yearOptions[0];
+        }
+    }
+
+    private function candidateYearForMonth(int $month): int
+    {
+        $currentYear = (int) now()->format('Y');
+        $selectedYear = (int) ($this->year ?: $currentYear);
+
+        if ($month === 12) {
+            return in_array($selectedYear, [$currentYear, $currentYear + 1], true) ? $selectedYear : $currentYear;
+        }
+
+        if ($month === 1) {
+            return in_array($selectedYear, [$currentYear - 1, $currentYear], true) ? $selectedYear : $currentYear;
+        }
+
+        return $currentYear;
+    }
+
+    private function firstAvailablePeriodAround(CarbonImmutable $base): CarbonImmutable
+    {
+        if (! $this->periodExists($base)) {
+            return $base;
+        }
+
+        $next = $base->addMonth();
+        if (! $this->periodExists($next)) {
+            return $next;
+        }
+
+        $previous = $base->subMonth();
+        if (! $this->periodExists($previous)) {
+            return $previous;
+        }
+
+        $target = CarbonImmutable::now()->startOfMonth();
+        while ($this->periodExists($target)) {
+            $target = $target->addMonth();
+        }
+
+        return $target;
+    }
+
+    private function periodExists(CarbonImmutable $period): bool
+    {
+        return DataSalaryZhuzhuPeriod::query()
+            ->where('user_id', auth()->id())
+            ->whereDate('salary_month', $period->toDateString())
+            ->exists();
     }
 }

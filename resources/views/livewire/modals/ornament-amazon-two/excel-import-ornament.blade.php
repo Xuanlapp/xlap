@@ -23,7 +23,7 @@
 
                 <div class="space-y-4 px-5 py-5 md:px-6" x-data="{ hiddenRows: [] }">
                     @if ($rows === [] && $rowErrors === [])
-                        <label for="ornament-amazon-two-import-excel" class="relative block cursor-pointer overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-8 text-center shadow-sm transition hover:border-slate-400 hover:bg-slate-50">
+                        <label for="ornament-amazon-two-import-excel" class="relative overflow-y-auto block cursor-pointer overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-8 text-center shadow-sm transition hover:border-slate-400 hover:bg-slate-50">
                             <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
                                 <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V5m0 11-4-4m4 4 4-4M5 19h14" />

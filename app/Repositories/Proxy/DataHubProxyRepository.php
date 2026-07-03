@@ -10,24 +10,22 @@ class DataHubProxyRepository
 {
     public function forUser(User $user): Collection
     {
-        if ($user->is_admin) {
-            return DataHubProxy::query()
-                ->with([
-                    'snapshots' => fn ($query) => $query->latest('checked_at')->limit(10),
-                    'items' => fn ($query) => $this->orderedItems($query)->with('assignedUser'),
-                ])
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get();
-        }
-
         return DataHubProxy::query()
             ->with([
                 'snapshots' => fn ($query) => $query->latest('checked_at')->limit(10),
-                'items' => fn ($query) => $this->orderedItems($query)->where('assigned_user_id', $user->id)->with('assignedUser'),
+                'items' => fn ($query) => $this->orderedItems($query)
+                    ->when(! ($user->is_admin || $user->can_view_all_proxy), fn ($query) => $query
+                        ->where('assigned_user_id', $user->id)
+                        ->orWhereHas('managerAccesses', fn ($query) => $query->whereKey($user->id)))
+                    ->with(['assignedUser', 'managerAccesses']),
             ])
             ->where('is_active', true)
-            ->whereHas('items', fn ($query) => $query->where('assigned_user_id', $user->id))
+            ->when(! ($user->is_admin || $user->can_view_all_proxy), function ($query) use ($user): void {
+                $query->whereHas('items', function ($query) use ($user): void {
+                    $query->where('assigned_user_id', $user->id)
+                        ->orWhereHas('managerAccesses', fn ($query) => $query->whereKey($user->id));
+                });
+            })
             ->orderBy('name')
             ->get();
     }

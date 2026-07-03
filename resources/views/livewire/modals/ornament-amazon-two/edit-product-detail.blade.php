@@ -10,7 +10,7 @@
         >
             <button type="button" class="fixed inset-0 cursor-default" wire:click="close" aria-label="Close edit ornament modal"></button>
 
-            <div class="relative z-10 max-h-full w-full max-w-5xl">
+            <div class="relative overflow-y-auto z-10 max-h-full w-full max-w-5xl">
                 <form wire:submit.prevent="save" class="relative rounded-lg bg-white shadow-sm">
                     <div class="flex items-center justify-between rounded-t border-b border-gray-200 p-4 md:p-5">
                         <div>

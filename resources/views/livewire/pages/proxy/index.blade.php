@@ -68,10 +68,12 @@
                                 </div>
                             </div>
 
-                            <button type="button" wire:click="refreshProxy({{ $proxy->id }})" wire:loading.attr="disabled" wire:target="refreshProxy({{ $proxy->id }})" class="inline-flex h-10 items-center justify-center rounded-md bg-cyan-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60">
-                                <span wire:loading.remove wire:target="refreshProxy({{ $proxy->id }})">Check ngay</span>
-                                <span wire:loading wire:target="refreshProxy({{ $proxy->id }})">Dang check...</span>
-                            </button>
+                            @if (auth()->user()?->is_admin)
+                                <button type="button" wire:click="refreshProxy({{ $proxy->id }})" wire:loading.attr="disabled" wire:target="refreshProxy({{ $proxy->id }})" class="inline-flex h-10 items-center justify-center rounded-md bg-cyan-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60">
+                                    <span wire:loading.remove wire:target="refreshProxy({{ $proxy->id }})">Check ngay</span>
+                                    <span wire:loading wire:target="refreshProxy({{ $proxy->id }})">Dang check...</span>
+                                </button>
+                            @endif
                         </div>
 
                         <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
@@ -148,7 +150,7 @@
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="9" class="px-4 py-10 text-center text-sm text-slate-400">Chua co du lieu proxy. Bam Check ngay hoac doi scheduler.</td>
+                                                <td colspan="9" class="px-4 py-10 text-center text-sm text-slate-400">Chua co du lieu proxy. Hay doi scheduler cap nhat du lieu.</td>
                                             </tr>
                                         @endforelse
                                     </tbody>

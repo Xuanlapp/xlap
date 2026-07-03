@@ -9,7 +9,7 @@
         >
             <button type="button" class="fixed inset-0 cursor-default" wire:click="close" aria-label="Close API credit modal"></button>
 
-            <div class="relative z-10 max-h-full w-full max-w-4xl">
+            <div class="relative overflow-y-auto z-10 max-h-full w-full max-w-4xl">
                 <form wire:submit.prevent="save" class="relative overflow-hidden rounded-2xl bg-white shadow-2xl">
                     <div class="flex items-center justify-between border-b border-gray-200 p-4 md:p-5">
                         <div>
