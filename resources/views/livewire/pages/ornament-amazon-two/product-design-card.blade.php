@@ -451,6 +451,7 @@
                         @endphp
 
                         <div
+                            wire:key="ornament-amazon-two-person-{{ $asset->id }}-{{ $personKey }}-{{ md5((string) $refValue) }}-{{ md5((string) $refPreviewValue) }}"
                                 x-data="{
                                     showUrl: false,
                                 personGenerating: @js($automationRunning && $currentAutomationStep === ('person_'.$personKey)),
@@ -679,27 +680,15 @@
                                 </div>
                             </div>
 
-                            @if (filled($refValue))
-                                <button
-                                    type="button"
-                                    wire:click="$dispatch('review-image', { src: @js($refPreviewValue), original: @js($refValue), title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword), imagePrompt: @js($personKey === 'a' ? $personAPrompt : $personBPrompt) })"
-                                    x-show="! refUrl || refUrl === @js($refValue)"
-                                    class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
-                                >
-                                    <img src="{{ $refPreviewValue }}" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
-                                </button>
-                            @elseif (true)
-                                <button
-                                    type="button"
-                                    x-cloak
-                                    x-show="refUrl && refUrl !== @js($refValue)"
-                                    x-on:click="$dispatch('review-image', { src: refPreviewUrl || previewUrl(refUrl) || refUrl, original: refUrl, title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword), imagePrompt: @js($personKey === 'a' ? $personAPrompt : $personBPrompt) })"
-                                    class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
-                                >
-                                    <img x-bind:src="refPreviewUrl || refUrl" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
-                                </button>
-                            @endif
-
+                            <button
+                                type="button"
+                                x-cloak
+                                x-show="refUrl"
+                                x-on:click="$dispatch('review-image', { src: refPreviewUrl || previewUrl(refUrl) || refUrl, original: refUrl, title: @js($personLabel.' Ref'), productSlug: 'ornament-amazon-2', assetId: {{ $asset->id }}, keyword: @js($asset->keyword), imagePrompt: @js($personKey === 'a' ? $personAPrompt : $personBPrompt) })"
+                                class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
+                            >
+                                <img x-bind:src="refPreviewUrl || previewUrl(refUrl) || refUrl" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
+                            </button>
                             <div
                                 x-cloak
                                 x-show="! refUrl && @js(! filled($refValue))"

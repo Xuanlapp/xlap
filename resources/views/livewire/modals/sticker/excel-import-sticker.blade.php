@@ -34,7 +34,7 @@
                     </button>
                 </div>
 
-                <div class="space-y-4 px-5 py-5 md:px-6" x-data="{ hiddenRows: [] }">
+                <div class="space-y-4 px-5 py-5 md:px-6">
                     @if ($rows === [] && $rowErrors === [])
                         <label for="sticker-import-excel" class="relative block cursor-pointer overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-8 text-center shadow-sm transition hover:border-slate-400 hover:bg-slate-50">
                             <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
@@ -68,7 +68,7 @@
                                 </div>
                             </div>
 
-                            <div class="overflow-x-auto">
+                            <div class="max-h-[28rem] overflow-x-auto overflow-y-auto">
                                 <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
                                     <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                                         <tr>
@@ -85,7 +85,7 @@
                                     <tbody class="divide-y divide-slate-100 bg-white">
                                         @foreach ($rows as $index => $row)
                                             @php($rowStatus = $row['status'] ?? 'ready')
-                                            <tr x-show="! hiddenRows.includes({{ $index }})" x-cloak wire:key="sticker-import-row-{{ $row['row'] }}">
+                                            <tr wire:key="sticker-import-row-{{ $row['row'] }}-{{ $row['sku'] ?? $index }}">
                                                 <td class="px-4 py-3 text-xs font-semibold text-slate-700">{{ $row['row'] }}</td>
                                                 <td class="px-4 py-3 text-xs text-slate-700 break-words max-w-[180px]">{{ $row['sku'] ?? '-' }}</td>
                                                 <td class="px-4 py-3 text-xs text-slate-700 break-words max-w-[220px]">{{ $row['keyword'] }}</td>
@@ -100,7 +100,7 @@
                                                     </span>
                                                 </td>
                                                 <td class="px-4 py-3 text-right">
-                                                    <button type="button" x-on:click="if (! @js($isProcessing)) hiddenRows = [...hiddenRows, {{ $index }}]" wire:click="removeRow({{ $index }})" wire:loading.attr="disabled" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40" @disabled($isProcessing) title="Remove row">
+                                                    <button type="button" wire:click="removeRow({{ $index }})" wire:loading.attr="disabled" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40" @disabled($isProcessing) title="Remove row">
                                                         <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                                             <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
                                                         </svg>

@@ -696,6 +696,12 @@ class OrnamentAmazonTwoService
         $this->ensureNotApproved($asset);
 
         $workflow = $this->workflowData($asset);
+        $existingRef = $workflow['b2']["person_{$person}_ref"] ?? null;
+
+        if (is_string($existingRef) && trim($existingRef) !== '') {
+            return $asset->refresh();
+        }
+
         $prompt = $workflow['b2']["person_{$person}_prompt"] ?? null;
 
         if (! is_string($prompt) || trim($prompt) === '') {

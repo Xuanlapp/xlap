@@ -388,6 +388,7 @@ class ProductDesignCard extends Component
             $asset = app(OrnamentAmazonTwoService::class)->updateWorkflowInput(auth()->user(), $this->assetId, $this->workflowInputPayload());
             $this->hydrateWorkflowInputs($this->workflowData($asset));
             $this->dispatchWorkflowUpdated();
+            $this->dispatch('$refresh');
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da gan anh 2. Create Master cho Person '.strtoupper($person).'.');
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'ornament_amazon_two.use_master_person_ref', ['asset_id' => $this->assetId, 'person' => $person]);

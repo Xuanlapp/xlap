@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Actions\Logout;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -13,6 +14,19 @@ new class extends Component
         $logout();
 
         $this->redirect('/');
+    }
+
+    public function setThemeMode(string $mode): void
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return;
+        }
+
+        $user->forceFill([
+            'theme_mode' => $mode === 'dark' ? 'dark' : 'light',
+        ])->save();
     }
 
     /**
@@ -36,6 +50,7 @@ new class extends Component
             'canAccessWali' => $canAccessWali,
             'isWaliOnly' => $isWaliOnly,
             'userInitials' => $user ? mb_strtoupper(mb_substr($user->name, 0, 1)) : '?',
+            'themeMode' => $user?->theme_mode ?? 'light',
         ];
     }
 }; ?>
@@ -59,7 +74,7 @@ new class extends Component
     $avatarClass = $avatarPalettes[$avatarSeed % count($avatarPalettes)];
 @endphp
 
-<div x-data="{ sidebarOpen: false, userMenuOpen: false }" x-on:keydown.escape.window="sidebarOpen = false; userMenuOpen = false">
+<div x-data="{ sidebarOpen: false, userMenuOpen: false, isDark: {{ $themeMode === 'dark' ? 'true' : 'false' }} }" x-init="document.documentElement.classList.toggle('theme-dark', isDark); document.documentElement.classList.toggle('theme-light', !isDark)" x-on:keydown.escape.window="sidebarOpen = false; userMenuOpen = false">
     <div class="sticky top-0 z-40 border-b border-slate-200 bg-gray-100 px-3 py-2 text-slate-950">
         <div class="flex h-11 items-center rounded-xl border border-slate-300 bg-white px-2 shadow-sm">
         <button
@@ -82,9 +97,31 @@ new class extends Component
             <span class="truncate text-sm font-semibold">Offorest</span>
         </a>
 
+<button
+            type="button"
+            class="ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/80 bg-white/90 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-950 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-white/20 dark:hover:bg-white/10"
+            x-on:click="isDark = !isDark; document.documentElement.classList.toggle('theme-dark', isDark); document.documentElement.classList.toggle('theme-light', !isDark); $wire.setThemeMode(isDark ? 'dark' : 'light')"
+            aria-label="Toggle theme"
+        >
+            <svg x-show="!isDark" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M12 3v1" />
+                <path d="M12 20v1" />
+                <path d="m4.22 4.22.7.7" />
+                <path d="m19.08 19.08.7.7" />
+                <path d="M3 12h1" />
+                <path d="M20 12h1" />
+                <path d="m4.22 19.78.7-.7" />
+                <path d="m19.08 4.92.7-.7" />
+                <circle cx="12" cy="12" r="4" />
+            </svg>
+            <svg x-show="isDark" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
+            </svg>
+        </button>
+
         <button
             type="button"
-            class="ml-auto flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white text-sm font-semibold text-slate-950 shadow-sm ring-2 ring-blue-200 focus:outline-none"
+            class="ml-2 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-white text-sm font-semibold text-slate-950 shadow-sm ring-2 ring-blue-200 focus:outline-none dark:border dark:border-white/10 dark:bg-white/5 dark:text-white dark:ring-blue-400/30"
             x-on:click="userMenuOpen = ! userMenuOpen"
             x-bind:aria-expanded="userMenuOpen.toString()"
             aria-haspopup="true"

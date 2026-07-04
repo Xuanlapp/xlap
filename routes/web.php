@@ -12,6 +12,7 @@ use App\Livewire\Pages\Admin\ActivityLogs;
 use App\Livewire\Pages\Admin\ApiCredits;
 use App\Livewire\Pages\Admin\ListUser;
 use App\Livewire\Pages\Admin\MailTest;
+use App\Livewire\Pages\Dashboard\Index as DashboardIndex;
 use App\Livewire\Pages\Drive\DriveUploads;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
@@ -38,7 +39,7 @@ Route::post('logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
-Route::view('dashboard', 'dashboard')
+Route::get('dashboard', DashboardIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 

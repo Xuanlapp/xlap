@@ -556,3 +556,302 @@ Fix truong hop nut Delete nhan vien `xlap` xoa xong van hien lai trong ky luong 
 
 **Viec can lam tiep:**  
 - User refresh man hinh va xoa lai nhan vien `xlap`; neu van con thi can inspect truc tiep DB row cua `xlap` o ky dang test.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Thay dashboard tinh bang dashboard Livewire co thong ke theo role/product/thang cho admin, manager va user.
+
+**File da sua/tao:**  
+- `app/Services/Dashboard/DashboardStatsService.php`
+- `app/Livewire/Pages/Dashboard/Index.php`
+- `resources/views/livewire/pages/dashboard/index.blade.php`
+- `routes/web.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi route `dashboard` sang Livewire page `App\Livewire\Pages\Dashboard\Index`.
+- Them `DashboardStatsService` tong hop du lieu tu `product_design_assets` theo bo loc thang, user, product.
+- Admin/manager co filter user, thay card tong so user, tong project/page, tong file, tong approved.
+- User thuong khong co card user, chi thay cac product duoc phan quyen va thong ke cua chinh minh.
+- Them dashboard UI moi: card overview, bieu do cot 12 thang, top user, va card tung product (users/files/approved/uploaded).
+- Product duoc sap thu tu theo `ProductRegistry`, khong phu thuoc cot `sort_order` trong DB.
+
+**Logic can nho:**  
+- Nguon thong ke chinh la `product_design_assets`.
+- `Files` = so row tao trong thang; `Approved` = `is_approved = true`; `Uploaded` = `drive_uploaded_at` khac null.
+- Admin/manager mac dinh xem toan bo user; chi loc theo 1 user khi user do duoc chon.
+
+**Deploy impact:**  
+- Can clear route/view/config cache sau khi deploy vi route dashboard da doi tu Blade tinh sang Livewire.
+
+**Queue impact:**  
+- Khong co.
+
+**Viec can lam tiep:**  
+- User mo dashboard that de test UI/du lieu va neu can co the bo sung chart line/tooltip sau.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Fix ParseError khi mo dashboard moi.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/dashboard/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Thay block bieu do dang dung `@forelse/@empty` bang `@if/@foreach` de tranh loi parse Blade trong block chart.
+- Doi tinh `maxValue` sang callback thuong thay vi arrow function trong `@php(...)` inline cho on dinh hon tren Blade compiler hien tai.
+- Clear `view:clear` sau khi sua.
+
+**Loi da gap va cach xu ly:**  
+- Blade bao `unexpected token endforeach, expecting elseif or else or endif` tai block chart cua dashboard.
+- Nguyen nhan la parser khong an toan voi cau truc `@forelse` + inline `@php(...)` o block nay.
+
+**Viec can lam tiep:**  
+- User refresh dashboard va test render lai. Neu con loi tiep theo thi inspect tiep block Blade khac.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Fix them ParseError tiep theo trong dashboard moi o block product cards.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/dashboard/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Thay block product cards dang dung `@forelse/@empty` bang `@if(empty())/@foreach`.
+- Tiep tuc giu dashboard Blade o cau truc an toan hon cho Blade compiler hien tai.
+- Clear compiled views sau khi sua.
+
+**Logic can nho:**  
+- Dashboard Blade nay nen uu tien `@if + @foreach` thay vi `@forelse` de tranh ParseError lan lap tren moi truong hien tai.
+
+**Viec can lam tiep:**  
+- User refresh dashboard de test lai render toan bo trang.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Fix dut diem ParseError lap lai tren dashboard moi.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/dashboard/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Viet lai toan bo dashboard Blade view bang cau truc PHP control structure (`<?php if ... ?>`, `<?php foreach ... ?>`) thay cho nhieu directive Blade long nhau.
+- Muc tieu la tranh triệt để loi parser `expecting elseif/else/endif` dang lap lai tren moi truong hien tai.
+- Chay `php artisan view:clear` va `php artisan view:cache` de xac nhan compile pass.
+
+**Loi da gap va cach xu ly:**  
+- Sau khi sua tung block `@forelse`, Blade van tiep tuc parse loi o cac block khac trong cung file.
+- Giai phap cuoi cung la don gian hoa parser surface bang view PHP-style, compile Blade pass thanh cong.
+
+**Logic can nho:**  
+- Dashboard view nay uu tien tinh on dinh parser hon la dung qua nhieu directive Blade nang.
+
+**Viec can lam tiep:**  
+- User refresh dashboard va test giao dien/du lieu that.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Lam dashboard gon hon va dung huong quan ly hon: user/product/month phu thuoc bo loc, card trung tam la chua duyet/da duyet.
+
+**File da sua/tao:**  
+- `app/Services/Dashboard/DashboardStatsService.php`
+- `resources/views/livewire/pages/dashboard/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Khi da chon user thi `visibleProducts` chi lay product user do duoc phan quyen.
+- Thang mac dinh duoc lay theo du lieu thuc te cua user/product da chon thay vi mo rong linh tinh.
+- Card tong quan doi thanh `Chua duyet`, `Da duyet`, `Tong file`, va `Users` cho admin/manager.
+- Bieu do chinh doi sang trend `Chua duyet` vs `Da duyet` cho de doc va dung nhu dashboard quan ly.
+- Card product doi sang `Users / Tong file / Chua duyet / Da duyet` de giam mo ho.
+
+**Logic can nho:**  
+- Dashboard khong can so `Files` chung chung nua; gia tri quan trong hon la trang thai duyet.
+- Admin/manager co the loc theo user va product; user thuong chi thay scope cua minh.
+
+**Deploy impact:**  
+- Blade cache phai clear/cache lai khi deploy dashboard.
+
+**Queue impact:**  
+- Khong co.
+
+**Viec can lam tiep:**  
+- User refresh dashboard va neu muon co the tiep tuc nang cap sang chart line/tooltip dep hon.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Danh rieng layout dashboard: user thuong xem Tien do theo thang full width, admin/manager moi xem layout chia doi va top user.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/dashboard/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Neu khong phai admin/manager thi block `Tien do theo thang` duoc render full width, khong con cot `Top user` ben canh.
+- Neu la admin/manager thi dashboard van giu layout chia doi, de xem top user song song.
+- Giup user thuong tap trung vao trend cua chinh minh, con admin/manager co goc nhin bao quat hon.
+- Clear va cache lai Blade templates sau khi sua.
+
+**Logic can nho:**  
+- User thuong = full chart, minimal UI.
+- Admin/manager = split chart + top user.
+
+**Viec can lam tiep:**  
+- User refresh dashboard va kiem tra giao dien theo role.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Chi hien nhom page/product trong dashboard product filter, khong lan sang catalog/idea.
+
+**File da sua/tao:**  
+- `app/Services/Dashboard/DashboardStatsService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Gioi han `visibleProducts` theo danh sach page group: `sticker`, `ornament`, `ornament-etsy`, `ornament-amazon-2`, `proxy`.
+- Khi user da duoc chon, dashboard chi loc product trong nhom page cua user do.
+- Admin/manager cung chi thay nhom page trong dashboard, khong lay catalog/idea.
+
+**Logic can nho:**  
+- Dashboard product filter = group page, giong sidebar, de tranh roi voi catalog/idea.
+
+**Deploy impact:**  
+- Can clear cache sau deploy neu dashboard dang cache du lieu cu.
+
+**Viec can lam tiep:**  
+- User refresh dashboard va kiem tra dropdown Product chi con nhom page.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Top user tren dashboard khong bi co scope theo user dang chon; chi loc theo thang va product.
+
+**File da sua/tao:**  
+- `app/Services/Dashboard/DashboardStatsService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Bo filter `ownerId` khoi `topUsers()`.
+- Top user gio luon la bang xep hang chung cua cac user trong thang dang chon.
+- Neu co chon product thi top user duoc loc theo product do.
+- Chon user chi anh huong card/charts/overview cua scope chinh, khong anh huong bang xep hang top user.
+
+**Logic can nho:**  
+- `Top user` = ranking chung theo `month + optional product`.
+- `Selected user` = scope chi tiet dashboard, khong phai scope cua ranking.
+
+**Viec can lam tiep:**  
+- User refresh dashboard va test lai truong hop chon user Linh + product Sticker.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Fix loi dashboard `Undefined variable $ownerId` sau khi doi Top user thanh ranking chung.
+
+**File da sua/tao:**  
+- `app/Services/Dashboard/DashboardStatsService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Xoa dong query con sot `->when($ownerId...)` trong `topUsers()`.
+- Doi call `topUsers()` ve dung 2 tham so: thang va product.
+- Chay `php -l` va `php artisan optimize:clear`.
+
+**Logic can nho:**  
+- `Top user` khong duoc dung selected user/ownerId nua; chi loc theo thang va product.
+
+**Viec can lam tiep:**  
+- User refresh dashboard va test lai chon Linh + Sticker.
+
+### 2026-07-04
+
+**Muc tieu:**  
+Fix dut diem loi dashboard 500 `Undefined variable $ownerId` va kiem tra khong con loi runtime co ban.
+
+**File da sua/tao:**  
+- `app/Services/Dashboard/DashboardStatsService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi call `topUsers()` chi con truyen thang va product.
+- Dam bao `topUsers()` khong loc theo selected user nua, dung logic ranking chung theo thang/product.
+- Chay `php -l`, `php artisan view:cache`, `php artisan optimize:clear` va smoke test build dashboard.
+
+**Root cause:**  
+- Sau khi doi logic Top user thanh bang xep hang chung, code van con truyen/tham chieu `$ownerId` trong `topUsers()`, gay 500 khi vao `/dashboard`.
+
+**Deploy impact:**  
+- Khong doi database, khong anh huong queue. Can deploy code moi va clear/cache lai view.
+
+**Queue impact:**  
+- Khong co.
+
+**Viec can lam tiep:**  
+- User refresh `/dashboard`, test lai chon Linh + Sticker + thang 06/2026.
+
+### 2026-07-04
+
+**Mục tiêu:**  
+Kiểm tra vì sao Linh có 261 sản phẩm nhưng dashboard không hiện như mong đợi, đồng thời sửa lỗi chữ tiếng Việt/biến bị thay nhầm.
+
+**File đã sửa/tạo:**  
+- `app/Services/Dashboard/DashboardStatsService.php`
+- `resources/views/livewire/pages/dashboard/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay đổi chính:**  
+- Xác nhận Linh có 261 dòng `product_design_assets` ở tháng `07/2026`, còn tháng `06/2026` là 0.
+- Viết lại sạch `DashboardStatsService.php` sau khi thay chữ quá rộng làm hỏng tên class/biến.
+- Sửa view dashboard về đúng biến `availableUsers`, `visibleProducts`, `selectedProductSlug`, `topUsers`.
+- Chuyển các nhãn chính trên dashboard sang tiếng Việt có dấu.
+
+**Root cause:**  
+- Số 261 không mất; dashboard sẽ hiện khi chọn tháng `07/2026` + user Linh + Sticker.
+- Một lệnh thay chữ trước đó thay cả tên biến/class trong code, gây lỗi cú pháp và sai biến view.
+
+**Deploy impact:**  
+- Không đổi database. Cần deploy code mới và clear/cache view.
+
+**Queue impact:**  
+- Không có.
+
+**Việc cần làm tiếp:**  
+- Refresh dashboard, chọn Linh + Sticker + tháng 07/2026 để thấy tổng 261.
+
+
+### 2026-07-04
+
+**M?c ti?u:**  
+T?ch l?i ng?n ng? dashboard: backend/code ti?ng Anh, frontend ti?ng Vi?t c? d?u.
+
+**File ?? s?a/t?o:**  
+- `app/Services/Dashboard/DashboardStatsService.php`
+- `resources/views/livewire/pages/dashboard/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay ??i ch?nh:**  
+- ??a to?n b? label/note ? service v? ti?ng Anh ?? tr?nh l?i m? h?a v? d? b?o tr?.
+- Gi? chu?i hi?n th? ? view b?ng ti?ng Vi?t c? d?u cho user.
+- D?n l?i c?c bi?n Blade b? ??i nh?m t?n v? ??ng `selectedProductSlug`, `visibleProducts`, `topUsers`.
+
+**Root cause:**  
+- L?c tr??c thay ch? qu? r?ng khi?n t?n bi?n v? chu?i trong service/view b? m?o m? h?a.
+
+**Deploy impact:**  
+- Ch? c?n deploy code v? clear/cache l?i view.
+
+**Queue impact:**  
+- Kh?ng c?.
+
+**Viec can lam tiep:**  
+- N?u c?n ch? n?o hi?n ti?ng Vi?t sai trong code BE th? ch? s?a text hi?n th? ? FE, kh?ng ??ng t?n h?m/bi?n n?a.

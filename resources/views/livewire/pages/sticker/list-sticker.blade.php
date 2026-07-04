@@ -5,6 +5,9 @@
             : ['pending_review', 'not_started'].includes(localStorage.getItem('sticker.status-filter'))
                 ? 'unapproved'
             : 'all',
+        promptOpening: false,
+        importOpening: false,
+        addOpening: false,
         setTab(tab) {
             if (this.activeTab === tab) {
                 return;
@@ -12,6 +15,33 @@
 
             this.activeTab = tab;
             localStorage.setItem('sticker.status-filter', tab);
+        },
+        openPromptModal() {
+            if (this.promptOpening) {
+                return;
+            }
+
+            this.promptOpening = true;
+            this.$dispatch('openModal', { component: 'modals.prompt.detail-prompt', arguments: { productSlug: 'sticker' } });
+            window.setTimeout(() => this.promptOpening = false, 900);
+        },
+        openImportModal() {
+            if (this.importOpening) {
+                return;
+            }
+
+            this.importOpening = true;
+            this.$dispatch('openModal', { component: 'modals.sticker.excel-import-sticker' });
+            window.setTimeout(() => this.importOpening = false, 900);
+        },
+        openAddModal() {
+            if (this.addOpening) {
+                return;
+            }
+
+            this.addOpening = true;
+            this.$dispatch('openModal', { component: 'modals.sticker.add-product-design' });
+            window.setTimeout(() => this.addOpening = false, 900);
         }
     }"
     x-init="
@@ -83,30 +113,45 @@
 
                     <button
                         type="button"
-                        wire:click="$dispatch('openModal', { component: 'modals.prompt.detail-prompt', arguments: { productSlug: 'sticker' } })"
-                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                        x-on:click="openPromptModal()"
+                        x-bind:disabled="promptOpening"
+                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <svg x-show="! promptOpening" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 5.25h15m-15 4.5h15m-15 4.5h9m-9 4.5h6" />
+                        </svg>
+                        <svg x-show="promptOpening" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 1 0-6 6v4a10 10 0 0 1 0-20z"></path>
                         </svg>
                         Prompt
                     </button>
 
                     <button
                         type="button"
-                        wire:click="$dispatch('openModal', { component: 'modals.sticker.excel-import-sticker' })"
-                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                        x-on:click="openImportModal()"
+                        x-bind:disabled="importOpening"
+                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
+                        <svg x-show="importOpening" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 1 0-6 6v4a10 10 0 0 1 0-20z"></path>
+                        </svg>
                         Import Excel
                     </button>
 
                     <button
                         type="button"
-                        wire:click="$dispatch('openModal', { component: 'modals.sticker.add-product-design' })"
-                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-cyan-500 px-3 text-xs font-bold text-white shadow-sm transition hover:bg-cyan-600 focus:outline-none focus:ring-4 focus:ring-cyan-200"
+                        x-on:click="openAddModal()"
+                        x-bind:disabled="addOpening"
+                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-cyan-500 px-3 text-xs font-bold text-white shadow-sm transition hover:bg-cyan-600 focus:outline-none focus:ring-4 focus:ring-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <svg x-show="! addOpening" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" d="M12 5v14M5 12h14" />
+                        </svg>
+                        <svg x-show="addOpening" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 1 0-6 6v4a10 10 0 0 1 0-20z"></path>
                         </svg>
                         Them sticker
                     </button>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+@php($initialThemeMode = auth()->check() ? (auth()->user()->theme_mode ?? 'light') : 'light')
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ $initialThemeMode === 'dark' ? 'theme-dark' : 'theme-light' }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,7 +19,7 @@
         @stack('scripts')
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-200">
+        <div class="app-shell min-h-screen bg-gray-200">
             <livewire:layout.navigation />
 
             <div>
@@ -32,7 +33,7 @@
                 @endif
 
                 <!-- Page Content -->
-                <main>
+                <main class="app-main">
                     {{ $slot }}
                 </main>
             </div>

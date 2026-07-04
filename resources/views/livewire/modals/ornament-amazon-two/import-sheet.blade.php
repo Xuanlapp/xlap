@@ -1,6 +1,6 @@
 <div>
     @if ($isOpen)
-        <div @if($isProcessing) wire:poll.800ms="processNextRow" @endif x-data="{ hiddenRows: [] }" x-on:keydown.escape.window="$wire.close()" tabindex="-1" aria-modal="true" role="dialog" class="fixed inset-0 z-50 flex h-[calc(100%-1rem)] max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900/50 p-4 md:inset-0">
+        <div @if($isProcessing) wire:poll.800ms="processNextRow" @endif x-on:keydown.escape.window="$wire.close()" tabindex="-1" aria-modal="true" role="dialog" class="fixed inset-0 z-50 flex h-[calc(100%-1rem)] max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900/50 p-4 md:inset-0">
             <button type="button" class="fixed inset-0 cursor-default" wire:click="close" aria-label="Close import sheet modal"></button>
 
             <div class="relative overflow-y-auto z-10 w-full max-w-7xl">
@@ -79,7 +79,7 @@
                                             </thead>
                                             <tbody class="divide-y divide-slate-100 text-slate-700">
                                                 @foreach ($rows as $index => $row)
-                                                    <tr x-show="! hiddenRows.includes({{ $index }})" wire:key="ornament-sheet-row-{{ $index }}-{{ $row['row'] ?? $index }}">
+                                                    <tr wire:key="ornament-sheet-row-{{ $row['row'] ?? $index }}-{{ $row['sku'] ?? $index }}">
                                                         <td class="whitespace-nowrap px-4 py-3 font-medium text-slate-900">{{ $row['row'] }}</td>
                                                         <td class="whitespace-nowrap px-4 py-3">{{ $row['sku'] }}</td>
                                                         <td class="min-w-48 px-4 py-3">{{ $row['product'] }}</td>
@@ -87,7 +87,7 @@
                                                         <td class="max-w-56 truncate px-4 py-3"><a href="{{ $row['product_link'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">{{ $row['product_link'] }}</a></td>
                                                         <td class="max-w-56 truncate px-4 py-3"><a href="{{ $row['main_image'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">{{ $row['main_image'] }}</a></td>
                                                         <td class="whitespace-nowrap px-4 py-3"><span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{{ $row['status'] ?? 'ready' }}</span></td>
-                                                        <td class="px-4 py-3 text-right"><button type="button" x-on:click="hiddenRows = [...hiddenRows, {{ $index }}]" wire:click="removeRow({{ $index }})" wire:loading.attr="disabled" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40" @disabled($isProcessing) title="Remove row"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 0 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg></button></td>
+                                                        <td class="px-4 py-3 text-right"><button type="button" wire:click="removeRow({{ $index }})" wire:loading.attr="disabled" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40" @disabled($isProcessing) title="Remove row"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 0 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg></button></td>
                                                     </tr>
                                                 @endforeach
                                             </tbody>

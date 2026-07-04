@@ -23,7 +23,7 @@
 
                 <div class="space-y-4 px-5 py-5 md:px-6" x-data="{ hiddenRows: [] }">
                     @if ($rows === [] && $rowErrors === [])
-                        <label for="ornament-amazon-two-import-excel" class="relative overflow-y-auto block cursor-pointer overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-8 text-center shadow-sm transition hover:border-slate-400 hover:bg-slate-50">
+                        <label for="ornament-amazon-two-import-excel" class="relative block cursor-pointer overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-8 text-center shadow-sm transition hover:border-slate-400 hover:bg-slate-50">
                             <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
                                 <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V5m0 11-4-4m4 4 4-4M5 19h14" />
@@ -73,7 +73,7 @@
                                 </div>
                             </div>
 
-                            <div class="overflow-x-auto">
+                            <div class="max-h-[28rem] overflow-x-auto overflow-y-auto">
                                 <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
                                     <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                                         <tr>
@@ -96,25 +96,25 @@
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['product_link']) }" class="max-w-[420px] text-xs text-slate-700">
                                                         <a href="{{ $row['product_link'] }}" target="_blank" class="font-medium text-slate-700 hover:text-slate-900 break-all" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : value)"></a>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃ¡Â»Ân' : 'Xem thÃƒÂªm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['main_image']) }" class="max-w-[420px] text-xs text-slate-700">
                                                         <a href="{{ $row['main_image'] }}" target="_blank" class="font-medium text-slate-700 hover:text-slate-900 break-all" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : value)"></a>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃ¡Â»Ân' : 'Xem thÃƒÂªm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['product'] ?? '') }" class="max-w-[280px] text-xs text-slate-700">
                                                         <span class="font-medium break-words" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : (value || '-'))"></span>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃ¡Â»Ân' : 'Xem thÃƒÂªm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['keyword_phrase'] ?? '') }" class="max-w-[280px] text-xs text-slate-700">
                                                         <span class="font-medium break-words" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : (value || '-'))"></span>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃ¡Â»Ân' : 'Xem thÃƒÂªm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
