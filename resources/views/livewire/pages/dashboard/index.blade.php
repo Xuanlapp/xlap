@@ -15,17 +15,15 @@
                     <label class="dashboard-filter block">
                         <span class="dashboard-filter-label">Tháng</span>
                         <select wire:model.live="selectedMonth" class="dashboard-select h-12 w-full rounded-2xl border px-4 text-sm font-medium shadow-sm outline-none transition">
-                            <?php if (count($monthOptions) > 0): ?>
-                                <?php foreach ($monthOptions as $option): ?>
-                                    <option value="<?= e($option['value']) ?>"><?= e($option['label']) ?></option>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <option value="<?= e(now()->format('Y-m')) ?>"><?= e(now()->format('m/Y')) ?></option>
-                            <?php endif; ?>
+                            @forelse ($monthOptions as $option)
+                                <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                            @empty
+                                <option value="{{ now()->format('Y-m') }}">{{ now()->format('m/Y') }}</option>
+                            @endforelse
                         </select>
                     </label>
 
-                    <?php if ($isPrivileged): ?>
+                    @if ($isPrivileged)
                         <label class="dashboard-filter block">
                             <span class="dashboard-filter-label">User</span>
                             <select wire:model.live="selectedUserId" class="dashboard-select h-12 w-full rounded-2xl border px-4 text-sm font-medium shadow-sm outline-none transition">
@@ -35,7 +33,7 @@
                                 <?php endforeach; ?>
                             </select>
                         </label>
-                    <?php endif; ?>
+                    @endif
 
                     <label class="dashboard-filter block">
                         <span class="dashboard-filter-label">Nhóm page</span>
