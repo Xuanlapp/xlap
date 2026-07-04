@@ -28,9 +28,9 @@
                             <span class="dashboard-filter-label">User</span>
                             <select wire:model.live="selectedUserId" class="dashboard-select h-12 w-full rounded-2xl border px-4 text-sm font-medium shadow-sm outline-none transition">
                                 <option value="">Tất cả user</option>
-                                <?php foreach ($availableUsers as $user): ?>
-                                    <option value="<?= e($user->id) ?>"><?= e($user->name) ?></option>
-                                <?php endforeach; ?>
+                                @foreach ($availableUsers as $availableUser)
+                                    <option value="{{ $availableUser->id }}">{{ $availableUser->name }}</option>
+                                @endforeach
                             </select>
                         </label>
                     @endif
@@ -39,9 +39,9 @@
                         <span class="dashboard-filter-label">Nhóm page</span>
                         <select wire:model.live="selectedProductSlug" class="dashboard-select h-12 w-full rounded-2xl border px-4 text-sm font-medium shadow-sm outline-none transition">
                             <option value="">Tất cả nhóm page</option>
-                            <?php foreach ($visibleProducts as $product): ?>
-                                <option value="<?= e($product->slug) ?>"><?= e($product->name) ?></option>
-                            <?php endforeach; ?>
+                            @foreach ($visibleProducts as $product)
+                                <option value="{{ $product->slug }}">{{ $product->name }}</option>
+                            @endforeach
                         </select>
                     </label>
                 </div>
@@ -49,9 +49,9 @@
         </section>
 
         <section class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-            <?php foreach ($overviewCards as $card): ?>
-                <?php
-                    $isDown = !empty($card['delta']) && str_starts_with($card['delta'], '-');
+            @foreach ($overviewCards as $card)
+                @php
+                    $isDown = ! empty($card['delta']) && str_starts_with($card['delta'], '-');
                     $overviewLabels = [
                         'Users' => 'User',
                         'Pending' => 'Chưa duyệt',
@@ -72,87 +72,91 @@
                         'blue' => 'from-blue-500/14 via-violet-500/8 to-transparent text-blue-500',
                     ];
                     $accent = $accentMap[$card['tone'] ?? 'slate'] ?? $accentMap['slate'];
-                ?>
+                @endphp
                 <article class="dashboard-stat-card relative overflow-hidden rounded-[24px] border p-5 sm:p-6">
-                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-br <?= $accent ?>"></div>
+                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-br {{ $accent }}"></div>
                     <div class="relative flex items-start justify-between gap-3">
                         <div>
-                            <p class="text-sm font-semibold text-slate-500 dark:text-slate-400"><?= e($displayLabel) ?></p>
-                            <p class="mt-4 text-4xl font-semibold tracking-tight sm:text-[40px] leading-none"><?= e(number_format((int) $card['value'])) ?></p>
+                            <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">{{ $displayLabel }}</p>
+                            <p class="mt-4 text-4xl font-semibold tracking-tight sm:text-[40px] leading-none">{{ number_format((int) $card['value']) }}</p>
                         </div>
-                        <?php if (!empty($card['delta'])): ?>
-                            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold <?= $isDown ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20' ?>">
-                                <?= e($card['delta']) ?>
+                        @if (! empty($card['delta']))
+                            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $isDown ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20' }}">
+                                {{ $card['delta'] }}
                             </span>
-                        <?php endif; ?>
+                        @endif
                     </div>
-                    <p class="relative mt-6 text-sm leading-6 text-slate-500 dark:text-slate-400"><?= e($displayNote) ?></p>
+                    <p class="relative mt-6 text-sm leading-6 text-slate-500 dark:text-slate-400">{{ $displayNote }}</p>
                 </article>
-            <?php endforeach; ?>
+            @endforeach
         </section>
 
-        <?php $maxValue = max(1, collect($monthlySeries)->flatMap(function ($point) { return [$point['pending'], $point['approved']]; })->max() ?? 1); ?>
+        @php
+            $maxValue = max(1, collect($monthlySeries)->flatMap(fn ($point) => [$point['pending'], $point['approved']])->max() ?? 1);
+        @endphp
 
         <section class="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.8fr)_minmax(340px,1fr)]">
             <article class="dashboard-card rounded-[28px] border p-5 sm:p-6 lg:p-7">
                 <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
                         <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Tiến độ duyệt theo tháng</h2>
-                        <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Theo dõi nhập và xử lý qua từng tháng. Màu vàng là chưaa duyệt, màu xanh là Đã duyệt.</p>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">So sánh số lượng chưa duyệt và đã duyệt theo từng tháng.</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
-                        <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.16)]"></span>Chưa duyệt</span>
-                        <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_0_4px_rgba(34,211,238,0.16)]"></span>Đã duyệt</span>
+                    <div class="flex items-center gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>Chưa duyệt</span>
+                        <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>Đã duyệt</span>
                     </div>
                 </div>
 
-                <div class="flex h-[340px] items-end gap-4 overflow-hidden rounded-[22px] border border-slate-200/80 bg-slate-50/80 px-4 py-5 dark:border-white/8 dark:bg-white/[0.03] sm:px-6">
-                    <?php if (empty($monthlySeries)): ?>
-                        <div class="flex h-full w-full items-center justify-center rounded-[18px] border border-dashed border-slate-200 text-sm text-slate-400 dark:border-white/10 dark:text-slate-500">Chưa có dữ liệu biểu đồ.</div>
-                    <?php else: ?>
-                        <?php foreach ($monthlySeries as $point): ?>
-                            <?php
-                                $pendingHeight = max(10, (int) round(($point['pending'] / $maxValue) * 220));
-                                $approvedHeight = max(10, (int) round(($point['approved'] / $maxValue) * 220));
-                            ?>
-                            <div class="flex min-w-0 flex-1 flex-col items-center justify-end gap-3">
-                                <div class="flex h-full w-full items-end justify-center gap-2 rounded-[18px] border border-transparent px-2 py-3 transition hover:border-blue-200/40 hover:bg-white/40 dark:hover:border-white/10 dark:hover:bg-white/[0.03]">
-                                    <div class="w-4 rounded-full bg-gradient-to-t from-amber-500 to-amber-300 shadow-[0_10px_30px_rgba(251,191,36,0.22)]" style="height: <?= e($pendingHeight) ?>px" title="Chưa duyệt: <?= e($point['pending']) ?>"></div>
-                                    <div class="w-4 rounded-full bg-gradient-to-t from-cyan-500 via-sky-500 to-blue-400 shadow-[0_10px_30px_rgba(59,130,246,0.24)]" style="height: <?= e($approvedHeight) ?>px" title="Đã duyệt: <?= e($point['approved']) ?>"></div>
+                <div class="h-[320px] rounded-[24px] border border-slate-200/70 bg-white/50 px-4 py-5 dark:border-white/10 dark:bg-white/[0.02]">
+                    @if (empty($monthlySeries))
+                        <div class="flex h-full items-center justify-center text-sm text-slate-400">Chưa có dữ liệu biểu đồ.</div>
+                    @else
+                        <div class="flex h-full items-end justify-between gap-4 overflow-x-auto pb-2">
+                            @foreach ($monthlySeries as $point)
+                                @php
+                                    $pendingHeight = max(8, (int) round(($point['pending'] / $maxValue) * 230));
+                                    $approvedHeight = max(8, (int) round(($point['approved'] / $maxValue) * 230));
+                                @endphp
+                                <div class="flex min-w-16 flex-col items-center gap-3">
+                                    <div class="flex h-[240px] items-end gap-1.5">
+                                        <div class="w-4 rounded-full bg-gradient-to-t from-amber-500 to-amber-300 shadow-[0_10px_30px_rgba(251,191,36,0.22)]" style="height: {{ $pendingHeight }}px" title="Chưa duyệt: {{ $point['pending'] }}"></div>
+                                        <div class="w-4 rounded-full bg-gradient-to-t from-cyan-500 via-sky-500 to-blue-400 shadow-[0_10px_30px_rgba(59,130,246,0.24)]" style="height: {{ $approvedHeight }}px" title="Đã duyệt: {{ $point['approved'] }}"></div>
+                                    </div>
+                                    <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{{ $point['label'] }}</span>
                                 </div>
-                                <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400"><?= e($point['label']) ?></span>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </article>
 
-            <?php if ($isPrivileged): ?>
+            @if ($isPrivileged)
                 <article class="dashboard-card rounded-[28px] border p-5 sm:p-6 lg:p-7">
-                    <div class="mb-6">
-                        <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Xếp hạng user</h2>
-                        <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Xếp hạng theo tổng sản phẩm trong tháng đã chọn.</p>
+                    <div class="mb-6 flex items-start justify-between gap-3">
+                        <div>
+                            <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Top user</h2>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Xếp hạng theo tổng sản phẩm trong tháng.</p>
+                        </div>
                     </div>
 
                     <div class="space-y-3">
-                        <?php if (count($topUsers) > 0): ?>
-                            <?php foreach ($topUsers as $index => $row): ?>
-                                <div class="rounded-[22px] border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-white/8 dark:bg-white/[0.03]">
-                                    <div class="flex items-center justify-between gap-4">
-                                        <div class="min-w-0">
-                                            <p class="truncate text-sm font-semibold">#<?= e($index + 1) ?> <?= e($row['user']) ?></p>
-                                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Chưa duyệt <?= e(number_format($row['pending'])) ?> ? Đã duyệt <?= e(number_format($row['approved'])) ?></p>
-                                        </div>
-                                        <div class="rounded-2xl bg-slate-950/5 px-3 py-2 text-lg font-semibold tracking-tight dark:bg-white/5"><?= e(number_format($row['total'])) ?></div>
+                        @forelse ($topUsers as $index => $row)
+                            <div class="rounded-[22px] border border-slate-200/70 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-semibold">#{{ $index + 1 }} {{ $row['user'] }}</p>
+                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Chưa duyệt {{ number_format($row['pending']) }} · Đã duyệt {{ number_format($row['approved']) }}</p>
                                     </div>
+                                    <div class="rounded-2xl bg-slate-950/5 px-3 py-2 text-lg font-semibold tracking-tight dark:bg-white/5">{{ number_format($row['total']) }}</div>
                                 </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
+                            </div>
+                        @empty
                             <div class="rounded-[22px] border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-400 dark:border-white/10 dark:text-slate-500">Chưa có dữ liệu xếp hạng user.</div>
-                        <?php endif; ?>
+                        @endforelse
                     </div>
                 </article>
-            <?php endif; ?>
+            @endif
         </section>
 
         <section class="mt-6">
@@ -163,45 +167,45 @@
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-                    <?php if (empty($productCards)): ?>
-                        <div class="col-span-full rounded-[22px] border border-dashed border-slate-200 px-5 py-12 text-center text-sm text-slate-400 dark:border-white/10 dark:text-slate-500">Chưa có nhóm page nào được phân quyền.</div>
-                    <?php else: ?>
-                        <?php foreach ($productCards as $card): ?>
-                            <?php $isDown = !empty($card['delta']) && str_starts_with($card['delta'], '-'); ?>
-                            <article class="dashboard-product-card rounded-[24px] border p-5">
-                                <div class="flex items-start justify-between gap-3">
-                                    <div class="min-w-0">
-                                        <p class="truncate text-base font-semibold"><?= e($card['name']) ?></p>
-                                        <p class="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500"><?= e($card['slug']) ?></p>
-                                    </div>
-                                    <?php if (!empty($card['delta'])): ?>
-                                        <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold <?= $isDown ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20' ?>">
-                                            <?= e($card['delta']) ?>
-                                        </span>
-                                    <?php endif; ?>
+                    @forelse ($productCards as $card)
+                        @php
+                            $isDown = ! empty($card['delta']) && str_starts_with($card['delta'], '-');
+                        @endphp
+                        <article class="dashboard-product-card rounded-[24px] border p-5">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="truncate text-base font-semibold">{{ $card['name'] }}</p>
+                                    <p class="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">{{ $card['slug'] }}</p>
                                 </div>
+                                @if (! empty($card['delta']))
+                                    <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $isDown ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20' }}">
+                                        {{ $card['delta'] }}
+                                    </span>
+                                @endif
+                            </div>
 
-                                <div class="mt-5 grid grid-cols-2 gap-3">
-                                    <div class="dashboard-mini-stat rounded-2xl p-3.5">
-                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">User</p>
-                                        <p class="mt-2 text-2xl font-semibold tracking-tight"><?= e(number_format($card['users'])) ?></p>
-                                    </div>
-                                    <div class="dashboard-mini-stat rounded-2xl p-3.5">
-                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tổng sản phẩm</p>
-                                        <p class="mt-2 text-2xl font-semibold tracking-tight"><?= e(number_format($card['total'])) ?></p>
-                                    </div>
-                                    <div class="dashboard-mini-stat rounded-2xl p-3.5">
-                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Chưa duyệt</p>
-                                        <p class="mt-2 text-2xl font-semibold tracking-tight"><?= e(number_format($card['pending'])) ?></p>
-                                    </div>
-                                    <div class="dashboard-mini-stat rounded-2xl p-3.5">
-                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Đã duyệt</p>
-                                        <p class="mt-2 text-2xl font-semibold tracking-tight"><?= e(number_format($card['approved'])) ?></p>
-                                    </div>
+                            <div class="mt-5 grid grid-cols-2 gap-3">
+                                <div class="dashboard-mini-stat rounded-2xl p-3.5">
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">User</p>
+                                    <p class="mt-2 text-2xl font-semibold tracking-tight">{{ number_format($card['users']) }}</p>
                                 </div>
-                            </article>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                                <div class="dashboard-mini-stat rounded-2xl p-3.5">
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tổng sản phẩm</p>
+                                    <p class="mt-2 text-2xl font-semibold tracking-tight">{{ number_format($card['total']) }}</p>
+                                </div>
+                                <div class="dashboard-mini-stat rounded-2xl p-3.5">
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Chưa duyệt</p>
+                                    <p class="mt-2 text-2xl font-semibold tracking-tight">{{ number_format($card['pending']) }}</p>
+                                </div>
+                                <div class="dashboard-mini-stat rounded-2xl p-3.5">
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Đã duyệt</p>
+                                    <p class="mt-2 text-2xl font-semibold tracking-tight">{{ number_format($card['approved']) }}</p>
+                                </div>
+                            </div>
+                        </article>
+                    @empty
+                        <div class="col-span-full rounded-[22px] border border-dashed border-slate-200 px-5 py-12 text-center text-sm text-slate-400 dark:border-white/10 dark:text-slate-500">Chưa có nhóm page nào được phân quyền.</div>
+                    @endforelse
                 </div>
             </article>
         </section>
