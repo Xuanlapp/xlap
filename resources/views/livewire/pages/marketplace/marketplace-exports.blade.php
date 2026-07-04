@@ -31,6 +31,7 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3">
+                    @if ($currentUser->can_generate_amazon_listing && filled($sheetUrl))
                     <button
                         type="button"
                         x-data="{ loading: false }"
@@ -46,6 +47,7 @@
                             <span>Loading...</span>
                         </span>
                     </button>
+                    @endif
                     <button
                         type="button"
                         wire:click="exportSelected"
@@ -54,13 +56,21 @@
                         @disabled($selectedCount === 0)
                         class="inline-flex h-11 items-center gap-2 rounded-md bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-70"
                     >
-                        <span wire:loading.remove wire:target="exportSelected">Export {{ $activeExportMarketplace === 'etsy' ? 'Folder' : 'Excel' }} {{ $selectedCount ? '('.$selectedCount.')' : '' }}</span>
-                        <span wire:loading wire:target="exportSelected">Exporting...</span>
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path d="M12 3v12" />
-                            <path d="m7 10 5 5 5-5" />
-                            <path d="M5 21h14" />
-                        </svg>
+                        <span wire:loading.remove wire:target="exportSelected" class="inline-flex items-center gap-2">
+                            <span>Export {{ $activeExportMarketplace === 'etsy' ? 'Folder' : 'Excel' }} {{ $selectedCount ? '('.$selectedCount.')' : ' ' }}</span>
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M12 3v12" />
+                                <path d="m7 10 5 5 5-5" />
+                                <path d="M5 21h14" />
+                            </svg>
+                        </span>
+                        <span wire:loading wire:target="exportSelected" class="inline-flex items-center gap-2">
+                            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                            </svg>
+                            <span>Dang export...</span>
+                        </span>
                     </button>
                 </div>
             </div>
@@ -100,9 +110,9 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
                     <label class="relative block w-full sm:w-80">
-                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-14 text-slate-400">
+                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                 <circle cx="11" cy="11" r="7" />
                                 <path d="m20 20-3.5-3.5" />
@@ -111,13 +121,18 @@
                         <input
                             wire:model.live.debounce.400ms="search"
                             type="text"
-                            class="h-11 w-full rounded-md border border-slate-300 bg-white pl-28 pr-4 text-sm text-slate-950 placeholder:text-slate-400 "
+                            class="h-11 w-full rounded-md border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-950 placeholder:text-slate-400"
                             placeholder="Search..."
                         >
                     </label>
-                    <button type="button" wire:click="$refresh" class="inline-flex h-11 items-center justify-center rounded-md bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-700">
-                        Filter
-                    </button>
+                    <label class="block w-full sm:w-36">
+                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Items / page</span>
+                        <select wire:model.live="perPage" class="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950">
+                            @foreach ($perPageOptions as $option)
+                                <option value="{{ $option }}">{{ $option }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                 </div>
             </div>
         </div>
@@ -155,7 +170,6 @@
                                 wire:key="marketplace-export-select-all-{{ $status }}-{{ $assets->currentPage() }}"
                                 wire:click="toggleVisibleSelection"
                                 @checked($allVisibleSelected)
-                                data-marketplace-export-checkbox
                                 class="h-4 w-4 rounded border-slate-400 text-indigo-600 focus:ring-indigo-500"
                             >
                         </th>

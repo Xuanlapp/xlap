@@ -86,6 +86,11 @@ class MarketplaceExports extends Component
     #[Session(key: 'marketplace-export.marketplace')]
     public string $marketplace = 'all';
 
+    #[Session(key: 'marketplace-export.per-page')]
+    public int $perPage = 20;
+
+    private const PER_PAGE_OPTIONS = [5, 20, 50, 100, 200, 300, 500];
+
     /** @var array<int, int|string> */
     public array $selectedUnexported = [];
 
@@ -112,10 +117,18 @@ class MarketplaceExports extends Component
         $this->resetPage();
     }
 
+    public function updatedPerPage(int|string $perPage): void
+    {
+        $perPage = (int) $perPage;
+        $this->perPage = in_array($perPage, self::PER_PAGE_OPTIONS, true) ? $perPage : 20;
+        $this->resetPage();
+    }
+
     public function toggleVisibleSelection(): void
     {
         $visibleIds = $this->visibleIds();
         $selected = $this->selectedIds();
+
 
         if ($visibleIds->diff($selected)->isEmpty()) {
             $this->setSelectedIds($selected->diff($visibleIds)->values()->all());
@@ -235,7 +248,7 @@ class MarketplaceExports extends Component
             ->latest('marketplace_exported_at')
             ->latest('approved_at')
             ->latest('id')
-            ->paginate(15);
+            ->paginate(in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 20);
         $visibleIds = $assets->getCollection()->pluck('id')->map(fn (int $id): string => (string) $id);
         $selectedIds = $this->selectedIds();
 
@@ -244,6 +257,8 @@ class MarketplaceExports extends Component
             'statusCounts' => $this->statusCounts(),
             'statusOptions' => self::STATUS_OPTIONS,
             'marketplaceOptions' => self::MARKETPLACE_OPTIONS,
+            'perPage' => in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 20,
+            'perPageOptions' => self::PER_PAGE_OPTIONS,
             'marketplaceCounts' => $this->marketplaceCounts(),
             'selectedCount' => $selectedIds->count(),
             'allVisibleSelected' => $visibleIds->isNotEmpty() && $visibleIds->diff($selectedIds)->isEmpty(),
@@ -428,7 +443,7 @@ class MarketplaceExports extends Component
             ->latest('marketplace_exported_at')
             ->latest('approved_at')
             ->latest('id')
-            ->forPage($this->getPage(), 15)
+            ->forPage($this->getPage(), in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 20)
             ->pluck('id')
             ->map(fn (int $id): string => (string) $id);
     }
