@@ -100,7 +100,7 @@
                 <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
                         <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Tiến độ duyệt theo tháng</h2>
-                        <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Theo d?i nh?p ?? x? l? qua t?ng th?ng. M?u v?ng l? ch?a duy?t, m?u xanh l? Đã duyệt.</p>
+                        <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Theo dõi nhập và xử lý qua từng tháng. Màu vàng là chưaa duyệt, màu xanh là Đã duyệt.</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
                         <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.16)]"></span>Chưa duyệt</span>

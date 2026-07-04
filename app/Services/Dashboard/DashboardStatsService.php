@@ -80,7 +80,7 @@ class DashboardStatsService
             return CarbonImmutable::createFromFormat('Y-m', $candidate)->startOfMonth();
         }
 
-        return now()->startOfMonth();
+        return CarbonImmutable::now()->startOfMonth();
     }
 
     private function baseAssetQuery(User $viewer, ?int $ownerId, ?int $productId, CarbonImmutable $month): Builder

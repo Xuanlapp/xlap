@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Dashboard;
 
 use App\Services\Dashboard\DashboardStatsService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Livewire\Attributes\Session;
 use Livewire\Component;
 
@@ -20,6 +21,14 @@ class Index extends Component
 
     public function mount(): void
     {
+        $user = auth()->user();
+
+        if ($user && (bool) $user->can_access_wali && ! ((bool) $user->is_admin || $user->role === 'admin' || $user->isManager())) {
+            $this->redirectRoute('offorest.salary.wali', navigate: true);
+
+            return;
+        }
+
         $this->selectedMonth ??= now()->format('Y-m');
     }
 
