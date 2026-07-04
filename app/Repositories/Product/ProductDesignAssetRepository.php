@@ -386,7 +386,26 @@ class ProductDesignAssetRepository
             'tags',
         ];
 
-        $asset->update(collect($fields)->only($allowedFields)->all());
+        $sanitized = collect($fields)
+            ->only($allowedFields)
+            ->mapWithKeys(function (mixed $value, string $field): array {
+                if (! is_string($value)) {
+                    return [$field => $value];
+                }
+
+                $limit = match ($field) {
+                    'description' => 2000,
+                    'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5' => 700,
+                    'generic_keyword' => 250,
+                    'title' => 199,
+                    default => null,
+                };
+
+                return [$field => $limit ? mb_substr($value, 0, $limit) : $value];
+            })
+            ->all();
+
+        $asset->update($sanitized);
 
         return $asset->refresh();
     }

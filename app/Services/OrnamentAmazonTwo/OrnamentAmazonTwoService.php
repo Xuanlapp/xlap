@@ -3350,6 +3350,7 @@ PROMPT
 
         return mb_substr($value, 0, self::MAX_IMAGE_LINK_LENGTH);
     }
+
     private function workflowScriptPrompt(ProductDesignAsset $asset): string
     {
         $listing = $asset->data_item_add ?: [];
@@ -3363,6 +3364,8 @@ You are an Amazon listing image strategist and consumer psychologist.
 
 Based on the competitor product info below, generate a STRUCTURED analysis.
 Return ONLY plain text, no JSON and no markdown. Use EXACTLY this format: each section starts with ===SECTION:NAME=== on its own line. Do not rename, skip, wrap, or translate section headers.
+
+{REVIEW_INSIGHTS}
 
 ===SECTION:AUDIENCE===
 Analyze the TARGET AUDIENCE for this product:
@@ -3387,7 +3390,7 @@ Analyze the TARGET AUDIENCE for this product:
 Describe GIFT RECEIVER / Person A for reference image generation.
 - 2-3 sentences.
 - Include age, gender, body type, hair color/texture, eye color, expression, clothing, pose, and setting.
-- Person A is the one who receives, keeps, displays, uses, assembles, hangs, or interacts with the customized product according to the locked product line.
+- Person A is the one who receives, wears, keeps, or uses the customized product.
 - Must fit the target audience analysis.
 
 ===SECTION:PERSON_B===
@@ -3399,7 +3402,7 @@ Describe GIFT GIVER / Person B for reference image generation.
 
 ===SECTION:STYLE===
 Color tone for the listing set:
-- 1-2 sentences describing the dominant color theme that fits the locked product line and product category.
+- 1-2 sentences describing the dominant color theme that fits the product category.
 
 Visual style for the set:
 - 1-2 sentences.
@@ -3412,32 +3415,26 @@ Format exactly:
 
 ===SECTION:MAIN===
 Image script for MAIN listing image.
-PRODUCT ONLY on clean white background, filling 80-85% of frame without cropping.
+PRODUCT ONLY on clean white background, filling >85% of frame.
 No people, no props.
 Describe product angle, lighting, shadows.
-The product must strictly follow the locked product line from SUPPLIER / PRODUCT SPECS.
-Do not borrow competitor material, shape, size, construction, or finish.
 
 ROLE MAPPING FOR POD IMAGES:
-- GIFT RECEIVER / Person A: the one who receives, keeps, displays, uses, assembles, hangs, or interacts with the customized product according to the locked product line.
+- GIFT RECEIVER / Person A: the one who receives, wears, keeps, or uses the customized product.
 - GIFT GIVER / Person B: a DIFFERENT person who presents the gift, stands next to the receiver, hands it over, or smiles alongside.
 - Receiver face = Person A reference.
 - Giver face = Person B reference or a generated different face.
 
 ===SECTION:USP===
 Image script for USP image: HERO LIFESTYLE + USP CALLOUT INFOGRAPHIC.
-- Hero: Person A naturally interacting with the customized product according to the locked product line as central subject.
-- For building block puzzle: Person A holds, assembles, or displays the building block puzzle.
-- For ornament: Person A holds, receives, hangs, displays, or admires the ornament.
-- For plaque/sign/canvas/poster/flat print: Person A holds or displays it naturally.
-- Product and Person A occupy central 50-60% frame.
-- Personalization must be clearly readable on the actual product surface.
+- Hero: Person A wearing or holding the customized product as central subject.
+- Person + product occupies central 50-60% frame.
+- Personalization must be clearly readable.
 - 3-4 USP callouts around person/product.
 - Each callout: one flat 2D icon + short label, 2-3 words max.
 - One headline at top, <=7 words.
 - Background: clean gradient or soft-blurred lifestyle scene.
 - Only Person A. No Person B.
-- Do not show the product being worn unless supplier specs define it as wearable.
 
 ===SECTION:BEFORE_AFTER===
 Image script for Before-After on lifestyle background.
@@ -3446,21 +3443,18 @@ Image script for Before-After on lifestyle background.
 - Never 50/50.
 - Same scene, same setting, same camera angle, same lighting, same color palette.
 - Only emotional state + product/person presence change.
-- BEFORE: Person A alone with a generic, empty, or less emotional gift moment; neutral or mildly disappointed; no customized product.
-- AFTER: Person A and Person B together, warm happy reaction, customized product visible.
+- BEFORE: Person A alone, sad or disappointed, no product.
+- AFTER: Person A and Person B together, happy, product visible.
 - Both faces clearly different when both appear.
-- The product in AFTER must strictly follow the locked product line.
 
 ===SECTION:COMPARISON===
 Image script for product comparison.
 - Left: typical non-custom substitute shoppers settle for, plain/blank/generic, not a branded rival.
 - Right: our custom product.
-- Same Person A identity/reference on both sides, mood/product differ.
+- Same Person A face on both sides, mood/product differ.
 - 2-3 comparison rows.
 - Each row: flat 2D criterion icon + check/cross + short label.
 - Center transition element: bold arrow or VS badge.
-- Right-side product must strictly follow the locked product line.
-- Left-side generic substitute must not be a branded competitor.
 
 ===SECTION:FEATURES===
 Image script for Features image.
@@ -3468,20 +3462,17 @@ Image script for Features image.
 - 2-3 feature callouts around hero.
 - Each callout: flat 2D icon + short label.
 - Connector lines to relevant product part if useful.
-- Person A interacts with the customized product in a way that matches the locked product line.
-- Person B optional nearby, smiling, not using or wearing the product as the main subject.
-- Do not show the product being worn unless supplier specs define it as wearable.
-- Product material, structure, size, finish, and use method must come from SUPPLIER / PRODUCT SPECS.
+- Person A wears/uses/holds the customized product.
+- Person B optional nearby, smiling, not wearing the product.
 
 ===SECTION:DETAILS===
 Image script for Product Details closeup.
-- Macro composition of the product held, displayed, or used by Person A according to the locked product line.
+- Macro composition of product held/worn by Person A.
 - Soft-blurred background.
 - Exactly 3 zoom-in circles, flat 2D circular crop style with thin border.
-- Each circle reveals a different physical detail from supplier specs: material, edge/thickness, print/engraving quality, seams, surface finish, ribbon/hole, or construction.
+- Each circle reveals a different detail.
 - Each has short 2-3 word label.
 - One headline at top.
-- Do not show the product being worn unless supplier specs define it as wearable.
 
 ===SECTION:CUSTOM_GUIDE===
 Image script for How-to-Customize 3-step guide.
@@ -3493,171 +3484,34 @@ Image script for How-to-Customize 3-step guide.
 - Step 3 shows Person A / receiver receiving finished gift.
 - A and B must have different faces.
 - At most 2-3 word label per step.
-- Finished product in Step 3 must strictly follow the locked product line.
+
+=== COMPETITOR INFO ===
+Use for marketing positioning, audience, USP framing, messaging, customer pain points, occasion ideas.
 PROMPT
-            ."\n\n"
-            ."INPUT CONTEXT - COMPETITOR INFO\n"
-            ."Use for marketing positioning, audience, USP framing, messaging, customer pain points, occasion ideas, and visual communication style.\n"
-            ."Do NOT use competitor info as the source of truth for my product's physical material, size, shape, structure, thickness, finish, or product category.\n"
-            .json_encode([
+            ."\n".json_encode([
                 'keyword' => $asset->keyword,
                 'primary_source_image' => $asset->image_link,
                 'other_scraped_images' => $asset->image_sub ?: [],
                 'listing' => $listing,
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n\n"
-
-            ."INPUT CONTEXT - SUPPLIER / PRODUCT SPECS\n"
-            ."These are the ONLY source of truth for the physical product being rendered.\n"
-            ."Use this section to decide the exact product type, product line, material, structure, size, finish, shape, customization method, edge/thickness, and usage/display method.\n"
-            ."Competitor info is only for marketing positioning, audience, occasions, and messaging. Competitor info must NEVER override the physical product facts below.\n\n"
-
-            ."REQUIRED PRODUCT IDENTITY FIELDS:\n"
-            ."- PRODUCT TYPE:\n"
-            ."- PRODUCT LINE:\n"
-            ."- MATERIAL:\n"
-            ."- STRUCTURE / BUILD:\n"
-            ."- SHAPE:\n"
-            ."- SIZE / DIMENSIONS:\n"
-            ."- SURFACE FINISH:\n"
-            ."- CUSTOMIZATION METHOD:\n"
-            ."- EDGE / THICKNESS:\n"
-            ."- DISPLAY / USE METHOD:\n"
-            ."- DO NOT CONVERT INTO:\n\n"
-
-            ."SUPPLIER PRODUCT DATA:\n"
-            .($supplierSpecs !== '' ? $supplierSpecs : '[SUPPLIER SPEC PLACEHOLDER - material/size/product type/product line]')."\n\n"
-
+            ."=== SUPPLIER / PRODUCT SPECS ===\n"
+            ."Use for physical product description: exact size, material, weight, dimensions, color, finish, build details.\n"
+            ."These are facts about MY product, not competitor.\n"
+            .($supplierSpecs !== '' ? $supplierSpecs : '[SUPPLIER SPEC PLACEHOLDER - material/size]')."\n\n"
             ."IMPORTANT:\n"
-            ."- Product physical look, product type, product line, material, structure, dimensions, shape, finish, thickness, and use/display method must come ONLY from SUPPLIER / PRODUCT SPECS.\n"
-            ."- Audience, occasions, marketing angle, headline tone, emotional triggers, use cases, and customer pain points must come from COMPETITOR INFO + REVIEW INSIGHTS.\n"
-            ."- Do not confuse competitor product claims, competitor material, competitor shape, competitor size, competitor finish, or competitor construction with my product specs.\n"
-            ."- If competitor info conflicts with SUPPLIER / PRODUCT SPECS, always follow SUPPLIER / PRODUCT SPECS.\n"
-            ."- Product-related image sections must reflect supplier material, finish, size, structure, shape, usage, and product line when describing the product.\n"
-            ."- MAIN, USP, BEFORE_AFTER, COMPARISON, FEATURES, DETAILS, and CUSTOM_GUIDE must all preserve the supplier-defined product identity.\n"
-            ."- AUDIENCE, PERSON_A, PERSON_B, and STYLE should not repeat specs unless naturally relevant.\n"
+            ."- Product physical look/material/dimensions must come from SUPPLIER / PRODUCT SPECS.\n"
+            ."- Audience, occasions, marketing angle, headline tone, use cases must come from COMPETITOR INFO + REVIEW INSIGHTS.\n"
+            ."- Do not confuse competitor product claims with my product specs.\n"
+            ."- Every section must reference material and size/dimensions from supplier specs if available.\n"
             ."- Specs guide what the AI draws; do not render raw spec strings as visible text on every image.\n"
-            ."- If supplier specs are missing, insert \"[SUPPLIER SPEC PLACEHOLDER - material/size/product type/product line]\" inline and do not invent the missing physical product details.\n\n"
-
-            ."PRODUCT LINE LOCK SYSTEM:\n"
-            ."Before writing any image script, identify the product line from SUPPLIER / PRODUCT SPECS.\n"
-            ."Once identified, lock the product identity for every section.\n"
-            ."Do not switch product line between sections.\n"
-            ."Do not merge two product lines together.\n"
-            ."Do not borrow physical traits from competitor products.\n"
-            ."Do not convert the product into a different category for visual convenience.\n\n"
-
-            ."SUPPORTED PRODUCT LINE RULES:\n\n"
-
-            ."1. BUILDING BLOCK PUZZLE:\n"
-            ."- Render as a personalized building block puzzle made from multiple visible interlocking plastic bricks.\n"
-            ."- Must show assembled block construction, visible seams, brick grid, physical block thickness, and printed design across the assembled surface.\n"
-            ."- Material should be white glossy plastic unless supplier specs say otherwise.\n"
-            ."- Custom photo, name, date, or text must appear printed on the front surface across the block pieces.\n"
-            ."- The product may be displayed standing upright, lying flat, assembled by hand, or held in hand according to supplier specs.\n"
-            ."- Do not render as ceramic ornament, glass ornament, acrylic plaque, canvas, poster, jigsaw puzzle, greeting card, framed photo, wall art, or flat print.\n"
-            ."- Do not remove the brick seams.\n"
-            ."- Do not add hanging ribbon, ornament hole, hook, or Christmas-tree hanging behavior unless supplier specs explicitly say it is a hanging block ornament.\n"
-            ."- Do not make the print full-bleed unless supplier specs explicitly allow it; keep visible product structure and border when required.\n\n"
-
-            ."2. CERAMIC ORNAMENT:\n"
-            ."- Render as a personalized ceramic hanging ornament.\n"
-            ."- Must show a single solid ceramic piece, glazed ceramic material, glossy ceramic coating, slightly rounded edge, and realistic ceramic thickness.\n"
-            ."- Product may include a hanging hole, ribbon, string, or hook only if supplier specs or product data support it.\n"
-            ."- Custom photo, name, date, or message must appear printed on the ceramic surface.\n"
-            ."- Do not render as glass, acrylic, wood, metal, plastic building blocks, canvas, poster, jewelry, keychain, coaster, or greeting card.\n"
-            ."- Do not make it transparent like glass.\n"
-            ."- Do not add brick seams or interlocking block structure.\n\n"
-
-            ."3. GLASS ORNAMENT:\n"
-            ."- Render as a personalized glass hanging ornament.\n"
-            ."- Must show transparent or translucent glass material, glossy reflective surface, polished transparent edges, and visible glass thickness.\n"
-            ."- Product may include a hanging hole, ribbon, string, or hook only if supplier specs or product data support it.\n"
-            ."- Custom photo, name, date, or message must appear printed, engraved, etched, or embedded on the glass surface according to supplier specs.\n"
-            ."- Do not render as ceramic, acrylic, wood, metal, plastic building blocks, canvas, poster, jewelry, keychain, coaster, or greeting card.\n"
-            ."- Do not make it opaque ceramic unless supplier specs say frosted or opaque glass.\n"
-            ."- Do not add brick seams or interlocking block structure.\n\n"
-
-            ."4. ACRYLIC ORNAMENT / ACRYLIC PLAQUE:\n"
-            ."- Render as a personalized acrylic product only when supplier specs define acrylic.\n"
-            ."- Must show clear or translucent acrylic, polished edges, smooth glossy plastic-like reflections, and realistic acrylic thickness.\n"
-            ."- If it is an ornament, show hanging/display behavior according to supplier specs.\n"
-            ."- If it is a plaque/block, show it standing or displayed according to supplier specs.\n"
-            ."- Custom photo, name, date, or message must appear printed, UV-printed, engraved, or embedded on the acrylic surface according to supplier specs.\n"
-            ."- Do not render as ceramic, glass, wood, metal, building block puzzle, canvas, poster, or greeting card.\n"
-            ."- Do not add ceramic glaze texture or fragile glass refraction unless supplier specs say so.\n\n"
-
-            ."5. WOOD ORNAMENT / WOOD PLAQUE:\n"
-            ."- Render as a personalized wooden product only when supplier specs define wood.\n"
-            ."- Must show natural wood grain, matte or semi-matte wooden surface, visible wooden edge, and realistic wood thickness.\n"
-            ."- Custom photo, name, date, or message must appear printed, engraved, carved, or burned into the wood according to supplier specs.\n"
-            ."- Do not render as ceramic, glass, acrylic, metal, building block puzzle, canvas, poster, or greeting card.\n"
-            ."- Do not make the surface glossy ceramic or transparent.\n\n"
-
-            ."6. METAL ORNAMENT / METAL SIGN:\n"
-            ."- Render as a personalized metal product only when supplier specs define metal.\n"
-            ."- Must show metal surface, realistic metal thickness, smooth/brushed/matte/gloss finish according to supplier specs, and clean cut edges.\n"
-            ."- Custom photo, name, date, or message must appear printed, engraved, etched, or sublimated on the metal surface according to supplier specs.\n"
-            ."- Do not render as ceramic, glass, acrylic, wood, building block puzzle, canvas, poster, or greeting card.\n"
-            ."- Avoid chrome or overly glossy metallic effects unless supplier specs require it.\n\n"
-
-            ."7. CANVAS / POSTER / FLAT PRINT:\n"
-            ."- Render as a canvas, poster, or flat print only when supplier specs explicitly define it.\n"
-            ."- Must show the correct flat printed surface, paper/canvas texture, edge treatment, frame status, and display method according to supplier specs.\n"
-            ."- Do not render as ornament, ceramic, glass, acrylic plaque, metal sign, building block puzzle, mug, jewelry, or 3D object.\n"
-            ."- Do not add hanging ribbon, ornament hole, brick seams, or thick acrylic/glass edges.\n\n"
-
-            ."8. MUG / TUMBLER / DRINKWARE:\n"
-            ."- Render as drinkware only when supplier specs explicitly define mug, tumbler, cup, or bottle.\n"
-            ."- Must show correct material, cylindrical form, handle/lid/straw details only when supplier specs support them.\n"
-            ."- Custom photo, name, date, or message must appear printed on the curved drinkware surface according to supplier specs.\n"
-            ."- Do not render as ornament, plaque, canvas, poster, building block puzzle, jewelry, or flat print.\n\n"
-
-            ."9. APPAREL / WEARABLE PRODUCT:\n"
-            ."- Render as apparel or wearable only when supplier specs explicitly define it.\n"
-            ."- Must show correct garment/accessory type, fabric/material, print placement, fit, and usage according to supplier specs.\n"
-            ."- Do not show non-wearable products being worn.\n"
-            ."- Do not render ornament, building block puzzle, plaque, canvas, mug, or poster as apparel.\n\n"
-
-            ."UNKNOWN OR MISSING PRODUCT LINE:\n"
-            ."- If SUPPLIER / PRODUCT SPECS do not clearly define the product line, do not guess from competitor info.\n"
-            ."- Insert \"[SUPPLIER SPEC PLACEHOLDER - product line required]\" in the relevant product script.\n"
-            ."- Keep the marketing analysis usable, but avoid inventing material, size, structure, finish, thickness, shape, or product category.\n\n"
-
-            ."COMPETITOR CONFLICT RULE:\n"
-            ."Competitor images, competitor title, competitor bullet points, and competitor descriptions may contain a different product type from my product.\n"
-            ."Use competitor data only to understand audience demand, emotional triggers, common occasions, market expectations, pricing expectations, messaging angles, and visual communication ideas.\n"
-            ."Never use competitor data to decide my product material, size, structure, shape, thickness, finish, display method, or product category.\n"
-            ."If competitor info says ceramic but supplier specs say building block puzzle, render building block puzzle.\n"
-            ."If competitor info says glass but supplier specs say ceramic, render ceramic.\n"
-            ."If competitor info says acrylic but supplier specs say wood, render wood.\n"
-            ."If competitor info says ornament but supplier specs say building block puzzle, render building block puzzle and do not add hanging ribbon or ornament hole unless supplier specs say so.\n"
-            ."If competitor info says canvas/poster but supplier specs say ornament, render ornament.\n"
-            ."If competitor info says ornament but supplier specs say mug/tumbler, render mug/tumbler.\n\n"
-
-            ."PERSON / PRODUCT INTERACTION RULE:\n"
-            ."People must interact with the product only in ways that fit the locked product line.\n"
-            ."Do not show the product being worn unless it is apparel, jewelry, or another wearable item in supplier specs.\n"
-            ."Do not show the product being hung unless supplier specs define it as an ornament or hanging product.\n"
-            ."Do not show the product being assembled unless supplier specs define it as a building block puzzle or assembly product.\n"
-            ."Do not show the product as a flat wall print unless supplier specs define canvas, poster, or flat print.\n\n"
-
-            ."PERSONALIZATION TEXT RULE:\n"
-            ."Personalization must appear physically on the product surface, not floating above it.\n"
-            ."Use safe placeholder examples such as names, dates, family names, pet names, memorial names, or short emotional phrases.\n"
-            ."Avoid banned marketing claims inside personalization text.\n"
-            ."Do not use visible personalization text like \"#1\", \"Best\", \"Guaranteed\", \"Perfect\", or \"100%\".\n"
-            ."Keep personalization short, readable, and realistic for the product size.\n\n"
-
+            ."- If supplier specs are missing, insert \"[SUPPLIER SPEC PLACEHOLDER - material/size]\" inline.\n\n"
             ."GLOBAL TONE:\n"
             ."Clean, editorial, modern UI, premium Amazon aesthetic.\n"
             ."Photoreal scene + flat 2D UI overlays.\n"
             ."No 3D bevel typography, no glossy 3D icons, no chrome/metallic.\n"
             ."Avoid infographic chaos.\n"
             ."Negative space.\n"
-            ."Max one short headline per image.\n"
-            ."Keep total visible text minimal: one headline plus short labels only.\n"
-            ."Avoid paragraphs, long sentences, crowded badges, stickers, and promotional slogans.\n\n"
-
+            ."Max one short headline per image.\n\n"
             ."FORBIDDEN MARKETING CLAIMS:\n"
             ."Do not use visible text like:\n"
             ."\"Guaranteed\", \"100%\", \"Lifetime guarantee\", \"#1\", \"Best\", \"Top-rated\", \"World's best\",\n"
@@ -3665,185 +3519,11 @@ PROMPT
             ."\"Lowest price\", \"Cure\", \"Heals\", \"Doctor recommended\", \"FDA approved\".\n"
             ."Use descriptive alternatives like:\n"
             ."\"Crafted with care\", \"Designed for daily use\", \"Premium materials\", \"Personal touch\", \"Built to last\".\n\n"
-
             ."REVIEW_INSIGHTS:\n"
             .(is_array($reviewInsights) && $reviewInsights !== []
                 ? json_encode($reviewInsights, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
                 : '[NO EXTRA REVIEW INSIGHTS PROVIDED]');
     }
-//    private function workflowScriptPrompt(ProductDesignAsset $asset): string
-//    {
-//        $listing = $asset->data_item_add ?: [];
-//        $workflow = $this->workflowData($asset);
-//        $b1 = $workflow['b1'] ?? [];
-//        $reviewInsights = $b1['reviews_raw'] ?? [];
-//        $supplierSpecs = trim((string) ($b1['supplier_notes'] ?? ''));
-//
-//        return <<<'PROMPT'
-//You are an Amazon listing image strategist and consumer psychologist.
-//
-//Based on the competitor product info below, generate a STRUCTURED analysis.
-//Return ONLY plain text, no JSON and no markdown. Use EXACTLY this format: each section starts with ===SECTION:NAME=== on its own line. Do not rename, skip, wrap, or translate section headers.
-//
-//{REVIEW_INSIGHTS}
-//
-//===SECTION:AUDIENCE===
-//Analyze the TARGET AUDIENCE for this product:
-//1. GIFT GIVERS:
-//- Who buys this product as a gift?
-//- Relationship, age, gender.
-//- Occasion: birthday, anniversary, holiday, graduation, memorial, just because.
-//- Motivation: emotion, practicality, uniqueness, personalization.
-//- Budget expectation.
-//
-//2. GIFT RECEIVERS:
-//- Who receives this product?
-//- Relationship, age, gender.
-//- Why they would love it.
-//- What they value most about personalized products.
-//
-//3. SELF-BUYERS:
-//- Who buys this for themselves?
-//- Why they want a personalized version.
-//
-//===SECTION:PERSON_A===
-//Describe GIFT RECEIVER / Person A for reference image generation.
-//- 2-3 sentences.
-//- Include age, gender, body type, hair color/texture, eye color, expression, clothing, pose, and setting.
-//- Person A is the one who receives, wears, keeps, or uses the customized product.
-//- Must fit the target audience analysis.
-//
-//===SECTION:PERSON_B===
-//Describe GIFT GIVER / Person B for reference image generation.
-//- 2-3 sentences.
-//- Must be clearly different from Person A on at least 2 traits: age, gender, body type, hair color/style, clothing style, role in scene.
-//- Include age, gender, body type, hair color/texture, eye color, expression, clothing, pose, and setting.
-//- Person B presents the gift, stands next to the receiver, hands it over, or smiles alongside.
-//
-//===SECTION:STYLE===
-//Color tone for the listing set:
-//- 1-2 sentences describing the dominant color theme that fits the product category.
-//
-//Visual style for the set:
-//- 1-2 sentences.
-//- Pick one consistent direction: modern, minimalist, premium, playful, lifestyle, cinematic.
-//
-//HEADLINE_HEX_GRADIENT:
-//3 hex codes for the headline text gradient, top -> middle -> bottom.
-//Format exactly:
-//#RRGGBB -> #RRGGBB -> #RRGGBB
-//
-//===SECTION:MAIN===
-//Image script for MAIN listing image.
-//PRODUCT ONLY on clean white background, filling >85% of frame.
-//No people, no props.
-//Describe product angle, lighting, shadows.
-//
-//ROLE MAPPING FOR POD IMAGES:
-//- GIFT RECEIVER / Person A: the one who receives, wears, keeps, or uses the customized product.
-//- GIFT GIVER / Person B: a DIFFERENT person who presents the gift, stands next to the receiver, hands it over, or smiles alongside.
-//- Receiver face = Person A reference.
-//- Giver face = Person B reference or a generated different face.
-//
-//===SECTION:USP===
-//Image script for USP image: HERO LIFESTYLE + USP CALLOUT INFOGRAPHIC.
-//- Hero: Person A wearing or holding the customized product as central subject.
-//- Person + product occupies central 50-60% frame.
-//- Personalization must be clearly readable.
-//- 3-4 USP callouts around person/product.
-//- Each callout: one flat 2D icon + short label, 2-3 words max.
-//- One headline at top, <=7 words.
-//- Background: clean gradient or soft-blurred lifestyle scene.
-//- Only Person A. No Person B.
-//
-//===SECTION:BEFORE_AFTER===
-//Image script for Before-After on lifestyle background.
-//- BEFORE panel on left must be visibly smaller, about 30-40% width.
-//- AFTER panel on right must be larger, about 60-70% width.
-//- Never 50/50.
-//- Same scene, same setting, same camera angle, same lighting, same color palette.
-//- Only emotional state + product/person presence change.
-//- BEFORE: Person A alone, sad or disappointed, no product.
-//- AFTER: Person A and Person B together, happy, product visible.
-//- Both faces clearly different when both appear.
-//
-//===SECTION:COMPARISON===
-//Image script for product comparison.
-//- Left: typical non-custom substitute shoppers settle for, plain/blank/generic, not a branded rival.
-//- Right: our custom product.
-//- Same Person A face on both sides, mood/product differ.
-//- 2-3 comparison rows.
-//- Each row: flat 2D criterion icon + check/cross + short label.
-//- Center transition element: bold arrow or VS badge.
-//
-//===SECTION:FEATURES===
-//Image script for Features image.
-//- One focal point: Person A + product.
-//- 2-3 feature callouts around hero.
-//- Each callout: flat 2D icon + short label.
-//- Connector lines to relevant product part if useful.
-//- Person A wears/uses/holds the customized product.
-//- Person B optional nearby, smiling, not wearing the product.
-//
-//===SECTION:DETAILS===
-//Image script for Product Details closeup.
-//- Macro composition of product held/worn by Person A.
-//- Soft-blurred background.
-//- Exactly 3 zoom-in circles, flat 2D circular crop style with thin border.
-//- Each circle reveals a different detail.
-//- Each has short 2-3 word label.
-//- One headline at top.
-//
-//===SECTION:CUSTOM_GUIDE===
-//Image script for How-to-Customize 3-step guide.
-//- Clean 3-panel layout.
-//- Step 1: upload photo.
-//- Step 2: design/creation process.
-//- Step 3: finished product.
-//- Steps 1-2 show Person B / giver uploading or designing.
-//- Step 3 shows Person A / receiver receiving finished gift.
-//- A and B must have different faces.
-//- At most 2-3 word label per step.
-//
-//=== COMPETITOR INFO ===
-//Use for marketing positioning, audience, USP framing, messaging, customer pain points, occasion ideas.
-//PROMPT
-//            ."\n".json_encode([
-//                'keyword' => $asset->keyword,
-//                'primary_source_image' => $asset->image_link,
-//                'other_scraped_images' => $asset->image_sub ?: [],
-//                'listing' => $listing,
-//            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n\n"
-//            ."=== SUPPLIER / PRODUCT SPECS ===\n"
-//            ."Use for physical product description: exact size, material, weight, dimensions, color, finish, build details.\n"
-//            ."These are facts about MY product, not competitor.\n"
-//            .($supplierSpecs !== '' ? $supplierSpecs : '[SUPPLIER SPEC PLACEHOLDER - material/size]')."\n\n"
-//            ."IMPORTANT:\n"
-//            ."- Product physical look/material/dimensions must come from SUPPLIER / PRODUCT SPECS.\n"
-//            ."- Audience, occasions, marketing angle, headline tone, use cases must come from COMPETITOR INFO + REVIEW INSIGHTS.\n"
-//            ."- Do not confuse competitor product claims with my product specs.\n"
-//            ."- Every section must reference material and size/dimensions from supplier specs if available.\n"
-//            ."- Specs guide what the AI draws; do not render raw spec strings as visible text on every image.\n"
-//            ."- If supplier specs are missing, insert \"[SUPPLIER SPEC PLACEHOLDER - material/size]\" inline.\n\n"
-//            ."GLOBAL TONE:\n"
-//            ."Clean, editorial, modern UI, premium Amazon aesthetic.\n"
-//            ."Photoreal scene + flat 2D UI overlays.\n"
-//            ."No 3D bevel typography, no glossy 3D icons, no chrome/metallic.\n"
-//            ."Avoid infographic chaos.\n"
-//            ."Negative space.\n"
-//            ."Max one short headline per image.\n\n"
-//            ."FORBIDDEN MARKETING CLAIMS:\n"
-//            ."Do not use visible text like:\n"
-//            ."\"Guaranteed\", \"100%\", \"Lifetime guarantee\", \"#1\", \"Best\", \"Top-rated\", \"World's best\",\n"
-//            ."\"Always\", \"Never fails\", \"Perfect\", \"Fast shipping\", \"Free shipping\", \"Sale\", \"% Off\",\n"
-//            ."\"Lowest price\", \"Cure\", \"Heals\", \"Doctor recommended\", \"FDA approved\".\n"
-//            ."Use descriptive alternatives like:\n"
-//            ."\"Crafted with care\", \"Designed for daily use\", \"Premium materials\", \"Personal touch\", \"Built to last\".\n\n"
-//            ."REVIEW_INSIGHTS:\n"
-//            .(is_array($reviewInsights) && $reviewInsights !== []
-//                ? json_encode($reviewInsights, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-//                : '[NO EXTRA REVIEW INSIGHTS PROVIDED]');
-//    }
 
     private function workflowPromptsPrompt(ProductDesignAsset $asset, array $workflow): string
     {

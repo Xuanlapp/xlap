@@ -431,3 +431,8 @@ edesign.
 - Default source is `http://offorest.ddns.net:16869/proxy_list` and is seeded by migration `2026_07_03_090000_add_proxy_product_and_data_hub_proxy_tables.php`.
 - Scheduled refresh runs via `offorest:refresh-proxy-data`; interval defaults to 5 minutes and can be changed with `OFFOREST_PROXY_REFRESH_EVERY_MINUTES`.
 - Admin user add/edit modals expose both product access and proxy-specific access.
+
+## Marketplace Listing Metadata Limits
+
+- Khi API tra ve listing metadata qua dai, chi cat truoc khi luu DB: title toi da 199 ky tu, bullet_point_1..5 toi da 700 ky tu, description toi da 2000 ky tu, generic_keyword toi da 250 ky tu.
+- Khong fail workflow vi response dai hon gioi han; luu phan hop le de tranh loi database/export.
