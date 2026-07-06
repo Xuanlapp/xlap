@@ -7,6 +7,7 @@ use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentAmazonTwo\OrnamentAmazonTwoStatusPanel;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
+use App\Models\DataOrnamentAmazon;
 use App\Models\ProductDesignAsset;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Logging\ActivityLogService;
@@ -152,6 +153,7 @@ class ReviewImage extends Component
                 slot: $slot,
                 providerKey: $this->modalProviderKey,
                 imageModel: $this->modalImageModel,
+                queue: 'ornament-priority',
             );
 
             app(ActivityLogService::class)->record(
@@ -194,7 +196,6 @@ class ReviewImage extends Component
             return;
         }
 
-        $this->currentMockupSlotGenerating = true;
         $this->dispatch('ornament-amazon-two-product-design-updated', assetId: $asset->id);
         $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
         $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
@@ -256,7 +257,6 @@ class ReviewImage extends Component
             }
 
             $this->customPrompt = '';
-            $this->currentMockupSlotGenerating = true;
             $this->dispatch('ornament-amazon-two-product-design-updated', assetId: $asset->id);
             $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
             $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
@@ -512,19 +512,16 @@ class ReviewImage extends Component
             return;
         }
 
-        $asset = ProductDesignAsset::query()
-            ->select(['id', 'user_id', 'data_item_add'])
+        $automation = DataOrnamentAmazon::query()
+            ->where('product_design_asset_id', $this->assetId)
             ->when(! auth()->user()->is_admin, fn ($query) => $query->where('user_id', auth()->id()))
-            ->find($this->assetId);
+            ->first();
 
-        $workflow = is_array($asset?->data_item_add)
-            ? ($asset->data_item_add['ornament_amazon_two_workflow'] ?? [])
-            : [];
-        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
-        $slotStates = is_array($batch['slot_states'] ?? null) ? $batch['slot_states'] : [];
-        $state = $slotStates[$slot] ?? null;
+        $payload = is_array($automation?->payload) ? $automation->payload : [];
+        $preview = is_array($payload['preview_state'] ?? null) ? $payload['preview_state'] : [];
+        $state = is_array($preview[$slot] ?? null) ? $preview[$slot] : [];
 
-        $this->currentMockupSlotGenerating = in_array($state, ['queued', 'generating'], true);
+        $this->currentMockupSlotGenerating = in_array($state['status'] ?? null, ['queued', 'generating'], true);
     }
 
     private function loadSourcePreviewContext(): void

@@ -850,11 +850,33 @@
             $mockupCreateDisabled = (bool) $generateDisabledReason;
             $mockupBatch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
             $mockupBatchStates = is_array($mockupBatch['slot_states'] ?? null) ? $mockupBatch['slot_states'] : [];
-            $mockupBatchRunning = ($mockupBatch['running'] ?? false) === true;
+            $previewPayloadStates = collect(is_array($automation?->payload['preview_state'] ?? null) ? $automation->payload['preview_state'] : [])
+                ->mapWithKeys(fn (array $state, string $slot): array => [$slot => $state['status'] ?? null])
+                ->filter(fn (mixed $state): bool => is_string($state) && $state !== '')
+                ->all();
+            $mockupBatchStates = array_merge($mockupBatchStates, $previewPayloadStates);
+            $mockupBatchRunning = ($mockupBatch['running'] ?? false) === true
+                || collect($previewPayloadStates)->contains(fn (mixed $state): bool => in_array($state, ['queued', 'generating'], true));
             $mockupBatchErrors = is_array($workflow['images_errors'] ?? null) ? $workflow['images_errors'] : [];
+            foreach (is_array($automation?->payload['preview_state'] ?? null) ? $automation->payload['preview_state'] : [] as $slot => $state) {
+                if (is_string($state['error'] ?? null) && trim($state['error']) !== '') {
+                    $mockupBatchErrors[$slot] = $state['error'];
+                }
+            }
             $mockupDoneCount = collect($mockupB5Images)
                 ->filter(fn (array $image): bool => filled($image['original'] ?? null) || filled($image['preview'] ?? null))
                 ->count();
+
+            $hasPreviewQueuedOrGenerating = collect($previewPayloadStates)
+                ->contains(fn (mixed $state): bool => in_array($state, ['queued', 'generating'], true));
+
+            if ($mockupDoneCount >= max(count($mockupB5PromptSlots), 1) && $mockupDoneCount > 0 && ! $hasPreviewQueuedOrGenerating) {
+                $mockupBatchRunning = false;
+                $mockupBatchStates = collect($mockupBatchStates)
+                    ->map(fn (mixed $state): string => in_array($state, ['queued', 'waiting', 'generating'], true) ? 'done' : (is_string($state) ? $state : 'done'))
+                    ->all();
+            }
+
             $mockupErrorCount = collect($mockupBatchErrors)->filter(fn (mixed $error): bool => is_string($error) && trim($error) !== '')->count();
             $mockupStatusMessage = null;
 
@@ -944,7 +966,14 @@
                 syncStatesFromImages() {
                     this.slots.forEach((slot) => {
                         if (this.originalUrl(slot)) {
-                            this.setSlotState(slot, this.slotStates?.[slot] === 'generating' ? 'generating' : 'done');
+                            const currentState = this.slotStates?.[slot] || null;
+
+                            if (['queued', 'generating', 'error'].includes(currentState)) {
+                                this.setSlotState(slot, currentState);
+                                return;
+                            }
+
+                            this.setSlotState(slot, 'done');
                             return;
                         }
 

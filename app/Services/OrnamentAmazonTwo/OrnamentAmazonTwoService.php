@@ -497,9 +497,37 @@ class OrnamentAmazonTwoService
             return $this->assets->updateRedesign($asset, $imageUrl);
         }
 
-        $asset->update([$target => $imageUrl]);
+        $slot = $this->workflowSlotFromPreviewTarget($target);
+        return $this->persistPreviewMockupImage($asset, $slot, $imageUrl, $editPrompt, $providerKey, $imageModel);
+    }
 
-        return $asset->refresh();
+    /**
+     * Persist a preview mockup image back into the workflow payload.
+     */
+    private function persistPreviewMockupImage(ProductDesignAsset $asset, string $slot, string $imageUrl, string $editPrompt, ?string $providerKey, ?string $imageModel): ProductDesignAsset
+    {
+        $workflow = $this->workflowData($asset);
+        $workflow['provider'] = $providerKey;
+        $workflow['image_model'] = $imageModel;
+        $workflow['images'] = is_array($workflow['images'] ?? null) ? $workflow['images'] : [];
+
+        $previousUrl = $workflow['images'][$slot]['url'] ?? $asset->{$this->workflowListingMockupColumn($slot)} ?? null;
+
+        $workflow['images'][$slot] = array_merge(
+            is_array($workflow['images'][$slot] ?? null) ? $workflow['images'][$slot] : [],
+            [
+                'url' => $imageUrl,
+                'previous_url' => $previousUrl,
+                'edit_prompt' => $editPrompt,
+                'edited_at' => now()->toIso8601String(),
+                'provider' => $providerKey,
+                'model' => $imageModel,
+            ],
+        );
+
+        unset($workflow['images_errors'][$slot]);
+
+        return $this->saveWorkflowData($asset, $workflow);
     }
 
     /**
@@ -945,6 +973,18 @@ class OrnamentAmazonTwoService
         $workflow['images_batch'] = $batch;
         unset($workflow['images_errors'][$slot]);
         $asset = $this->saveWorkflowData($asset, $workflow);
+        $this->updatePreviewState($asset, $slot, [
+            'job_type' => 'generate',
+            'target' => $slot,
+            'status' => 'queued',
+            'prompt' => $prompt,
+            'provider_key' => $providerKey,
+            'image_model' => $imageModel,
+            'error' => null,
+            'queued_at' => now()->toIso8601String(),
+            'started_at' => null,
+            'finished_at' => null,
+        ]);
 
         GenerateOrnamentAmazonTwoWorkflowImage::dispatch($user->id, $asset->id, $slot, $providerKey, $imageModel)
             ->onQueue($queue);
@@ -991,6 +1031,19 @@ class OrnamentAmazonTwoService
         $workflow['images_batch'] = $batch;
         unset($workflow['images_errors'][$slot]);
         $asset = $this->saveWorkflowData($asset, $workflow);
+        $this->updatePreviewState($asset, $slot, [
+            'job_type' => 'customize',
+            'target' => $target,
+            'status' => 'queued',
+            'prompt' => $editPrompt,
+            'current_image_uri' => $currentImageUri,
+            'provider_key' => $providerKey,
+            'image_model' => $imageModel,
+            'error' => null,
+            'queued_at' => now()->toIso8601String(),
+            'started_at' => null,
+            'finished_at' => null,
+        ]);
 
         RegenerateOrnamentAmazonTwoPreviewImage::dispatch($user->id, $asset->id, $slot, $target, $currentImageUri, $editPrompt, $providerKey, $imageModel)
             ->onQueue($queue);
@@ -1086,7 +1139,8 @@ class OrnamentAmazonTwoService
         $asset = $this->saveWorkflowData($asset, $workflow);
 
         foreach ($missingSlots as $slot) {
-            GenerateOrnamentAmazonTwoWorkflowImage::dispatch($user->id, $asset->id, $slot, $providerKey, $imageModel);
+            GenerateOrnamentAmazonTwoWorkflowImage::dispatch($user->id, $asset->id, $slot, $providerKey, $imageModel)
+                ->onQueue('ornament-pipeline');
         }
 
         return $asset->refresh();
@@ -2004,6 +2058,29 @@ class OrnamentAmazonTwoService
         );
     }
 
+    public function previewStateForSlot(ProductDesignAsset $asset, string $slot): array
+    {
+        $automation = $this->automationForAsset($asset);
+        $payload = is_array($automation?->payload) ? $automation->payload : [];
+        $preview = is_array($payload['preview_state'] ?? null) ? $payload['preview_state'] : [];
+
+        return is_array($preview[$slot] ?? null) ? $preview[$slot] : [];
+    }
+
+    public function updatePreviewState(ProductDesignAsset $asset, string $slot, array $state): DataOrnamentAmazon
+    {
+        $automation = $this->automationForAsset($asset);
+        $payload = is_array($automation?->payload) ? $automation->payload : [];
+        $preview = is_array($payload['preview_state'] ?? null) ? $payload['preview_state'] : [];
+
+        $preview[$slot] = array_merge($preview[$slot] ?? [], $state, ['updated_at' => now()->toIso8601String()]);
+        $payload['preview_state'] = $preview;
+
+        return $this->upsertAutomationRecord($asset, [
+            'payload' => $payload,
+        ]);
+    }
+
     public function markAutomationStepRunning(ProductDesignAsset $asset, string $step, ?array $stepData = null): DataOrnamentAmazon
     {
         $steps = $stepData ?: $this->automationDefaultSteps();
@@ -2744,6 +2821,19 @@ PROMPT;
             'details' => 'mockup5',
             'custom_guide' => 'mockup6',
             default => throw new InvalidArgumentException('Slot anh workflow khong hop le.'),
+        };
+    }
+
+    private function workflowSlotFromPreviewTarget(string $target): string
+    {
+        return match ($target) {
+            'mockup1' => 'usp',
+            'mockup2' => 'before_after',
+            'mockup3' => 'comparison',
+            'mockup4' => 'features',
+            'mockup5' => 'details',
+            'mockup6' => 'custom_guide',
+            default => throw new InvalidArgumentException('Anh can sua khong hop le.'),
         };
     }
 

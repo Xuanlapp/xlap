@@ -42,10 +42,19 @@ class GenerateOrnamentAmazonTwoWorkflowImage implements ShouldQueue
         $service->markWorkflowImageBatchSlotGenerating($this->assetId, $this->slot, $this->attempts());
 
         $user = User::findOrFail($this->userId);
+        $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
+            'status' => 'generating',
+            'started_at' => now()->toIso8601String(),
+        ]);
 
         try {
             $service->generateWorkflowImage($user, $this->assetId, $this->slot, $this->providerKey, $this->imageModel);
             $service->markWorkflowImageBatchSlotFinished($this->assetId, $this->slot);
+            $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
+                'status' => 'done',
+                'error' => null,
+                'finished_at' => now()->toIso8601String(),
+            ]);
         } catch (\RuntimeException $exception) {
             if (str_contains($exception->getMessage(), 'Mockup nay dang duoc tao hoac request truoc do chua giai phong xong')) {
                 $this->release(15);
@@ -62,10 +71,24 @@ class GenerateOrnamentAmazonTwoWorkflowImage implements ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
-        app(OrnamentAmazonTwoService::class)->markWorkflowImageBatchSlotFinished(
+        $service = app(OrnamentAmazonTwoService::class);
+
+        $service->markWorkflowImageBatchSlotFinished(
             $this->assetId,
             $this->slot,
             mb_substr($exception->getMessage(), 0, 500),
         );
+
+        $user = User::find($this->userId);
+
+        if (! $user) {
+            return;
+        }
+
+        $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
+            'status' => 'error',
+            'error' => mb_substr($exception->getMessage(), 0, 500),
+            'finished_at' => now()->toIso8601String(),
+        ]);
     }
 }
