@@ -32,12 +32,13 @@ class EditProxyItem extends Component
 
     public ?int $assignedUserId = null;
 
+    public bool $hasChangedAt = false;
+
     public function updatedFullAccessManagerIds(): void
     {
         $fullIds = array_map('intval', $this->fullAccessManagerIds);
         $this->sharedManagerIds = array_values(array_diff(array_map('intval', $this->sharedManagerIds), $fullIds));
     }
-
 
     public function updatedSharedManagerIds(): void
     {
@@ -68,6 +69,7 @@ class EditProxyItem extends Component
         $this->sharedManagerIds = [];
         $this->fullAccessManagerIds = [];
         $this->assignedUserId = null;
+        $this->hasChangedAt = false;
 
         abort_unless(auth()->user()?->is_admin, 403);
 
@@ -78,6 +80,7 @@ class EditProxyItem extends Component
         $this->port = $item->port;
         $this->note = (string) ($item->note ?? '');
         $this->assignedUserId = $item->assigned_user_id;
+        $this->hasChangedAt = filled($item->changed_at);
         $this->sharedManagerIds = $item->managerAccesses()->wherePivot('access_type', 'shared')->pluck('users.id')->map(fn ($id) => (int) $id)->all();
         $this->fullAccessManagerIds = User::query()
             ->where('is_admin', false)
@@ -137,6 +140,27 @@ class EditProxyItem extends Component
         $this->close();
     }
 
+    /**
+     * Xac nhan proxy da quay ve binh thuong va xoa moc thay doi hien tai.
+     */
+    public function resetChangedAt(): void
+    {
+        if (! $this->itemId) {
+            return;
+        }
+
+        abort_unless(auth()->user()?->is_admin, 403);
+
+        $item = DataHubProxyItem::query()->findOrFail($this->itemId);
+        $item->forceFill([
+            'changed_at' => null,
+        ])->save();
+
+        $this->dispatch('proxy-item-updated');
+        $this->dispatch('toast', type: 'success', title: 'Da xac nhan!', message: 'Changed At da duoc xoa va proxy quay ve mau xanh.');
+        $this->close();
+    }
+
     public function render(): View
     {
         return view('livewire.modals.proxy.edit-proxy-item', [
@@ -145,3 +169,4 @@ class EditProxyItem extends Component
         ]);
     }
 }
+

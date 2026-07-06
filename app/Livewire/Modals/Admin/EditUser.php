@@ -8,6 +8,7 @@ use App\Services\Logging\ActivityLogService;
 use App\Services\User\UserAccessService;
 use App\Support\Traits\BuildsVertexCredentialPayload;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -226,16 +227,29 @@ class EditUser extends Component
             }
 
             if ($v98StoreCredentialPayload !== null) {
-                UserApiCredential::query()
+                $oldCredentialIds = UserApiCredential::query()
                     ->where('provider_key', 'v98store')
                     ->where('user_id', $user->id)
                     ->where('is_active', true)
-                    ->update(['is_active' => false]);
+                    ->pluck('id')
+                    ->all();
+
+                UserApiCredential::query()
+                    ->where('provider_key', 'v98store')
+                    ->where('user_id', $user->id)
+                    ->delete();
 
                 UserApiCredential::query()->create([
                     ...$v98StoreCredentialPayload,
                     'user_id' => $user->id,
                 ]);
+
+                foreach ($oldCredentialIds as $credentialId) {
+                    Cache::forget("v98store-balance:{$credentialId}");
+                    Cache::forget("v98store-balance-alert:{$credentialId}");
+                }
+
+                Cache::forget('provider-pause:v98store:user:'.$user->id);
             }
         });
 

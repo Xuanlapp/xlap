@@ -19,6 +19,7 @@
 
         <div
             x-data="{
+                modalVisible: true,
                 zoomed: false,
                 copied: false,
                 dimensions: 'Loading...',
@@ -97,7 +98,9 @@
                     window.open(@js($displayOriginalUrl ?: $src), '_blank', 'noreferrer');
                 },
             }"
-            x-on:keydown.escape.window="$wire.close()"
+            x-show="modalVisible"
+            x-transition.opacity.duration.150ms
+            x-on:keydown.escape.window="modalVisible = false; $wire.close()"
             tabindex="-1"
             aria-modal="true"
             role="dialog"
@@ -107,6 +110,7 @@
                 <div class="relative overflow-hidden rounded-2xl border border-white/70 bg-white shadow-2xl">
                     <button
                         type="button"
+                        x-on:click="modalVisible = false"
                         wire:click="close"
                         class="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-500 shadow-sm backdrop-blur transition hover:bg-white hover:text-slate-950"
                         aria-label="Close image review"
@@ -629,7 +633,7 @@
 
                             <div class="sticky bottom-0 mt-auto rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg shadow-slate-900/5 backdrop-blur">
                                 <div class="flex justify-end gap-3">
-                                    <button type="button" wire:click="close" class="inline-flex min-w-32 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                                    <button type="button" x-on:click="modalVisible = false" wire:click="close" class="inline-flex min-w-32 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                                         Close
                                     </button>
                                     @if ($action === 'sticker-redesign')

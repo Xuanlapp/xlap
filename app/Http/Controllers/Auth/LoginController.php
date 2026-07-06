@@ -43,7 +43,15 @@ class LoginController extends Controller
             $security->recordFailedAttempt($login);
 
             throw ValidationException::withMessages([
-                'password' => 'Sai tài khoản hoặc mật khẩu.',
+                'password' => 'Sai tÃ i khoáº£n hoáº·c máº­t kháº©u.',
+            ]);
+        }
+
+        if ($user->status !== 'active') {
+            $security->recordFailedAttempt($login);
+
+            throw ValidationException::withMessages([
+                'login' => 'Tai khoan cua ban hien tai dang tam khoa, vui long lien he admin.',
             ]);
         }
 

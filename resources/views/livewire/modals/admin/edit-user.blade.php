@@ -96,6 +96,112 @@
                         </section>
 
 
+
+                        <section class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <h3 class="text-sm font-bold text-slate-900">API credentials</h3>
+                            <div class="mt-3 space-y-4">
+                                <div class="rounded-xl border border-slate-200 bg-white p-4">
+                                    <div>
+                                        <p class="text-sm font-semibold text-slate-900">Vertex image key</p>
+                                        <p class="mt-1 text-xs text-slate-500">Hien tai: {{ $currentVertexLabel ?: 'Chua co key' }}</p>
+                                    </div>
+                                    <div class="mt-3 grid gap-2 sm:grid-cols-4">
+                                        <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                                            <input wire:model.live="vertexMode" type="radio" value="keep" class="border-slate-300 text-cyan-600">
+                                            <span>Giu nguyen</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                                            <input wire:model.live="vertexMode" type="radio" value="new" class="border-slate-300 text-cyan-600">
+                                            <span>Change key</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                                            <input wire:model.live="vertexMode" type="radio" value="copy" class="border-slate-300 text-cyan-600">
+                                            <span>Copy user</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                                            <input wire:model.live="vertexMode" type="radio" value="remove" class="border-slate-300 text-cyan-600">
+                                            <span>Remove</span>
+                                        </label>
+                                    </div>
+                                    @if ($vertexMode === 'new')
+                                        <div class="mt-3 grid gap-3">
+                                            <div>
+                                                <label class="text-xs font-semibold text-slate-500">Vertex location</label>
+                                                <input wire:model="vertexLocation" type="text" class="mt-1 h-9 w-full rounded-md border-slate-200 text-sm text-slate-950" placeholder="global">
+                                            </div>
+                                            <div>
+                                                <label class="text-xs font-semibold text-slate-500">Credentials JSON</label>
+                                                <textarea wire:model="vertexJson" rows="8" class="mt-1 w-full rounded-md border-slate-200 text-sm text-slate-950" placeholder='{"type":"service_account",...}'></textarea>
+                                                @error('vertexJson') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                            </div>
+                                        </div>
+                                    @endif
+                                    @if ($vertexMode === 'copy')
+                                        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                                            <div>
+                                                <label class="text-xs font-semibold text-slate-500">Copy Vertex tu user</label>
+                                                <select wire:model="vertexCopyUserId" class="mt-1 h-9 w-full rounded-md border-slate-200 text-sm text-slate-950">
+                                                    <option value="">Chon user</option>
+                                                    @foreach ($copyableVertexUsers as $copyUser)
+                                                        <option value="{{ $copyUser->id }}">#{{ $copyUser->id }} - {{ $copyUser->name }} ({{ $copyUser->email }})</option>
+                                                    @endforeach
+                                                </select>
+                                                @error('vertexCopyUserId') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                            </div>
+                                            <div>
+                                                <label class="text-xs font-semibold text-slate-500">Vertex location</label>
+                                                <input wire:model="vertexLocation" type="text" class="mt-1 h-9 w-full rounded-md border-slate-200 text-sm text-slate-950" placeholder="global">
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <div class="rounded-xl border border-slate-200 bg-white p-4">
+                                    <div>
+                                        <p class="text-sm font-semibold text-slate-900">v98Store key</p>
+                                        <p class="mt-1 text-xs text-slate-500">Hien tai: {{ $currentV98StoreLabel ?: 'Chua co key' }}</p>
+                                    </div>
+                                    <div class="mt-3 grid gap-2 sm:grid-cols-4">
+                                        <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                                            <input wire:model.live="v98StoreMode" type="radio" value="keep" class="border-slate-300 text-cyan-600">
+                                            <span>Giu nguyen</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                                            <input wire:model.live="v98StoreMode" type="radio" value="new" class="border-slate-300 text-cyan-600">
+                                            <span>Change key</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                                            <input wire:model.live="v98StoreMode" type="radio" value="copy" class="border-slate-300 text-cyan-600">
+                                            <span>Copy user</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                                            <input wire:model.live="v98StoreMode" type="radio" value="remove" class="border-slate-300 text-cyan-600">
+                                            <span>Remove</span>
+                                        </label>
+                                    </div>
+                                    @if ($v98StoreMode === 'new')
+                                        <div class="mt-3">
+                                            <label class="text-xs font-semibold text-slate-500">v98Store API key</label>
+                                            <textarea wire:model="v98StoreApiKey" rows="4" class="mt-1 w-full rounded-md border-slate-200 text-sm text-slate-950" placeholder="Nhap v98Store API key"></textarea>
+                                            @error('v98StoreApiKey') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                    @endif
+                                    @if ($v98StoreMode === 'copy')
+                                        <div class="mt-3">
+                                            <label class="text-xs font-semibold text-slate-500">Copy v98Store tu user</label>
+                                            <select wire:model="v98StoreCopyUserId" class="mt-1 h-9 w-full rounded-md border-slate-200 text-sm text-slate-950">
+                                                <option value="">Chon user</option>
+                                                @foreach ($copyableV98StoreUsers as $copyUser)
+                                                    <option value="{{ $copyUser->id }}">#{{ $copyUser->id }} - {{ $copyUser->name }} ({{ $copyUser->email }})</option>
+                                                @endforeach
+                                            </select>
+                                            @error('v98StoreCopyUserId') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </section>
+
                         <section class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                             <h3 class="text-sm font-bold text-slate-900">Products & tools</h3>
                             <div class="mt-3 grid gap-2 sm:grid-cols-2">

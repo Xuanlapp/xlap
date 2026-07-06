@@ -1,4 +1,4 @@
-<article @if(($automation?->workflow_status ?? null) === 'running') wire:poll.5s="refreshWhenUpdated" @elseif(($automation?->workflow_status ?? null) === 'failed') wire:poll.10s="refreshWhenUpdated" @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+<article wire:poll.5s="refreshWhenUpdated" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     @php
         $automationRunning = (($automation?->workflow_status ?? null) === 'running');
         $automationFailed = (($automation?->workflow_status ?? null) === 'failed');
@@ -878,6 +878,8 @@
             wire:key="ornament-amazon-two-mockup-b5-{{ $asset->id }}-{{ md5(json_encode($mockupB5Images)) }}-{{ md5(json_encode($mockupBatchStates)) }}-{{ $mockupBatchRunning ? '1' : '0' }}"
             data-ornament-amazon-two-mockup-root
             data-asset-id="{{ $asset->id }}"
+            x-on:ornament-amazon-two-preview-mockup-generation-started.window="if (($event.detail?.assetId ?? null) === assetId && ($event.detail?.slot ?? null)) { running = true; setSlotState($event.detail.slot, 'generating'); statusMessage = `Generating ${doneCount}/${targetCount || promptSlots.length}...`; }"
+            x-on:ornament-amazon-two-preview-mockup-generation-finished.window="if (($event.detail?.assetId ?? null) === assetId && ($event.detail?.slot ?? null)) { if ($event.detail.ok === false) { setSlotState($event.detail.slot, 'error'); slotErrors = { ...slotErrors, [$event.detail.slot]: $event.detail.message || 'Generate failed' }; running = Object.values(slotStates).includes('generating'); } }"
             x-data="{
                 assetId: {{ $asset->id }},
                 keyword: @js($asset->keyword),
@@ -952,7 +954,7 @@
                     });
                 },
                 slotMessage(slot, fallback) {
-                    if (this.slotStates[slot] === 'generating') return 'Generating';
+                    if (['queued', 'waiting', 'generating'].includes(this.slotStates[slot])) return 'Generating';
                     if (this.slotStates[slot] === 'error') return 'Generate failed';
 
                     return fallback;
@@ -1191,12 +1193,12 @@
 
                                         <div
                                             x-cloak
-                                            x-show="slotStates[@js($slotKey)] === 'generating'"
+                                            x-show="['queued', 'waiting', 'generating'].includes(slotStates[@js($slotKey)])"
                                             class="ornament-mockup-slot-spinner absolute inset-0 z-20 flex items-center justify-center bg-white/90 backdrop-blur-sm"
                                         >
                                             <div class="flex flex-col items-center gap-2 text-center text-orange-700">
                                                 <span class="h-7 w-7 animate-spin rounded-full border-4 border-orange-200 border-t-orange-700"></span>
-                                                <span class="text-[10px] font-bold uppercase tracking-wide">Generating</span>
+                                                <span class="text-[10px] font-bold uppercase tracking-wide" x-text="slotStates[@js($slotKey)] === 'queued' ? 'Queued' : 'Generating'"></span>
                                             </div>
                                         </div>
                                     </div>

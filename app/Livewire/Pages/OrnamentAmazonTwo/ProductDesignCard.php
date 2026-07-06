@@ -431,12 +431,13 @@ class ProductDesignCard extends Component
     public function generateWorkflowImage(string $slot): void
     {
         try {
-            $asset = app(OrnamentAmazonTwoService::class)->generateWorkflowImage(
+            $asset = app(OrnamentAmazonTwoService::class)->queueWorkflowImageGeneration(
                 auth()->user(),
                 $this->assetId,
                 $slot,
                 $this->providerKey,
                 $this->imageModel,
+                'ornament-pipeline',
             );
 
             app(ActivityLogService::class)->record(
@@ -446,7 +447,8 @@ class ProductDesignCard extends Component
                 properties: ['item_number' => $asset->item_number, 'slot' => $slot, 'provider' => $this->providerKey, 'image_model' => $this->imageModel],
             );
 
-            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh workflow.');
+            $this->dispatchWorkflowUpdated();
+            $this->dispatch('toast', type: 'success', title: 'Queued!', message: 'Da dua mockup vao worker. Theo doi spinner tren card.');
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'ornament_amazon_two.generate_workflow_image', ['asset_id' => $this->assetId, 'slot' => $slot]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());

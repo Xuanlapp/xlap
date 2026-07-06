@@ -73,12 +73,20 @@
                     @endif
                 </div>
 
-                <div class="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
-                    <button type="button" wire:click="close" class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">Cancel</button>
-                    <button type="submit" wire:loading.attr="disabled" wire:target="save" @disabled($isLoading) class="inline-flex items-center justify-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60">
-                        <span wire:loading.remove wire:target="save">Save</span>
-                        <span wire:loading wire:target="save">Saving...</span>
-                    </button>
+                <div class="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    @if (auth()->user()?->is_admin && $hasChangedAt)
+                        <button type="button" wire:click="resetChangedAt" wire:loading.attr="disabled" wire:target="resetChangedAt" @disabled($isLoading) class="inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60">
+                            <span wire:loading.remove wire:target="resetChangedAt">Da biet, reset ve xanh</span>
+                            <span wire:loading wire:target="resetChangedAt">Dang reset...</span>
+                        </button>
+                    @endif
+                    <div class="flex items-center justify-end gap-3">
+                        <button type="button" wire:click="close" class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">Cancel</button>
+                        <button type="submit" wire:loading.attr="disabled" wire:target="save" @disabled($isLoading) class="inline-flex items-center justify-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60">
+                            <span wire:loading.remove wire:target="save">Save</span>
+                            <span wire:loading wire:target="save">Saving...</span>
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

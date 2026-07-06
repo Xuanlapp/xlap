@@ -136,7 +136,6 @@ class ReviewImage extends Component
         $slot = $this->workflowSlotFromMockupTarget($this->editTarget);
 
         if (! $slot) {
-            $this->dispatch('ornament-amazon-two-generation-finished');
             $this->dispatch('ornament-amazon-two-preview-mockup-generation-finished', assetId: $this->assetId, slot: null, ok: false, message: 'Slot mockup khong hop le.');
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Slot mockup khong hop le.');
 
@@ -144,7 +143,7 @@ class ReviewImage extends Component
         }
 
         try {
-            $asset = app(OrnamentAmazonTwoService::class)->generateWorkflowImage(
+            $asset = app(OrnamentAmazonTwoService::class)->queueWorkflowImageGeneration(
                 user: auth()->user(),
                 assetId: $this->assetId,
                 slot: $slot,
@@ -153,8 +152,8 @@ class ReviewImage extends Component
             );
 
             app(ActivityLogService::class)->record(
-                event: 'ornament_amazon_two.preview_mockup_generated',
-                description: 'User generated one Ornament Amazon 2 mockup from preview.',
+                event: 'ornament_amazon_two.preview_mockup_queued',
+                description: 'User queued one Ornament Amazon 2 mockup from preview.',
                 subject: $asset,
                 properties: ['item_number' => $asset->item_number, 'target' => $this->editTarget, 'slot' => $slot, 'provider' => $this->modalProviderKey],
             );
@@ -164,7 +163,6 @@ class ReviewImage extends Component
                 'target' => $this->editTarget,
                 'slot' => $slot,
             ]);
-            $this->dispatch('ornament-amazon-two-generation-finished');
             $this->dispatch('ornament-amazon-two-preview-mockup-generation-finished', assetId: $this->assetId, slot: $slot, ok: false, message: $exception->getMessage());
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
 
@@ -175,7 +173,7 @@ class ReviewImage extends Component
                 'target' => $this->editTarget,
                 'slot' => $slot,
             ]);
-            Log::error('Ornament Amazon 2 preview mockup generation failed unexpectedly.', [
+            Log::error('Ornament Amazon 2 preview mockup queue failed unexpectedly.', [
                 'asset_id' => $this->assetId,
                 'target' => $this->editTarget,
                 'slot' => $slot,
@@ -185,41 +183,82 @@ class ReviewImage extends Component
 
             $message = trim((string) $exception->getMessage()) !== ''
                 ? $exception->getMessage()
-                : 'Loi he thong khi tao anh mockup.';
+                : 'Loi he thong khi dua mockup vao hang doi.';
 
-            $this->dispatch('ornament-amazon-two-generation-finished');
             $this->dispatch('ornament-amazon-two-preview-mockup-generation-finished', assetId: $this->assetId, slot: $slot, ok: false, message: $message);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $message);
 
             return;
         }
 
-        $updatedUrl = $asset->getAttribute($this->editTarget);
-
-        if (is_string($updatedUrl) && trim($updatedUrl) !== '') {
-            $this->original = $updatedUrl;
-            $this->src = $updatedUrl;
-
-            if (isset($this->gallery[$this->currentIndex])) {
-                $this->gallery[$this->currentIndex]['original'] = $updatedUrl;
-                $this->gallery[$this->currentIndex]['src'] = $updatedUrl;
-            }
-        }
-
+        $this->isOpen = false;
         $this->dispatch('ornament-amazon-two-product-design-updated', assetId: $asset->id);
-        $this->dispatch('ornament-amazon-two-generation-finished');
-        $this->dispatch('ornament-amazon-two-preview-mockup-generation-finished', assetId: $asset->id, slot: $slot, ok: true, url: $updatedUrl);
         $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
         $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
-        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh mockup.');
+        $this->dispatch('toast', type: 'success', title: 'Queued!', message: 'Da dua mockup vao worker. Ban co the dong preview va theo doi spinner tren card.');
     }
-
     /**
      * Customize the currently opened Ornament Amazon 2 Create Master or mockup image.
      */
     public function customizeOrnamentAmazonTwoImage(): void
     {
         if ($this->action !== 'ornament-amazon-two-custom-image' || ! $this->assetId || ! $this->original || ! $this->editTarget) {
+            return;
+        }
+
+        $slot = $this->workflowSlotFromMockupTarget($this->editTarget);
+
+        if ($slot) {
+            try {
+                $asset = app(OrnamentAmazonTwoService::class)->queuePreviewWorkflowImageEdit(
+                    user: auth()->user(),
+                    assetId: $this->assetId,
+                    slot: $slot,
+                    target: $this->editTarget,
+                    currentImageUri: $this->original,
+                    editPrompt: $this->customPrompt,
+                    providerKey: $this->modalProviderKey,
+                    imageModel: $this->modalImageModel,
+                    queue: 'ornament-priority',
+                );
+
+                app(ActivityLogService::class)->record(
+                    event: 'ornament_amazon_two.preview_image_edit_queued',
+                    description: 'User queued an Ornament Amazon 2 preview mockup edit.',
+                    subject: $asset,
+                    properties: ['item_number' => $asset->item_number, 'target' => $this->editTarget, 'slot' => $slot, 'provider' => $this->modalProviderKey],
+                );
+            } catch (RuntimeException $exception) {
+                $this->reportUserActionError($exception, 'ornament_amazon_two.customize_preview_image', [
+                    'asset_id' => $this->assetId,
+                    'target' => $this->editTarget,
+                ]);
+                $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+
+                return;
+            } catch (Throwable $exception) {
+                $this->reportUserActionError($exception, 'ornament_amazon_two.customize_preview_image', [
+                    'asset_id' => $this->assetId,
+                    'target' => $this->editTarget,
+                ]);
+                Log::error('Ornament Amazon 2 preview image edit queue failed unexpectedly.', [
+                    'asset_id' => $this->assetId,
+                    'target' => $this->editTarget,
+                    'message' => $exception->getMessage(),
+                ]);
+
+                $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi dua anh vao worker.');
+
+                return;
+            }
+
+            $this->customPrompt = '';
+            $this->isOpen = false;
+            $this->dispatch('ornament-amazon-two-product-design-updated', assetId: $asset->id);
+            $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
+            $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
+            $this->dispatch('toast', type: 'success', title: 'Queued!', message: 'Da dua yeu cau edit mockup vao worker. Theo doi spinner tren card.');
+
             return;
         }
 

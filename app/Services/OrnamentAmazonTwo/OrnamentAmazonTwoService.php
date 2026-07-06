@@ -5,6 +5,7 @@ namespace App\Services\OrnamentAmazonTwo;
 use App\Jobs\GenerateOrnamentAmazonTwoWorkflowImage;
 use App\Jobs\RunOrnamentAmazonTwoAutomation;
 use App\Jobs\RunOrnamentAmazonTwoItemPipeline;
+use App\Jobs\RegenerateOrnamentAmazonTwoPreviewImage;
 use App\Models\DataOrnamentAmazon;
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
@@ -898,6 +899,105 @@ class OrnamentAmazonTwoService
             optional($saveLock)->release();
         }
     }
+    public function queueWorkflowImageGeneration(
+        User $user,
+        int $assetId,
+        string $slot,
+        ?string $providerKey = null,
+        ?string $imageModel = null,
+        string $queue = 'ornament-pipeline',
+    ): ProductDesignAsset {
+        if (! array_key_exists($slot, self::WORKFLOW_IMAGE_SLOTS)) {
+            throw new InvalidArgumentException('Slot anh workflow khong hop le.');
+        }
+
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
+        $this->ensureWorkflowProductLock($asset);
+
+        $workflow = $this->workflowData($asset);
+        $prompt = $workflow['prompts'][$slot] ?? null;
+
+        if (! is_string($prompt) || trim($prompt) === '') {
+            throw new RuntimeException('Chua co prompt cho slot '.$this->slotLabel($slot).'. Hay bam Generate B4 Listing + A+ Prompts truoc.');
+        }
+
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
+
+        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+        $slotStates = is_array($batch['slot_states'] ?? null) ? $batch['slot_states'] : [];
+        $slotStates[$slot] = 'queued';
+
+        $batch = array_merge($batch, [
+            'running' => true,
+            'slots' => [$slot],
+            'attempts' => is_array($batch['attempts'] ?? null) ? $batch['attempts'] : [],
+            'slot_states' => $slotStates,
+            'provider' => $providerKey,
+            'image_model' => $imageModel,
+            'current_slot' => null,
+            'started_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        $workflow['images_batch'] = $batch;
+        unset($workflow['images_errors'][$slot]);
+        $asset = $this->saveWorkflowData($asset, $workflow);
+
+        GenerateOrnamentAmazonTwoWorkflowImage::dispatch($user->id, $asset->id, $slot, $providerKey, $imageModel)
+            ->onQueue($queue);
+
+        return $asset->refresh();
+    }
+
+    public function queuePreviewWorkflowImageEdit(
+        User $user,
+        int $assetId,
+        string $slot,
+        string $target,
+        string $currentImageUri,
+        string $editPrompt,
+        ?string $providerKey = null,
+        ?string $imageModel = null,
+        string $queue = 'ornament-pipeline',
+    ): ProductDesignAsset {
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
+        $this->ensureWorkflowProductLock($asset);
+
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $this->ensureApiKeyProvider($providerKey);
+        $this->ensureProviderHasBalance($user, $providerKey);
+
+        $workflow = $this->workflowData($asset);
+        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+        $slotStates = is_array($batch['slot_states'] ?? null) ? $batch['slot_states'] : [];
+        $slotStates[$slot] = 'queued';
+
+        $batch = array_merge($batch, [
+            'running' => true,
+            'slots' => [$slot],
+            'attempts' => is_array($batch['attempts'] ?? null) ? $batch['attempts'] : [],
+            'slot_states' => $slotStates,
+            'provider' => $providerKey,
+            'image_model' => $imageModel,
+            'current_slot' => null,
+            'started_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        $workflow['images_batch'] = $batch;
+        unset($workflow['images_errors'][$slot]);
+        $asset = $this->saveWorkflowData($asset, $workflow);
+
+        RegenerateOrnamentAmazonTwoPreviewImage::dispatch($user->id, $asset->id, $slot, $target, $currentImageUri, $editPrompt, $providerKey, $imageModel)
+            ->onQueue($queue);
+
+        return $asset->refresh();
+    }
+
 
     public function prepareAllWorkflowImagesForGeneration(User $user, int $assetId): ProductDesignAsset
     {
@@ -1709,10 +1809,16 @@ class OrnamentAmazonTwoService
 
         $providerKey ??= $this->normalizeProviderKey($user, $providerKey);
         $this->ensureApiKeyProvider($providerKey);
-        $this->ensureProviderHasBalance($user, $providerKey);
 
         $record = $this->automationForAsset($asset) ?: $this->startAutomation($user, $assetId, $providerKey, $imageModel, $textModel, false);
         $asset = $asset->refresh();
+
+        try {
+            $this->ensureProviderHasBalance($user, $providerKey);
+        } catch (Throwable $exception) {
+            $this->markAutomationStepFinished($asset, is_string($record->workflow_step_key) && $record->workflow_step_key !== '' ? $record->workflow_step_key : 'script', mb_substr($exception->getMessage(), 0, 1000));
+            return;
+        }
 
         foreach ($this->automationPipelineSteps() as $step) {
             $this->markAutomationStepRunning($asset, $step, $record->step_data ?? []);
@@ -1739,11 +1845,29 @@ class OrnamentAmazonTwoService
 
     public function automationForUser(User $user, int $assetId): ?DataOrnamentAmazon
     {
-        return $this->automationForAsset($this->assetForUser($user, $assetId));
+        $asset = $this->assetForUser($user, $assetId);
+        $automation = $this->automationForAsset($asset);
+
+        if ($automation && ($automation->workflow_status ?? null) === 'running') {
+            $updatedAt = $automation->updated_at;
+
+            if ($updatedAt && $updatedAt->lt(now()->subMinutes(10))) {
+                return $this->markAutomationStepFinished(
+                    $asset,
+                    is_string($automation->workflow_step_key) && $automation->workflow_step_key !== '' ? $automation->workflow_step_key : 'script',
+                    'Automation bi ket qua lau khong cap nhat. Hay bam Retry/Continue de chay lai.'
+                );
+            }
+        }
+
+        return $automation;
     }
 
     public function retryAutomation(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): DataOrnamentAmazon
     {
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $this->clearProviderPausedFlag($user, $providerKey);
+
         $asset = $this->assetForUser($user, $assetId);
         $record = $this->automationForAsset($asset);
 
@@ -2004,6 +2128,9 @@ class OrnamentAmazonTwoService
 
     public function resumeAutomationStep(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void
     {
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $this->clearProviderPausedFlag($user, $providerKey);
+
         $asset = $this->assetForUser($user, $assetId);
         $record = $this->automationForAsset($asset);
 

@@ -855,3 +855,55 @@ T?ch l?i ng?n ng? dashboard: backend/code ti?ng Anh, frontend ti?ng Vi?t c? d?u.
 
 **Viec can lam tiep:**  
 - N?u c?n ch? n?o hi?n ti?ng Vi?t sai trong code BE th? ch? s?a text hi?n th? ? FE, kh?ng ??ng t?n h?m/bi?n n?a.
+
+### 2026-07-06
+
+**Muc tieu:**  
+Them cach xac nhan proxy da biet thay doi de tra hang ve mau xanh.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Proxy/EditProxyItem.php`
+- `resources/views/livewire/modals/proxy/edit-proxy-item.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them action admin-only `resetChangedAt()` trong modal edit proxy.
+- Nut `Da biet, reset ve xanh` xoa `changed_at` cua proxy item hien tai.
+- Giu nguyen `public_ip_change` de con lich su IP da doi, chi xoa moc canh bao hien tai.
+- Dispatch `proxy-item-updated` va toast thanh cong sau khi reset.
+
+**Root cause:**  
+- Row proxy dang bi do dua tren `changed_at`, nhung admin chua co cach danh dau da xac nhan thay doi.
+
+**Deploy impact:**  
+- Khong doi database. Can deploy code va clear view cache.
+
+**Queue impact:**  
+- Khong co.
+
+**Viec can lam tiep:**  
+- User mo proxy item bi do, bam `Da biet, reset ve xanh` de xoa `Changed At`.
+
+### 2026-07-06
+
+**Muc tieu:**  
+Chi hien nut reset proxy ve xanh khi dong proxy dang co `Changed At`.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Proxy/EditProxyItem.php`
+- `resources/views/livewire/modals/proxy/edit-proxy-item.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them state `hasChangedAt` khi mo modal edit proxy.
+- Nut `Da biet, reset ve xanh` chi render khi user la admin va proxy item co `changed_at`.
+- Neu proxy khong co `Changed At`, modal chi hien nut Cancel/Save.
+
+**Root cause:**  
+- Nut reset hien ca khi dong proxy khong co thay doi, gay thua thao tac.
+
+**Deploy impact:**  
+- Khong doi database. Da clear compiled views.
+
+**Queue impact:**  
+- Khong co.

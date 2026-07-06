@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureUserHasProductAccess;
 use App\Http\Middleware\EnsureUserHasWaliAccess;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Services\Monitoring\TelegramErrorReporter;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'product' => EnsureUserHasProductAccess::class,
             'wali' => EnsureUserHasWaliAccess::class,
         ]);
+
+        $middleware->appendToGroup('web', EnsureUserIsActive::class);
 
         $csrfExcept = [
             'webhook/telegram',

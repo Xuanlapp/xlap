@@ -54,6 +54,14 @@ class LoginForm extends Form
             ]);
         }
 
+        if ($user->status !== 'active') {
+            app(LoginSecurity::class)->recordFailedAttempt($this->login);
+
+            throw ValidationException::withMessages([
+                'form.login' => 'Tai khoan cua ban hien tai dang tam khoa, vui long lien he admin.',
+            ]);
+        }
+
         Auth::login($user, $this->remember);
 
         app(LoginSecurity::class)->clearSuccessfulAttempt($this->login);
