@@ -332,6 +332,7 @@
                                                 wire:click="{{ $ornamentGenerateMethod }}"
                                                 wire:loading.attr="disabled"
                                                 wire:target="{{ $ornamentGenerateMethod }}"
+                                                @disabled($currentMockupSlotGenerating)
                                                 class="inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 text-xs font-bold text-orange-700 transition-all duration-200 ease-out hover:border-orange-300 hover:bg-orange-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
                                                 <span
@@ -340,7 +341,7 @@
                                                     class="h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700"
                                                     aria-hidden="true"
                                                 ></span>
-                                                <span wire:loading.remove wire:target="{{ $ornamentGenerateMethod }}">Generate</span>
+                                                <span wire:loading.remove wire:target="{{ $ornamentGenerateMethod }}">{{ $currentMockupSlotGenerating ? 'Generating...' : 'Generate' }}</span>
                                                 <span wire:loading wire:target="{{ $ornamentGenerateMethod }}">Generating...</span>
                                             </button>
                                         @endif
@@ -500,12 +501,13 @@
                                                 x-on:click="notifyProcessing('Dang custom', 'He thong dang custom lai anh preview nay.')"
                                                 wire:loading.attr="disabled"
                                                 wire:target="{{ $ornamentCustomizeMethod }}"
+                                                @disabled($currentMockupSlotGenerating)
                                                 class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-gray-700 shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-xl hover:shadow-orange-500/25 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
                                                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                                     <path d="M12 2 14.7 9.3 22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z" />
                                                 </svg>
-                                                <span wire:loading.remove wire:target="{{ $ornamentCustomizeMethod }}">Redesign This Image</span>
+                                                <span wire:loading.remove wire:target="{{ $ornamentCustomizeMethod }}">{{ $currentMockupSlotGenerating ? 'Generating...' : 'Redesign This Image' }}</span>
                                                 <span wire:loading wire:target="{{ $ornamentCustomizeMethod }}">Generating...</span>
                                             </button>
                                         </form>
@@ -519,12 +521,13 @@
                                             wire:click="{{ $ornamentGenerateMethod }}"
                                             wire:loading.attr="disabled"
                                             wire:target="{{ $ornamentGenerateMethod }}"
+                                            @disabled($currentMockupSlotGenerating)
                                             class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-gray-700 shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-xl hover:shadow-orange-500/25 disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                                 <path d="M12 2 14.7 9.3 22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z" />
                                             </svg>
-                                            <span wire:loading.remove wire:target="{{ $ornamentGenerateMethod }}">Generate</span>
+                                            <span wire:loading.remove wire:target="{{ $ornamentGenerateMethod }}">{{ $currentMockupSlotGenerating ? 'Generating...' : 'Generate' }}</span>
                                             <span wire:loading wire:target="{{ $ornamentGenerateMethod }}">Generating...</span>
                                         </button>
                                     @endif

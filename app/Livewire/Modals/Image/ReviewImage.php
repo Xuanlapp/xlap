@@ -57,6 +57,8 @@ class ReviewImage extends Component
 
     public ?string $modalImageModel = null;
 
+    public bool $currentMockupSlotGenerating = false;
+
     /**
      * @var array<int, array{label: string, value: string}>
      */
@@ -110,6 +112,7 @@ class ReviewImage extends Component
         if (! $this->imagePrompt && is_string($imagePrompt) && trim($imagePrompt) !== '') {
             $this->imagePrompt = trim($imagePrompt);
         }
+        $this->loadCurrentMockupGenerationState();
         $this->loadSourcePreviewContext();
         $this->loadListingInfo();
         $this->isOpen = true;
@@ -191,7 +194,7 @@ class ReviewImage extends Component
             return;
         }
 
-        $this->isOpen = false;
+        $this->currentMockupSlotGenerating = true;
         $this->dispatch('ornament-amazon-two-product-design-updated', assetId: $asset->id);
         $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
         $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
@@ -253,7 +256,7 @@ class ReviewImage extends Component
             }
 
             $this->customPrompt = '';
-            $this->isOpen = false;
+            $this->currentMockupSlotGenerating = true;
             $this->dispatch('ornament-amazon-two-product-design-updated', assetId: $asset->id);
             $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(ListOrnamentAmazonTwo::class);
             $this->dispatch('ornament-amazon-two-product-design-workflow-updated')->to(OrnamentAmazonTwoStatusPanel::class);
@@ -332,6 +335,7 @@ class ReviewImage extends Component
 
         $this->currentIndex = ($this->currentIndex + 1) % count($this->gallery);
         $this->setCurrentFromGallery();
+        $this->loadCurrentMockupGenerationState();
     }
 
     /**
@@ -453,7 +457,7 @@ class ReviewImage extends Component
 
     public function close(): void
     {
-        $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword', 'customPrompt', 'editTarget', 'imagePrompt', 'modalProviderKey', 'modalImageModel', 'listingInfo', 'sourcePreviewImages', 'sourceListingFields']);
+        $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword', 'customPrompt', 'editTarget', 'imagePrompt', 'modalProviderKey', 'modalImageModel', 'currentMockupSlotGenerating', 'listingInfo', 'sourcePreviewImages', 'sourceListingFields']);
         $this->title = 'Review image';
     }
 
@@ -492,6 +496,35 @@ class ReviewImage extends Component
             'mockup6' => 'custom_guide',
             default => null,
         };
+    }
+
+    private function loadCurrentMockupGenerationState(): void
+    {
+        $this->currentMockupSlotGenerating = false;
+
+        if ($this->productSlug !== 'ornament-amazon-2' || ! $this->assetId || ! $this->editTarget) {
+            return;
+        }
+
+        $slot = $this->workflowSlotFromMockupTarget($this->editTarget);
+
+        if (! $slot) {
+            return;
+        }
+
+        $asset = ProductDesignAsset::query()
+            ->select(['id', 'user_id', 'data_item_add'])
+            ->when(! auth()->user()->is_admin, fn ($query) => $query->where('user_id', auth()->id()))
+            ->find($this->assetId);
+
+        $workflow = is_array($asset?->data_item_add)
+            ? ($asset->data_item_add['ornament_amazon_two_workflow'] ?? [])
+            : [];
+        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+        $slotStates = is_array($batch['slot_states'] ?? null) ? $batch['slot_states'] : [];
+        $state = $slotStates[$slot] ?? null;
+
+        $this->currentMockupSlotGenerating = in_array($state, ['queued', 'generating'], true);
     }
 
     private function loadSourcePreviewContext(): void
