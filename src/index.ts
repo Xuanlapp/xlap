@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const templatePath = "D:/FFactory/FILE/template/Template_UVDTF.ai";
 const imagesDir = "D:/FFactory/FILE/Images";
+const imagesDoneDir = "D:/FFactory/FILE/Images_done";
 const runtimeDir = path.join(rootDir, ".runtime");
 
 function runCommand(command: string, args: string[]) {
@@ -27,7 +28,7 @@ async function ensurePathExists(filePath: string) {
   await access(filePath, constants.F_OK);
 }
 
-async function getFirstPngImage(directoryPath: string) {
+async function getPngImages(directoryPath: string) {
   const entries = await readdir(directoryPath, { withFileTypes: true });
   const pngFiles = entries
     .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".png"))
@@ -38,7 +39,25 @@ async function getFirstPngImage(directoryPath: string) {
     throw new Error(`Khong tim thay file .png trong thu muc ${directoryPath}`);
   }
 
-  return path.join(directoryPath, pngFiles[0]);
+  return pngFiles.map((fileName) => path.join(directoryPath, fileName));
+}
+
+async function moveProcessedImageToDone(imagePath: string) {
+  await mkdir(imagesDoneDir, { recursive: true });
+  const parsedPath = path.parse(imagePath);
+  let targetPath = path.join(imagesDoneDir, path.basename(imagePath));
+  let suffix = 1;
+  while (true) {
+    try {
+      await access(targetPath, constants.F_OK);
+      targetPath = path.join(imagesDoneDir, `${parsedPath.name}_${suffix}${parsedPath.ext}`);
+      suffix += 1;
+    } catch {
+      break;
+    }
+  }
+  await rename(imagePath, targetPath);
+  return targetPath;
 }
 
 function toJsxPath(filePath: string) {
@@ -57,6 +76,13 @@ function parseItemSizeInch(filePath: string) {
   const match = fileName.match(/(?:^|[-_])(\d+(?:-\d+)?)in(?:[-_.]|$)/);
   if (!match) return 0;
   return Number(match[1].replace(/-/g, '.'));
+}
+
+function parseItemQty(filePath: string) {
+  const fileName = path.basename(filePath).toLowerCase();
+  const match = fileName.match(/(?:^|[-_])qty_(\d+)(?:[-_.]|$)/);
+  if (!match) return 1;
+  return Math.max(1, Number(match[1]));
 }
 
 function isVisiblePixel(data: Buffer<ArrayBufferLike>, width: number, x: number, y: number) {
@@ -147,7 +173,7 @@ async function analyzeColoredComponents(pngPath: string) {
     }),
   };
 }
-async function createRuntimeJsx(jsxTemplatePath: string, selectedImagePath: string, coloredMetrics: unknown, sideCount: number, itemSizeInch: number) {
+async function createRuntimeJsx(jsxTemplatePath: string, selectedImagePath: string, coloredMetrics: unknown, sideCount: number, itemSizeInch: number, itemQty: number) {
   await mkdir(runtimeDir, { recursive: true });
   const source = await readFile(jsxTemplatePath, "utf8");
   const imageBaseName = path.basename(selectedImagePath, path.extname(selectedImagePath));
@@ -175,21 +201,36 @@ async function main() {
   await ensurePathExists(jsxTemplatePath);
   await ensurePathExists(templatePath);
   await ensurePathExists(imagesDir);
+  await mkdir(imagesDoneDir, { recursive: true });
 
-  const imagePath = await getFirstPngImage(imagesDir);
-  const sideCount = parseSideCount(imagePath);
-  const itemSizeInch = parseItemSizeInch(imagePath);
-  const coloredMetrics = await analyzeColoredComponents(imagePath);
-  const runtimeJsxPath = await createRuntimeJsx(jsxTemplatePath, imagePath, coloredMetrics, sideCount, itemSizeInch);
-
+  const imagePaths = await getPngImages(imagesDir);
   console.log("Dang mo template trong Adobe Illustrator...");
   console.log(`Template: ${templatePath}`);
-  console.log(`Anh test: ${imagePath}`);
-  console.log(`Side count: ${sideCount}`);
-  console.log(`Item size inch: ${itemSizeInch}`);
-  console.log(`Colored metrics: componentCount=${coloredMetrics.componentCount}`);
+  console.log(`Tong so anh can xu ly: ${imagePaths.length}`);
 
-  await runCommand("cscript.exe", ["//nologo", vbsPath, runtimeJsxPath]);
+  for (const imagePath of imagePaths) {
+    try {
+      const sideCount = parseSideCount(imagePath);
+      const itemSizeInch = parseItemSizeInch(imagePath);
+      const itemQty = parseItemQty(imagePath);
+      const coloredMetrics = await analyzeColoredComponents(imagePath);
+      console.log(`Anh test: ${imagePath}`);
+      console.log(`Side count: ${sideCount}`);
+      console.log(`Item size inch: ${itemSizeInch}`);
+      console.log(`Item qty: ${itemQty}`);
+      console.log(`Colored metrics: componentCount=${coloredMetrics.componentCount}`);
+
+      const runtimeJsxPath = await createRuntimeJsx(jsxTemplatePath, imagePath, coloredMetrics, sideCount, itemSizeInch, itemQty);
+      await runCommand("cscript.exe", ["//nologo", vbsPath, runtimeJsxPath]);
+
+      const movedPath = await moveProcessedImageToDone(imagePath);
+      console.log(`Da chuyen anh xong sang: ${movedPath}`);
+    } catch (error) {
+      console.error(`Bo qua anh bi loi: ${imagePath}`);
+      console.error(error instanceof Error ? error.message : error);
+    }
+  }
+
   console.log("Hoan tat lenh test.");
 }
 

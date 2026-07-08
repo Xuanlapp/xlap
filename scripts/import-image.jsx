@@ -7,8 +7,10 @@ var PACK_MARGIN_CM = 2;
 var PACK_GAP_CM = 0.5;
 var PACK_MARGIN_POINT = PACK_MARGIN_CM * CM_TO_POINT;
 var PACK_GAP_POINT = PACK_GAP_CM * CM_TO_POINT;
+var CODEX_REPORTS = [];
 
 function ptToCm(value) { return Math.round(value * POINT_TO_CM * 1000) / 1000; }
+function addReport(message) { try { CODEX_REPORTS.push(message); } catch (error) {} }
 
 function getOrOpenTemplate(templatePath) {
   var docs = app.documents;
@@ -341,7 +343,7 @@ function scaleImagesByLazerSize(documentRef, parentLayer) {
   if (typeof CODEX_ITEM_SIZE_INCH === 'undefined' || CODEX_ITEM_SIZE_INCH <= 0) return;
   var debugItem = findDebugBounds(parentLayer, 'lazer');
   if (debugItem === null) {
-    alert('Scale failed: cannot find DEBUG_BLACK_PIXEL_BOUNDS_lazer');
+    addReport('Scale failed: cannot find DEBUG_BLACK_PIXEL_BOUNDS_lazer');
     return;
   }
   var beforeBounds = boundsOf(debugItem);
@@ -353,7 +355,7 @@ function scaleImagesByLazerSize(documentRef, parentLayer) {
   scaleRootItemsTogether(items, scalePercent);
   var afterBounds = boundsOf(debugItem);
   var afterSize = afterBounds.width > afterBounds.height ? afterBounds.width : afterBounds.height;
-  alert([
+  addReport([
     'Scale by DEBUG_BLACK_PIXEL_BOUNDS_lazer',
     'Before: ' + (currentSize / 72) + ' in',
     'Target: ' + CODEX_ITEM_SIZE_INCH + ' in',
@@ -752,6 +754,290 @@ function getLongestOutlineEdges(outline) {
   return longest;
 }
 
+function normalizeAngle(angle) {
+  while (angle > 90) angle -= 180;
+  while (angle < -90) angle += 180;
+  return angle;
+}
+
+function edgeAngle(edge) {
+  return normalizeAngle(Math.atan2(edge.b[1] - edge.a[1], edge.b[0] - edge.a[0]) * 180 / Math.PI);
+}
+
+function removeDocumentLayer(documentRef, layerName) {
+  for (var i = documentRef.layers.length - 1; i >= 0; i -= 1) {
+    try {
+      if (documentRef.layers[i].name === layerName) {
+        unlockAndShow(documentRef.layers[i]);
+        documentRef.layers[i].remove();
+      }
+    } catch (error) {}
+  }
+}
+
+function edgeAlignmentError(edge) {
+  var angle = Math.abs(edgeAngle(edge));
+  var horizontalError = Math.abs(angle - 0);
+  var verticalError = Math.abs(angle - 90);
+  if (verticalError < horizontalError) return verticalError;
+  return horizontalError;
+}
+
+function edgeBounds(edge) {
+  var left = edge.a[0] < edge.b[0] ? edge.a[0] : edge.b[0];
+  var right = edge.a[0] > edge.b[0] ? edge.a[0] : edge.b[0];
+  var top = edge.a[1] > edge.b[1] ? edge.a[1] : edge.b[1];
+  var bottom = edge.a[1] < edge.b[1] ? edge.a[1] : edge.b[1];
+  return { left: left, right: right, top: top, bottom: bottom };
+}
+
+function deltaToPlaceBoundsInsideTemplate(bounds, templateBounds) {
+  var dx = templateBounds.left - bounds.left;
+  var dy = templateBounds.top - bounds.top;
+  var movedRight = bounds.right + dx;
+  var movedBottom = bounds.bottom + dy;
+  if (movedRight > templateBounds.right) dx = templateBounds.right - bounds.right;
+  if (movedBottom < templateBounds.bottom) dy = templateBounds.bottom - bounds.bottom;
+  return { dx: dx, dy: dy };
+}
+
+function movedBounds(bounds, dx, dy) {
+  return { left: bounds.left + dx, right: bounds.right + dx, top: bounds.top + dy, bottom: bounds.bottom + dy, width: bounds.width, height: bounds.height };
+}
+
+function boundsInsideTemplate(bounds, templateBounds) {
+  var tolerance = 1.5;
+  return bounds.left >= templateBounds.left - tolerance && bounds.right <= templateBounds.right + tolerance && bounds.top <= templateBounds.top + tolerance && bounds.bottom >= templateBounds.bottom - tolerance;
+}
+
+function countTemplateTouches(bounds, templateBounds) {
+  var tolerance = 1.5;
+  var touch = 0;
+  if (Math.abs(bounds.left - templateBounds.left) <= tolerance) touch += 1;
+  if (Math.abs(bounds.right - templateBounds.right) <= tolerance) touch += 1;
+  if (Math.abs(bounds.top - templateBounds.top) <= tolerance) touch += 1;
+  if (Math.abs(bounds.bottom - templateBounds.bottom) <= tolerance) touch += 1;
+  return touch;
+}
+
+
+
+function expandBounds(bounds, padding) {
+  return {
+    left: bounds.left - padding,
+    right: bounds.right + padding,
+    top: bounds.top + padding,
+    bottom: bounds.bottom - padding,
+    width: (bounds.right - bounds.left) + (padding * 2),
+    height: (bounds.top - bounds.bottom) + (padding * 2)
+  };
+}
+
+function boundsIntersects(a, b) {
+  return !(a.right <= b.left || a.left >= b.right || a.top <= b.bottom || a.bottom >= b.top);
+}
+
+function collectVisibleBounds(container) {
+  var list = [];
+  if (container === null) return list;
+  for (var i = 0; i < container.pageItems.length; i += 1) {
+    try { list.push(boundsOf(container.pageItems[i])); } catch (error) {}
+  }
+  return list;
+}
+
+function collidesWithAny(bounds, obstacles) {
+  for (var i = 0; i < obstacles.length; i += 1) {
+    if (boundsIntersects(bounds, obstacles[i])) return true;
+  }
+  return false;
+}
+
+function findFreePlacementInsideTemplate(bounds, templateBounds, obstacles) {
+  try {
+    if (bounds === null || templateBounds === null) return null;
+    var width = bounds.right - bounds.left;
+    var height = bounds.top - bounds.bottom;
+    if (width <= 0 || height <= 0) return null;
+    var step = Math.max(PACK_GAP_POINT, 8);
+    var maxLeft = templateBounds.right - width;
+    var maxTop = templateBounds.top;
+    for (var y = maxTop; y >= templateBounds.bottom + height; y -= step) {
+      for (var x = templateBounds.left; x <= maxLeft; x += step) {
+        var placed = {
+          left: x,
+          right: x + width,
+          top: y,
+          bottom: y - height,
+          width: width,
+          height: height
+        };
+        if (!boundsInsideTemplate(placed, templateBounds)) continue;
+        if (collidesWithAny(placed, obstacles)) continue;
+        return { dx: placed.left - bounds.left, dy: placed.top - bounds.top, placedBounds: placed };
+      }
+    }
+  } catch (error) {}
+  return null;
+}
+
+function chooseDeltaForEdgeOnTemplate(edge, outlineBounds, templateBounds) {
+  var edgeBox = edgeBounds(edge);
+  var candidates = [
+    { dx: templateBounds.left - edgeBox.left, dy: templateBounds.top - edgeBox.top, side: 'left-top' },
+    { dx: templateBounds.left - edgeBox.left, dy: templateBounds.bottom - edgeBox.bottom, side: 'left-bottom' },
+    { dx: templateBounds.left - outlineBounds.left, dy: templateBounds.top - edgeBox.top, side: 'bounds-left-edge-top' },
+    { dx: templateBounds.left - outlineBounds.left, dy: templateBounds.bottom - edgeBox.bottom, side: 'bounds-left-edge-bottom' },
+    { dx: templateBounds.left - edgeBox.left, dy: templateBounds.top - outlineBounds.top, side: 'edge-left-bounds-top' },
+    { dx: templateBounds.left - edgeBox.left, dy: templateBounds.bottom - outlineBounds.bottom, side: 'edge-left-bounds-bottom' },
+    { dx: templateBounds.right - edgeBox.right, dy: templateBounds.top - edgeBox.top, side: 'right-top' },
+    { dx: templateBounds.right - edgeBox.right, dy: templateBounds.bottom - edgeBox.bottom, side: 'right-bottom' }
+  ];
+  var fallback = deltaToPlaceBoundsInsideTemplate(outlineBounds, templateBounds);
+  var best = { dx: fallback.dx, dy: fallback.dy, score: -1, side: 'fallback-inside' };
+  for (var i = 0; i < candidates.length; i += 1) {
+    var moved = movedBounds(outlineBounds, candidates[i].dx, candidates[i].dy);
+    var inside = boundsInsideTemplate(moved, templateBounds);
+    if (!inside) continue;
+    var touch = countTemplateTouches(moved, templateBounds);
+    var edgeMoved = movedBounds(edgeBox, candidates[i].dx, candidates[i].dy);
+    var edgeTouch = countTemplateTouches(edgeMoved, templateBounds);
+    var leftBonus = Math.abs(edgeMoved.left - templateBounds.left) <= 1.5 ? 100 : 0;
+    var rightPenalty = Math.abs(edgeMoved.right - templateBounds.right) <= 1.5 ? 0 : 0;
+    var score = leftBonus + (edgeTouch * 10) + touch - rightPenalty;
+    if (score > best.score) best = { dx: candidates[i].dx, dy: candidates[i].dy, score: score, side: candidates[i].side };
+  }
+  return best;
+}
+
+function outlineAnchorPoints(outline) {
+  var points = [];
+  try {
+    for (var i = 0; i < outline.pathPoints.length; i += 1) {
+      points.push([outline.pathPoints[i].anchor[0], outline.pathPoints[i].anchor[1]]);
+    }
+  } catch (error) {}
+  return points;
+}
+
+function chooseFreeRotationForTemplate(outline, templateBounds) {
+  var points = outlineAnchorPoints(outline);
+  if (points.length < 2) return { angle: 0, bounds: boundsOf(outline), score: -999999 };
+  var originalEdges = getLongestOutlineEdges(outline);
+  var originalEdgeAngle = originalEdges.length > 0 ? edgeAngle(originalEdges[0]) : 0;
+  var originalBounds = pointsBounds(points);
+  var center = { x: (originalBounds.left + originalBounds.right) / 2, y: (originalBounds.top + originalBounds.bottom) / 2 };
+  var templateWidth = templateBounds.right - templateBounds.left;
+  var templateHeight = templateBounds.top - templateBounds.bottom;
+  var best = { angle: 0, bounds: originalBounds, score: -999999 };
+  for (var angle = 0; angle < 360; angle += 1) {
+    var rotated = transformPoints(points, center, angle);
+    var bounds = pointsBounds(rotated);
+    var fits = bounds.width <= templateWidth + 1.5 && bounds.height <= templateHeight + 1.5;
+    if (!fits) continue;
+    var widthRatio = bounds.width / templateWidth;
+    var heightRatio = bounds.height / templateHeight;
+    var areaScore = (bounds.width * bounds.height) / (templateWidth * templateHeight);
+    var placedBounds = movedBounds(bounds, templateBounds.left - bounds.left, templateBounds.top - bounds.top);
+    if (placedBounds.right > templateBounds.right) placedBounds = movedBounds(bounds, templateBounds.right - bounds.right, templateBounds.top - bounds.top);
+    if (placedBounds.bottom < templateBounds.bottom) placedBounds = movedBounds(bounds, placedBounds.left - bounds.left, templateBounds.bottom - bounds.bottom);
+    var touchFlags = templateTouchFlags(placedBounds, templateBounds);
+    var touch = 0;
+    if (touchFlags.left) touch += 1;
+    if (touchFlags.right) touch += 1;
+    if (touchFlags.top) touch += 1;
+    if (touchFlags.bottom) touch += 1;
+    var leftToRightBonus = 1 - Math.abs(widthRatio - 0.75);
+    var topToBottomBonus = 1 - Math.abs(heightRatio - 0.75);
+    var edgeContactScore = 0;
+    if (originalEdges.length > 0) {
+      var rotatedLongestAngle = normalizeAngle(originalEdgeAngle + angle);
+      var horizontalError = Math.abs(rotatedLongestAngle);
+      var verticalError = Math.abs(90 - Math.abs(rotatedLongestAngle));
+      var horizontalLike = horizontalError <= 10;
+      var verticalLike = verticalError <= 10;
+      if ((touchFlags.top || touchFlags.bottom) && horizontalLike) edgeContactScore += 2000 - (horizontalError * 50);
+      if ((touchFlags.left || touchFlags.right) && verticalLike) edgeContactScore += 2000 - (verticalError * 50);
+      if ((touchFlags.top || touchFlags.bottom) && !horizontalLike) edgeContactScore -= 1000;
+      if ((touchFlags.left || touchFlags.right) && !verticalLike) edgeContactScore -= 1000;
+    }
+    var score = (touch * 1000) + edgeContactScore + (areaScore * 100) + (leftToRightBonus * 20) + (topToBottomBonus * 20);
+    if (score > best.score) best = { angle: angle, bounds: bounds, score: score };
+  }
+  best.originalEdgeAngle = originalEdgeAngle;
+  return best;
+}
+
+function chooseRotationByTemplateEdgeRule(outline, templateBounds) {
+  var edges = getLongestOutlineEdges(outline);
+  if (edges.length === 0) return 0;
+  var best = { angle: 0, score: -999999 };
+  var baseBounds = boundsOf(outline);
+  var centerX = (baseBounds.left + baseBounds.right) / 2;
+  var centerY = (baseBounds.top + baseBounds.bottom) / 2;
+  for (var angle = 0; angle < 360; angle += 90) {
+    var clone = outline.duplicate();
+    try { clone.rotate(angle, true, true, true, true, Transformation.CENTER); } catch (error) {}
+    var rotatedBounds = boundsOf(clone);
+    var edge = getLongestOutlineEdges(clone);
+    var score = 0;
+    if (edge.length > 0) {
+      var longest = edge[0];
+      var edgeBox = edgeBounds(longest);
+      var touchTopBottom = Math.abs(rotatedBounds.top - templateBounds.top) <= 1.5 || Math.abs(rotatedBounds.bottom - templateBounds.bottom) <= 1.5;
+      var touchLeftRight = Math.abs(rotatedBounds.left - templateBounds.left) <= 1.5 || Math.abs(rotatedBounds.right - templateBounds.right) <= 1.5;
+      var angleNow = Math.abs(normalizeAngle(edgeAngle(longest)));
+      var nearHorizontal = Math.min(Math.abs(angleNow), Math.abs(180 - angleNow)) <= 10;
+      var nearVertical = Math.abs(90 - angleNow) <= 10;
+      if (touchTopBottom && nearHorizontal) score += 1000;
+      if (touchLeftRight && nearVertical) score += 1000;
+      if (touchTopBottom && !nearHorizontal) score -= 1000;
+      if (touchLeftRight && !nearVertical) score -= 1000;
+      score += Math.max(rotatedBounds.width, rotatedBounds.height);
+    }
+    try { clone.remove(); } catch (error) {}
+    if (score > best.score) best = { angle: angle, score: score };
+  }
+  return best.angle;
+}
+
+function verifyLongestEdgeAgainstTemplate(parentLayer, documentRef) {
+  var packArea = findPackAreaBounds(documentRef);
+  var templateBounds = { left: packArea.left, top: packArea.top, right: packArea.right, bottom: packArea.bottom };
+  var outline = findNamedPageItem(parentLayer, lazerOutlineName());
+  if (outline === null) return 'Longest edge verify: false\nReason: missing ' + lazerOutlineName();
+  var edges = getLongestOutlineEdges(outline);
+  if (edges.length === 0) return 'Longest edge verify: false\nReason: no edge found';
+  var outlineBounds = boundsOf(outline);
+  var inside = boundsInsideTemplate(outlineBounds, templateBounds);
+  var touch = countTemplateTouches(outlineBounds, templateBounds);
+  var ok = touch >= 2 && inside;
+  return [
+    'Longest edge verify: ' + (ok ? 'true' : 'false'),
+    'Inside Template: ' + inside,
+    'Template touches: ' + touch,
+    'Outline: ' + lazerOutlineName()
+  ].join('\n');
+}
+
+function rotateItemsAroundUnion(items, angle) {
+  if (Math.abs(angle) < 0.01) return;
+  var union = unionVisibleBounds(items);
+  if (union === null) return;
+  var centerX = (union.left + union.right) / 2;
+  var centerY = (union.top + union.bottom) / 2;
+  for (var i = 0; i < items.length; i += 1) {
+    try { items[i].rotate(angle, true, true, true, true, Transformation.CENTER); } catch (error) {}
+  }
+  var after = unionVisibleBounds(items);
+  if (after === null) return;
+  var afterCenterX = (after.left + after.right) / 2;
+  var afterCenterY = (after.top + after.bottom) / 2;
+  for (var j = 0; j < items.length; j += 1) {
+    try { items[j].translate(centerX - afterCenterX, centerY - afterCenterY); } catch (error) {}
+  }
+}
+
 function drawLongestEdgesDebug(documentRef, outline) {
   var debugLayer = ensureLayer(documentRef, longestEdgesLayerName());
   removeNamedPageItems(debugLayer, longestEdgesLayerName());
@@ -775,37 +1061,115 @@ function drawLongestEdgesDebug(documentRef, outline) {
 
 function packImagesOnSheet(parentLayer, documentRef) {
   var lazerOutlineBeforeGroup = findNamedPageItem(parentLayer, lazerOutlineName());
-  if (lazerOutlineBeforeGroup !== null) drawLongestEdgesDebug(documentRef, lazerOutlineBeforeGroup);
+  var longestEdges = [];
+  if (lazerOutlineBeforeGroup !== null) longestEdges = drawLongestEdgesDebug(documentRef, lazerOutlineBeforeGroup);
 
   var wholeImagesGroup = groupContainerItems(parentLayer, 'TEMP_PACK_GROUP_IMAGES', false);
   if (wholeImagesGroup === null) return;
 
-  var labels = ['lazer', 'front', 'back'];
-  for (var i = 0; i < labels.length; i += 1) {
-    var label = labels[i];
-    if (label === 'back' && CODEX_SIDE_COUNT < 2) continue;
-    optimizeCaseRotationForPacking(parentLayer, label);
+  var borderLayer = null;
+  try { borderLayer = ensureLayer(documentRef, 'BORDER'); } catch (error) { borderLayer = null; }
+  var borderObstacles = borderLayer !== null ? collectVisibleBounds(borderLayer) : [];
+  var paddedObstacles = [];
+  for (var b = 0; b < borderObstacles.length; b += 1) {
+    paddedObstacles.push(expandBounds(borderObstacles[b], PACK_GAP_POINT));
   }
+
+  // Khong xoay tung lazer/front/back rieng le o day.
+  // Tu buoc nay tro di chi xoay/di chuyen nguyen TEMP_PACK_GROUP_IMAGES.
 
   var packArea = findPackAreaBounds(documentRef);
   var usableLeft = packArea.left;
   var usableTop = packArea.top;
+  var usableRight = packArea.right;
+  var usableBottom = packArea.bottom;
   var lazerOutline = findNamedPageItem(parentLayer, lazerOutlineName());
+  var templateBounds = { left: usableLeft, top: usableTop, right: usableRight, bottom: usableBottom };
+  if (lazerOutline !== null) {
+    var freeChoice = chooseFreeRotationForTemplate(lazerOutline, templateBounds);
+    addReport([
+      'Rotation choice',
+      'Original longest edge angle: ' + Math.round(freeChoice.originalEdgeAngle * 100) / 100 + ' deg',
+      'Rotate angle: ' + freeChoice.angle + ' deg'
+    ].join('\n'));
+    rotateItemsAroundUnion([wholeImagesGroup], freeChoice.angle);
+  }
+  lazerOutline = findNamedPageItem(parentLayer, lazerOutlineName());
   var anchorBounds = lazerOutline !== null ? boundsOf(lazerOutline) : boundsOf(wholeImagesGroup);
-  var dx = usableLeft - anchorBounds.left;
-  var dy = usableTop - anchorBounds.top;
-  try { wholeImagesGroup.translate(dx, dy); } catch (error) {}
+  var freePlacement = null;
+  try { freePlacement = findFreePlacementInsideTemplate(anchorBounds, templateBounds, paddedObstacles); } catch (error) { freePlacement = null; }
+  var delta = freePlacement !== null ? { dx: freePlacement.dx, dy: freePlacement.dy } : deltaToPlaceBoundsInsideTemplate(anchorBounds, templateBounds);
+  try { wholeImagesGroup.translate(delta.dx, delta.dy); } catch (error) {}
+  try { duplicatePackedGroupByQty(wholeImagesGroup, templateBounds, paddedObstacles); } catch (error) { addReport('QTY duplicate error'); }
 
-  alert([
+  addReport([
     'PACK DONE',
     'Area: ' + packArea.source,
     'Start: top-left Margin',
+    'BORDER obstacles: ' + paddedObstacles.length,
     'Mode: move whole TEMP_PACK_GROUP_IMAGES'
   ].join('\n'));
 
   // Keep TEMP_PACK_GROUP_IMAGES grouped after arranging. Ungroup later only when requested.
 }
 
+
+function duplicatePackedGroupByQty(groupItem, templateBounds, baseObstacles) {
+  var qty = 1;
+  try { if (typeof CODEX_ITEM_QTY !== 'undefined') qty = Math.max(1, Number(CODEX_ITEM_QTY)); } catch (error) { qty = 1; }
+  if (qty <= 1 || groupItem === null) return 1;
+  var obstacles = [];
+  for (var i = 0; i < baseObstacles.length; i += 1) obstacles.push(baseObstacles[i]);
+  var baseFootprint = null;
+  try {
+    var baseOutline = findNamedPageItem(groupItem, lazerOutlineName());
+    if (baseOutline !== null) baseFootprint = expandBounds(boundsOf(baseOutline), PACK_GAP_POINT);
+  } catch (error) {}
+  if (baseFootprint === null) {
+    try { baseFootprint = expandBounds(boundsOf(groupItem), PACK_GAP_POINT); } catch (error) { baseFootprint = null; }
+  }
+  if (baseFootprint !== null) obstacles.push(baseFootprint);
+  var made = 1;
+  for (var copyIndex = 2; copyIndex <= qty; copyIndex += 1) {
+    var copy = null;
+    try { copy = groupItem.duplicate(groupItem.parent, ElementPlacement.PLACEATEND); } catch (error) { copy = null; }
+    if (copy === null) continue;
+    try { copy.name = 'TEMP_PACK_GROUP_IMAGES'; } catch (error) {}
+    var copyFootprint = null;
+    try {
+      var copyOutline = findNamedPageItem(copy, lazerOutlineName());
+      if (copyOutline !== null) copyFootprint = boundsOf(copyOutline);
+    } catch (error) {}
+    if (copyFootprint === null) {
+      try { copyFootprint = boundsOf(copy); } catch (error) { copyFootprint = null; }
+    }
+    var copyOutlineForRotate = null;
+    try { copyOutlineForRotate = findNamedPageItem(copy, lazerOutlineName()); } catch (error) { copyOutlineForRotate = null; }
+    if (copyOutlineForRotate !== null) {
+      var copyRotate = chooseRotationByTemplateEdgeRule(copyOutlineForRotate, templateBounds);
+      try { rotateItemsAroundUnion([copy], copyRotate); } catch (error) {}
+      try { copyOutlineForRotate = findNamedPageItem(copy, lazerOutlineName()); } catch (error) { copyOutlineForRotate = null; }
+      if (copyOutlineForRotate !== null) copyFootprint = boundsOf(copyOutlineForRotate);
+    }
+    var placement = null;
+    try { placement = findFreePlacementInsideTemplate(copyFootprint, templateBounds, obstacles); } catch (error) { placement = null; }
+    if (placement === null) {
+      try { copy.remove(); } catch (error) {}
+      addReport('QTY copy ' + copyIndex + ': false - khong du cho trong Template');
+      continue;
+    }
+    try { copy.translate(placement.dx, placement.dy); } catch (error) {}
+    try {
+      var movedOutline = findNamedPageItem(copy, lazerOutlineName());
+      if (movedOutline !== null) obstacles.push(expandBounds(boundsOf(movedOutline), PACK_GAP_POINT));
+      else obstacles.push(expandBounds(boundsOf(copy), PACK_GAP_POINT));
+    } catch (error) {}
+    made += 1;
+  }
+  addReport('QTY requested: ' + qty);
+  addReport('QTY created: ' + made);
+  return made;
+}
 function groupCaseLayer(documentRef, caseLayer) {
   var items = [];
   for (var i = 0; i < caseLayer.pageItems.length; i += 1) {
@@ -937,6 +1301,48 @@ function removeNamedPageItems(container, itemName) {
 function removeDebugLazer(parentLayer) {
   removeDebugByLabel(parentLayer, 'lazer');
 }
+
+function moveNamedItemToLayer(sourceContainer, itemName, targetLayer) {
+  var item = findNamedPageItem(sourceContainer, itemName);
+  if (item === null) return false;
+  try {
+    unlockAndShow(targetLayer);
+    unlockAndShow(item);
+    item.move(targetLayer, ElementPlacement.PLACEATBEGINNING);
+    return true;
+  } catch (error) {}
+  return false;
+}
+
+function moveAllNamedItemsToLayer(sourceContainer, itemName, targetLayer) {
+  var count = 0;
+  while (true) {
+    var moved = moveNamedItemToLayer(sourceContainer, itemName, targetLayer);
+    if (!moved) break;
+    count += 1;
+    if (count > 500) break;
+  }
+  return count;
+}
+
+function finalMoveItemsToOutputLayers(documentRef, parentLayer) {
+  removeDocumentLayer(documentRef, longestEdgesLayerName());
+  try { ungroupCaseItems(parentLayer, 'TEMP_PACK_GROUP_IMAGES'); } catch (error) {}
+
+  var borderLayer = ensureLayer(documentRef, 'BORDER');
+  var backLayer = ensureLayer(documentRef, 'BACK');
+  var frontLayer = ensureLayer(documentRef, 'FRONT');
+  var lazerLayer = ensureLayer(documentRef, 'LAZER');
+
+  var movedBorder = moveAllNamedItemsToLayer(parentLayer, lazerOutlineName(), borderLayer);
+  var movedBack = moveAllNamedItemsToLayer(parentLayer, caseLayerName('back'), backLayer);
+  var movedFront = moveAllNamedItemsToLayer(parentLayer, caseLayerName('front'), frontLayer);
+  var movedLazer = moveAllNamedItemsToLayer(parentLayer, caseLayerName('lazer'), lazerLayer);
+  addReport('Moved BORDER: ' + movedBorder);
+  addReport('Moved BACK: ' + movedBack);
+  addReport('Moved FRONT: ' + movedFront);
+  addReport('Moved LAZER: ' + movedLazer);
+}
 function cross(o, a, b) {
   return ((a[0] - o[0]) * (b[1] - o[1])) - ((a[1] - o[1]) * (b[0] - o[0]));
 }
@@ -1027,7 +1433,7 @@ function runCase(documentRef, parentLayer, label, verticalMode, offsetIndex, pre
   var picked = pickBounds(mask, boundsList, preferredIndex, useUnion === true);
   drawDebug(caseLayer, picked, label);
   app.redraw();
-  alert(report(label, mask, picked));
+  addReport(report(label, mask, picked));
 }
 
 function existsNamedItem(container, itemName) {
@@ -1050,21 +1456,28 @@ function existsSublayer(parentLayer, layerName) {
 
 function auditImagesLayer(parentLayer) {
   var messages = [];
+  var documentRef = app.activeDocument;
   var packArea = findPackAreaBounds(app.activeDocument);
+  for (var i = 0; i < CODEX_REPORTS.length; i += 1) {
+    messages.push(CODEX_REPORTS[i]);
+    messages.push('---');
+  }
   messages.push('AUDIT Images');
   messages.push('pack area: ' + packArea.source);
   messages.push('pack top-left: ' + ptToCm(packArea.left) + 'cm, ' + ptToCm(packArea.top) + 'cm');
-  messages.push('direct lazer: ' + existsNamedItem(parentLayer, caseLayerName('lazer')));
-  messages.push('direct front: ' + existsNamedItem(parentLayer, caseLayerName('front')));
-  messages.push('direct back: ' + existsNamedItem(parentLayer, caseLayerName('back')));
-  messages.push('outline after scale: ' + existsNamedItem(parentLayer, lazerOutlineName()));
+  messages.push('LAZER output: ' + existsNamedItem(ensureLayer(documentRef, 'LAZER'), caseLayerName('lazer')));
+  messages.push('FRONT output: ' + existsNamedItem(ensureLayer(documentRef, 'FRONT'), caseLayerName('front')));
+  messages.push('BACK output: ' + existsNamedItem(ensureLayer(documentRef, 'BACK'), caseLayerName('back')));
+  messages.push('BORDER output: ' + existsNamedItem(ensureLayer(documentRef, 'BORDER'), lazerOutlineName()));
   messages.push('debug lazer removed: ' + !existsNamedItem(parentLayer, 'DEBUG_BLACK_PIXEL_BOUNDS_lazer'));
   messages.push('debug front removed: ' + !existsNamedItem(parentLayer, 'DEBUG_BLACK_PIXEL_BOUNDS_front'));
   messages.push('debug back removed: ' + !existsNamedItem(parentLayer, 'DEBUG_BLACK_PIXEL_BOUNDS_back'));
   messages.push('temp scale absent: ' + !existsNamedItem(parentLayer, 'TEMP_SCALE_GROUP_IMAGES'));
   messages.push('temp align absent: ' + !existsNamedItem(parentLayer, 'TEMP_ALIGN_GROUP_lazer'));
-  messages.push('temp pack kept: ' + existsNamedItem(parentLayer, 'TEMP_PACK_GROUP_IMAGES'));
-  messages.push('longest edge layer: ' + existsSublayer(app.activeDocument, longestEdgesLayerName()));
+  messages.push('temp pack removed: ' + !existsNamedItem(parentLayer, 'TEMP_PACK_GROUP_IMAGES'));
+  messages.push('longest edge layer removed: ' + !existsSublayer(app.activeDocument, longestEdgesLayerName()));
+  messages.push('---');
+  messages.push(verifyLongestEdgeAgainstTemplate(parentLayer, app.activeDocument));
   alert(messages.join('\n'));
 }
 function run() {
@@ -1080,6 +1493,7 @@ function run() {
   drawLazerOutlineAfterScale(parentLayer);
   packImagesOnSheet(parentLayer, documentRef);
   removeDebugLazer(parentLayer);
+  finalMoveItemsToOutputLayers(documentRef, parentLayer);
   auditImagesLayer(parentLayer);
   app.redraw();
 }
