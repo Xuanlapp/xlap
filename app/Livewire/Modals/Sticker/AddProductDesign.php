@@ -7,11 +7,15 @@ use App\Livewire\Pages\Sticker\StickerStatusPanel;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class AddProductDesign extends Component
 {
+    use WithFileUploads;
+
     public bool $isOpen = false;
 
     public string $sku = '';
@@ -23,6 +27,10 @@ class AddProductDesign extends Component
     public ?bool $isImageLink = null;
 
     public ?string $imagePreviewUrl = null;
+
+    public ?TemporaryUploadedFile $imageUpload = null;
+
+    public ?string $uploadedImagePreviewUrl = null;
 
     public ?int $sourceAssetId = null;
 
@@ -55,7 +63,7 @@ class AddProductDesign extends Component
     ): void
     {
         $this->resetValidation();
-        $this->reset(['sku', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'sourceAssetId', 'sourceRedesignCandidate']);
+        $this->reset(['sku', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'imageUpload', 'uploadedImagePreviewUrl', 'sourceAssetId', 'sourceRedesignCandidate']);
         $this->keyword = $keyword;
         $this->imageLink = $imageLink;
         $this->sourceAssetId = $sourceAssetId && $sourceAssetId > 0 ? $sourceAssetId : null;
@@ -67,7 +75,7 @@ class AddProductDesign extends Component
     public function close(): void
     {
         $this->resetValidation();
-        $this->reset(['isOpen', 'sku', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'sourceAssetId', 'sourceRedesignCandidate']);
+        $this->reset(['isOpen', 'sku', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'imageUpload', 'uploadedImagePreviewUrl', 'sourceAssetId', 'sourceRedesignCandidate']);
     }
 
     public function updatedSku(): void
@@ -87,7 +95,26 @@ class AddProductDesign extends Component
 
     public function updatedImageLink(): void
     {
+        if ($this->imageLink !== '') {
+            $this->imageUpload = null;
+            $this->uploadedImagePreviewUrl = null;
+        }
+
         $this->refreshImageState();
+    }
+
+    public function updatedImageUpload(): void
+    {
+        if (! $this->imageUpload) {
+            $this->uploadedImagePreviewUrl = null;
+
+            return;
+        }
+
+        $this->imageLink = '';
+        $this->isImageLink = true;
+        $this->imagePreviewUrl = null;
+        $this->uploadedImagePreviewUrl = $this->imageUpload->temporaryUrl();
     }
 
     public function save(): void
@@ -102,9 +129,17 @@ class AddProductDesign extends Component
             }],
         ]);
 
+        if (empty($validated['imageLink']) && empty($validated['imageUpload'])) {
+            $this->addError('imageLink', 'Vui long chon file, dan clipboard hoac nhap link anh.');
+
+            return;
+        }
+
+        $imageSource = $this->resolveImageSource($validated['imageLink'] ?? '', $validated['imageUpload'] ?? null);
+
         $service = app(StickerService::class);
 
-        $service->createAsset(auth()->user(), $validated['keyword'], $validated['imageLink'], $validated['sku']);
+        $service->createAsset(auth()->user(), $validated['keyword'], $imageSource, $validated['sku']);
 
         if ($this->sourceAssetId && $this->sourceRedesignCandidate) {
             $service->removeRedesignCandidate(auth()->user(), $this->sourceAssetId, $this->sourceRedesignCandidate);
@@ -121,6 +156,17 @@ class AddProductDesign extends Component
     public function render(): View
     {
         return view('livewire.modals.sticker.add-product-design');
+    }
+
+    private function resolveImageSource(string $imageLink, ?TemporaryUploadedFile $imageUpload): string
+    {
+        if ($imageUpload) {
+            $path = $imageUpload->storePublicly('generated/sticker/uploads', 'public');
+
+            return '/storage/'.$path;
+        }
+
+        return trim($imageLink);
     }
 
     private function looksLikeImageUrl(string $url): bool

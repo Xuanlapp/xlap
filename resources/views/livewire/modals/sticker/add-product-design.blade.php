@@ -56,42 +56,46 @@
                             @error('keyword') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                         </div>
 
-                        <div>
-                            <label for="sticker-image-link" class="mb-2 block text-sm font-medium text-gray-900">Link ảnh</label>
-                            <div class="relative">
-                                <x-input
-                                    id="sticker-image-link"
-                                    wire:model.live.debounce.400ms="imageLink"
-                                    type="text"
-                                    class="block w-full pr-11 {{ $isImageLink === false ? 'border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-200' : '' }} {{ $isImageLink === true ? 'border-emerald-500 bg-emerald-50 text-emerald-900 focus:border-emerald-500 focus:ring-emerald-200' : '' }}"
-                                    placeholder="https://...png"
-                                />
-
-                                @if ($isImageLink === true)
-                                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-emerald-600">
-                                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                            <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.32a1 1 0 0 1-1.42.003L3.29 9.277a1 1 0 1 1 1.414-1.414l4.04 4.04 6.546-6.607a1 1 0 0 1 1.414-.006Z" clip-rule="evenodd" />
-                                        </svg>
-                                    </span>
-                                @elseif ($isImageLink === false)
-                                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-red-600">
-                                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clip-rule="evenodd" />
-                                        </svg>
-                                    </span>
-                                @endif
+                        <div class="grid gap-5 lg:grid-cols-2">
+                            <div>
+                                <label for="sticker-image-upload" class="mb-2 block text-sm font-medium text-gray-900">Anh tu may / keo tha / copy-paste</label>
+                                <div
+                                    x-on:paste.window="const file = $event.clipboardData?.files?.[0]; if (file && file.type.startsWith('image/')) { const input = $el.querySelector('#sticker-image-upload'); if (input) { const transfer = new DataTransfer(); transfer.items.add(file); input.files = transfer.files; input.dispatchEvent(new Event('change', { bubbles: true })); } }"
+                                    x-on:dragover.prevent="$el.classList.add('ring-2','ring-cyan-300','ring-offset-2')"
+                                    x-on:dragleave.prevent="$el.classList.remove('ring-2','ring-cyan-300','ring-offset-2')"
+                                    x-on:drop.prevent="$el.classList.remove('ring-2','ring-cyan-300','ring-offset-2'); const input = $el.querySelector('#sticker-image-upload'); if ($event.dataTransfer?.files?.length && input) { input.files = $event.dataTransfer.files; input.dispatchEvent(new Event('change', { bubbles: true })); }"
+                                    class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 transition"
+                                >
+                                    <input id="sticker-image-upload" type="file" accept="image/*" wire:model.live="imageUpload" class="block w-full rounded-lg border border-gray-200 bg-white text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-cyan-600" />
+                                    <p class="mt-2 text-sm text-gray-500">Click vao vung nay roi Ctrl+V anh, keo file anh vao day, hoac keo anh tu Amazon/Etsy neu trinh duyet cho phep.</p>
+                                    @error('imageUpload') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                                </div>
                             </div>
-                            @if ($isImageLink === false)
-                                <p class="mt-2 text-sm text-red-600">Link phải là link ảnh trực tiếp hoặc link Drive/Dropbox public.</p>
-                            @elseif ($isImageLink === true)
-                                <p class="mt-2 text-sm text-emerald-600">Link ảnh hợp lệ.</p>
-                            @else
-                                <p class="mt-2 text-sm text-gray-500">Hỗ trợ JPG, PNG, WebP, Google Drive và Dropbox.</p>
-                            @endif
-                            @error('imageLink') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+
+                            <div>
+                                <label for="sticker-image-link" class="mb-2 block text-sm font-medium text-gray-900">Hoac nhap URL link anh</label>
+                                <div class="relative">
+                                    <x-input id="sticker-image-link" wire:model.live.debounce.400ms="imageLink" type="text" class="block w-full pr-11 {{ $isImageLink === false ? 'border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-200' : '' }} {{ $isImageLink === true ? 'border-emerald-500 bg-emerald-50 text-emerald-900 focus:border-emerald-500 focus:ring-emerald-200' : '' }}" placeholder="https://...png" />
+                                </div>
+                                @if ($isImageLink === false)
+                                    <p class="mt-2 text-sm text-red-600">Link phai la link anh truc tiep hoac link Drive/Dropbox public.</p>
+                                @elseif ($isImageLink === true)
+                                    <p class="mt-2 text-sm text-emerald-600">Link anh hop le.</p>
+                                @else
+                                    <p class="mt-2 text-sm text-gray-500">Neu khong dung file thi ban co the dan link anh truc tiep vao day.</p>
+                                @endif
+                                @error('imageLink') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                            </div>
                         </div>
 
-                        @if ($imagePreviewUrl)
+                        @if ($uploadedImagePreviewUrl)
+                            <div>
+                                <p class="mb-2 text-sm font-medium text-gray-900">Preview anh da chon</p>
+                                <div class="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                                    <img src="{{ $uploadedImagePreviewUrl }}" alt="Uploaded image preview" class="max-h-80 w-full object-contain">
+                                </div>
+                            </div>
+                        @elseif ($imagePreviewUrl)
                             <div>
                                 <p class="mb-2 text-sm font-medium text-gray-900">Review anh se them</p>
                                 <div class="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">

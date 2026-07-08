@@ -5,6 +5,9 @@ use App\Http\Middleware\EnsureUserHasWaliAccess;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Services\Monitoring\TelegramErrorReporter;
+use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,6 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'auth' => Authenticate::class,
+            'guest' => RedirectIfAuthenticated::class,
+            'verified' => EnsureEmailIsVerified::class,
             'admin' => EnsureUserIsAdmin::class,
             'product' => EnsureUserHasProductAccess::class,
             'wali' => EnsureUserHasWaliAccess::class,
