@@ -394,9 +394,9 @@ class ProductDesignAssetRepository
                 }
 
                 $limit = match ($field) {
-                    'description' => 2000,
-                    'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5' => 700,
-                    'generic_keyword' => 250,
+                    'description' => 1999,
+                    'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5' => 699,
+                    'generic_keyword' => 249,
                     'title' => 199,
                     default => null,
                 };

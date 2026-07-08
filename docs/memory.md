@@ -434,5 +434,5 @@ edesign.
 
 ## Marketplace Listing Metadata Limits
 
-- Khi API tra ve listing metadata qua dai, chi cat truoc khi luu DB: title toi da 199 ky tu, bullet_point_1..5 toi da 700 ky tu, description toi da 2000 ky tu, generic_keyword toi da 250 ky tu.
+- Khi API tra ve listing metadata qua dai, chi cat truoc khi luu DB: title toi da 199 ky tu, bullet_point_1..5 toi da 699 ky tu, description toi da 1999 ky tu, generic_keyword toi da 249 ky tu.
 - Khong fail workflow vi response dai hon gioi han; luu phan hop le de tranh loi database/export.

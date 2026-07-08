@@ -425,12 +425,12 @@ PROMPT;
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
             'title' => $this->stringValue($payload, 'title', 199),
-            'description' => $this->stringValue($payload, 'description', 2000),
-            'bullet_point_1' => $this->stringValue($payload, 'bullet_point_1', 700),
-            'bullet_point_2' => $this->stringValue($payload, 'bullet_point_2', 700),
-            'bullet_point_3' => $this->stringValue($payload, 'bullet_point_3', 700),
-            'bullet_point_4' => $this->stringValue($payload, 'bullet_point_4', 700),
-            'bullet_point_5' => $this->stringValue($payload, 'bullet_point_5', 700),
+            'description' => $this->stringValue($payload, 'description', 1999),
+            'bullet_point_1' => $this->stringValue($payload, 'bullet_point_1', 699),
+            'bullet_point_2' => $this->stringValue($payload, 'bullet_point_2', 699),
+            'bullet_point_3' => $this->stringValue($payload, 'bullet_point_3', 699),
+            'bullet_point_4' => $this->stringValue($payload, 'bullet_point_4', 699),
+            'bullet_point_5' => $this->stringValue($payload, 'bullet_point_5', 699),
             'generic_keyword' => $this->stringValue($payload, 'generic_keyword', 255),
             'tags' => null,
         ]);
@@ -606,7 +606,7 @@ PROMPT;
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
             'title' => $this->stringValue($payload, 'title', 199),
-            'description' => $this->stringValue($payload, 'description', 2000),
+            'description' => $this->stringValue($payload, 'description', 1999),
             'bullet_point_1' => null,
             'bullet_point_2' => null,
             'bullet_point_3' => null,
