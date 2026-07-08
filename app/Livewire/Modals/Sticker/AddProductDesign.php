@@ -122,11 +122,16 @@ class AddProductDesign extends Component
         $validated = $this->validate([
             'sku' => ['required', 'string', 'max:100'],
             'keyword' => ['required', 'string', 'max:255'],
-            'imageLink' => ['required', 'string', 'max:1000', function (string $attribute, mixed $value, \Closure $fail): void {
+            'imageLink' => ['nullable', 'string', 'max:1000', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($value === null || $value === '') {
+                    return;
+                }
+
                 if (! is_string($value) || ! app(ImageLinkPreviewService::class)->looksLikeImageUrl($value)) {
-                    $fail('Link này chưa giống link ảnh.');
+                    $fail('Link nay chua giong link anh.');
                 }
             }],
+            'imageUpload' => ['nullable', 'image', 'max:10240'],
         ]);
 
         if (empty($validated['imageLink']) && empty($validated['imageUpload'])) {
