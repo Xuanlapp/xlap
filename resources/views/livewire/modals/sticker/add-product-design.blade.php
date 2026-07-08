@@ -1,8 +1,43 @@
 <div>
     @if ($isOpen)
         <div
-            x-data
+            x-data="{
+                isUploadingImage: false,
+                handleImageFile(file) {
+                    if (!file || !file.type || !file.type.startsWith('image/')) {
+                        return false;
+                    }
+
+                    this.isUploadingImage = true;
+                    this.$wire.upload(
+                        'imageUpload',
+                        file,
+                        () => { this.isUploadingImage = false; },
+                        () => { this.isUploadingImage = false; },
+                    );
+
+                    return true;
+                },
+                onPaste(event) {
+                    const items = Array.from(event.clipboardData?.items || []);
+                    const imageItem = items.find(item => item.type && item.type.startsWith('image/'));
+                    const file = imageItem?.getAsFile();
+
+                    if (this.handleImageFile(file)) {
+                        event.preventDefault();
+                    }
+                },
+                onDrop(event) {
+                    event.preventDefault();
+                    this.$el.classList.remove('ring-2', 'ring-cyan-300', 'ring-offset-2');
+
+                    const files = Array.from(event.dataTransfer?.files || []);
+                    const imageFile = files.find(file => file.type && file.type.startsWith('image/'));
+                    this.handleImageFile(imageFile);
+                }
+            }"
             x-on:keydown.escape.window="$wire.close()"
+            x-on:paste.window="onPaste($event)"
             tabindex="-1"
             aria-modal="true"
             role="dialog"
@@ -60,13 +95,13 @@
                             <div>
                                 <label for="sticker-image-upload" class="mb-2 block text-sm font-medium text-gray-900">Anh tu may / keo tha / copy-paste</label>
                                 <div
-                                    x-on:paste.window="const file = $event.clipboardData?.files?.[0]; if (file && file.type.startsWith('image/')) { const input = $el.querySelector('#sticker-image-upload'); if (input) { const transfer = new DataTransfer(); transfer.items.add(file); input.files = transfer.files; input.dispatchEvent(new Event('change', { bubbles: true })); } }"
                                     x-on:dragover.prevent="$el.classList.add('ring-2','ring-cyan-300','ring-offset-2')"
                                     x-on:dragleave.prevent="$el.classList.remove('ring-2','ring-cyan-300','ring-offset-2')"
-                                    x-on:drop.prevent="$el.classList.remove('ring-2','ring-cyan-300','ring-offset-2'); const input = $el.querySelector('#sticker-image-upload'); if ($event.dataTransfer?.files?.length && input) { input.files = $event.dataTransfer.files; input.dispatchEvent(new Event('change', { bubbles: true })); }"
+                                    x-on:drop.prevent="onDrop($event)"
                                     class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 transition"
                                 >
                                     <input id="sticker-image-upload" type="file" accept="image/*" wire:model.live="imageUpload" class="block w-full rounded-lg border border-gray-200 bg-white text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-cyan-600" />
+                                    <div x-show="isUploadingImage" class="mt-2 text-sm text-cyan-600">Dang upload anh...</div>
                                     <p class="mt-2 text-sm text-gray-500">Click vao vung nay roi Ctrl+V anh, keo file anh vao day, hoac keo anh tu Amazon/Etsy neu trinh duyet cho phep.</p>
                                     @error('imageUpload') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>

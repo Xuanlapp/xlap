@@ -7,6 +7,8 @@ use App\Livewire\Pages\Sticker\StickerStatusPanel;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\On;
@@ -166,7 +168,11 @@ class AddProductDesign extends Component
     private function resolveImageSource(string $imageLink, ?TemporaryUploadedFile $imageUpload): string
     {
         if ($imageUpload) {
-            $path = $imageUpload->storePublicly('generated/sticker/uploads', 'public');
+            $path = $imageUpload->store('generated/sticker/uploads', 'public');
+
+            if (! is_string($path) || $path === '' || ! Storage::disk('public')->exists($path)) {
+                throw new RuntimeException('Khong luu duoc file anh. Hay thu paste/upload lai.');
+            }
 
             return '/storage/'.$path;
         }

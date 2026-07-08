@@ -1,4 +1,4 @@
-<article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+﻿<article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
             <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
@@ -61,9 +61,11 @@
                 <x-label class="truncate text-xs font-bold uppercase text-slate-600">1. Source Image</x-label>
             </div>
 
-            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="sticker" :keyword="$asset->keyword">
-                <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
-            </x-image-preview>
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                <x-image-preview reviewable class="h-full w-full rounded-none border-0 bg-slate-50" image-class="object-contain" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="sticker" :keyword="$asset->keyword">
+                    <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
+                </x-image-preview>
+            </div>
 
             <div class="mt-2 flex min-h-10 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 @if ($asset->image_link)
@@ -113,7 +115,7 @@
                         </button>
                     @else
                         <div class="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-400">
-                            {{ $asset->image_link ? 'Vui lòng ấn tạo ảnh!' : 'Cho anh nguon' }}
+                            {{ $asset->image_link ? 'Vui lòng bấm nút Create Master để tạo ảnh  !' : 'Cho anh nguon' }}
                         </div>
                     @endif
                 </div>
@@ -149,7 +151,7 @@
                         wire:target="generatePsdMockups"
                         class="shrink-0 text-xs font-semibold text-orange-600 hover:text-orange-700 disabled:opacity-60"
                     >
-                        <span wire:loading.remove wire:target="generatePsdMockups">✦ Generate + Update</span>
+                        <span wire:loading.remove wire:target="generatePsdMockups">Ã¢Å“Â¦ Generate + Update</span>
                         <span wire:loading wire:target="generatePsdMockups">Generating...</span>
                     </button>
                 @endif
@@ -206,12 +208,12 @@
                         </div>
                     @else
                         <div class="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-center text-sm font-medium text-slate-400">
-                            {{ $asset->redesign ? 'Bam Generate PSD de tao mockup' : 'Phải có ảnh số 2!' }}
+                            {{ $asset->redesign ? 'Bam Generate PSD de tao mockup' : 'Phải cso ảnh 2. Create Master !' }}
                         </div>
                     @endif
                 </div>
             </div>
-            
+
             <div class="mt-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500">
                 <div class="flex items-center justify-between gap-2">
                     <span class="min-w-0 truncate">
@@ -229,4 +231,6 @@
         </div>
     </div>
 </article>
+
+
 

@@ -907,3 +907,34 @@ Chi hien nut reset proxy ve xanh khi dong proxy dang co `Changed At`.
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-08
+
+**Muc tieu:**  
+Fix Sticker add bang Ctrl+V/upload tao item nhung anh khong luu duoc va preview bi fallback.
+
+**File da sua/tao:**  
+- `resources/views/livewire/modals/sticker/add-product-design.blade.php`
+- `app/Livewire/Modals/Sticker/AddProductDesign.php`
+- `resources/views/components/image-preview.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi logic Ctrl+V/drop trong modal Sticker sang `$wire.upload('imageUpload', file, ...)` giong flow modal dang hoat dong, thay vi gan `input.files` thu cong.
+- Them trang thai `isUploadingImage` de user thay dang upload anh.
+- Backend doi sang `store(..., 'public')` va kiem tra `Storage::disk('public')->exists($path)` truoc khi tao item.
+- Neu file paste/upload khong luu that, dung lai voi loi `Khong luu duoc file anh...` de tranh tao row co `image_link` tro toi file mat.
+- Shared `x-image-preview` reset `failed` khi `src` doi va khi anh load thanh cong.
+
+**Root cause:**  
+- Sticker modal cu tu gan file vao input nen Livewire co the khong upload/persist file that, tao DB row nhung file trong `storage/app/public` va `public/storage` khong ton tai.
+- Preview component co the giu stale `failed=true` khi doi item/src.
+
+**Deploy impact:**  
+- Khong doi database. Can deploy code va clear compiled views.
+
+**Queue impact:**  
+- Khong co.
+
+**Viec can lam tiep:**  
+- User test lai Ctrl+V anh trong Sticker add modal. Cac row cu co file mat can upload/add lai vi file goc da khong ton tai tren ca `xlap.tech` va `xlap.com.vn`.
