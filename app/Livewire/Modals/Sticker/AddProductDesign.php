@@ -134,13 +134,13 @@ class AddProductDesign extends Component
             'imageUpload' => ['nullable', 'image', 'max:10240'],
         ]);
 
-        if (empty($validated['imageLink']) && empty($validated['imageUpload'])) {
+        if (empty($validated['imageLink']) && ! $this->imageUpload) {
             $this->addError('imageLink', 'Vui long chon file, dan clipboard hoac nhap link anh.');
 
             return;
         }
 
-        $imageSource = $this->resolveImageSource($validated['imageLink'] ?? '', $validated['imageUpload'] ?? null);
+        $imageSource = $this->resolveImageSource($validated['imageLink'] ?? '', $this->imageUpload);
 
         $service = app(StickerService::class);
 

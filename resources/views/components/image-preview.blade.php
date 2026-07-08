@@ -1,4 +1,4 @@
-@props([
+﻿@props([
     'src' => null,
     'original' => null,
     'alt' => 'Image preview',
@@ -14,7 +14,8 @@
 ])
 
 <div
-    x-data="{ failed: false }"
+    x-data="{ failed: false, currentSrc: @js($src) }"
+    x-effect="if (currentSrc !== @js($src)) { currentSrc = @js($src); failed = false; }"
     {{ $attributes->merge(['class' => 'flex items-center justify-center overflow-hidden rounded-md bg-slate-50']) }}
 >
     @if ($src)
@@ -26,6 +27,7 @@
                 class="flex h-full w-full cursor-zoom-in items-center justify-center"
             >
                 <img
+                    x-on:load="failed = false"
                     x-on:error="failed = true"
                     src="{{ $src }}"
                     alt="{{ $alt }}"
@@ -38,6 +40,7 @@
         @else
             <img
                 x-show="! failed"
+                x-on:load="failed = false"
                 x-on:error="failed = true"
                 src="{{ $src }}"
                 alt="{{ $alt }}"
@@ -54,7 +57,7 @@
             rel="noreferrer"
             class="px-4 text-center text-sm font-semibold text-cyan-600 hover:text-cyan-700"
         >
-            Không preview được. Mở link gốc
+            Khong preview duoc. Mo link goc
         </a>
     @else
         {{ $slot }}
