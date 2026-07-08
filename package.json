@@ -1,0 +1,22 @@
+{
+  "name": "illustrator-import-image-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototype tool to open Adobe Illustrator and import a selected image.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/pngjs": "^6.0.5",
+    "@types/potrace": "^2.1.5",
+    "potrace": "^2.1.8",
+    "tsx": "latest",
+    "typescript": "latest"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0"
+  }
+}
