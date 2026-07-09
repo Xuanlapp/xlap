@@ -154,7 +154,7 @@ class AddUser extends Component
             hasVertexCredential: $vertexCredentialPayload !== null,
             hasV98StoreCredential: $v98StoreCredentialPayload !== null,
         );
-        $validated['is_admin'] = ((($validated['role'] ?? 'user') === 'admin') || (bool) ($validated['is_admin'] ?? false));
+        $validated['is_admin'] = (($validated['role'] ?? 'user') === 'admin');
 
         $createdUser = DB::transaction(function () use ($validated, $vertexCredentialPayload, $v98StoreCredentialPayload): User {
             $user = app(UserAccessService::class)->createUser($validated);
@@ -181,7 +181,7 @@ class AddUser extends Component
             properties: [
                 'email' => $validated['email'],
                 'username' => $validated['username'],
-                'is_admin' => (bool) ($validated['is_admin'] ?? false),
+                'is_admin' => ($validated['role'] ?? 'user') === 'admin',
                 'can_generate_amazon_listing' => (bool) ($validated['can_generate_amazon_listing'] ?? false),
                 'can_generate_etsy_listing' => (bool) ($validated['can_generate_etsy_listing'] ?? false),
                 'can_access_wali' => (bool) ($validated['can_access_wali'] ?? false),

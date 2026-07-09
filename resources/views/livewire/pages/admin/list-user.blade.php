@@ -243,7 +243,7 @@
                                         <div class="min-w-0">
                                             <div class="flex items-center gap-2">
                                                 <p class="truncate font-semibold text-slate-950">{{ $user->name }}</p>
-                                                @if ($user->is_admin)
+                                                @if (($user->role ?? 'user') === 'admin')
                                                     <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-100 px-1.5 text-[10px] font-bold uppercase text-cyan-700">a</span>
                                                 @elseif ($user->isManager())
                                                     <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-violet-100 px-1.5 text-[10px] font-bold uppercase text-violet-700">m</span>

@@ -7,8 +7,6 @@ use App\Livewire\Pages\Sticker\StickerStatusPanel;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\On;
@@ -107,6 +105,8 @@ class AddProductDesign extends Component
 
     public function updatedImageUpload(): void
     {
+        $this->resetErrorBag(['imageUpload', 'imageLink']);
+
         if (! $this->imageUpload) {
             $this->uploadedImagePreviewUrl = null;
 
@@ -144,13 +144,6 @@ class AddProductDesign extends Component
 
         $imageSource = $this->resolveImageSource($validated['imageLink'] ?? '', $this->imageUpload);
 
-        if ($imageSource === null) {
-            $this->addError('imageUpload', 'Khong luu duoc file anh. Hay thu paste/upload lai.');
-            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Khong luu duoc file anh. Hay thu paste/upload lai.');
-
-            return;
-        }
-
         $service = app(StickerService::class);
 
         $service->createAsset(auth()->user(), $validated['keyword'], $imageSource, $validated['sku']);
@@ -172,52 +165,15 @@ class AddProductDesign extends Component
         return view('livewire.modals.sticker.add-product-design');
     }
 
-    private function resolveImageSource(string $imageLink, ?TemporaryUploadedFile $imageUpload): ?string
+    private function resolveImageSource(string $imageLink, ?TemporaryUploadedFile $imageUpload): string
     {
         if ($imageUpload) {
-            $path = $imageUpload->store('generated/sticker/uploads', 'public');
-
-            if (! is_string($path) || $path === '' || ! Storage::disk('public')->exists($path)) {
-                $path = $this->storeUploadedImageManually($imageUpload);
-            }
-
-            if (! is_string($path) || $path === '' || ! Storage::disk('public')->exists($path)) {
-                return null;
-            }
+            $path = $imageUpload->storePublicly('generated/sticker/uploads', 'public');
 
             return '/storage/'.$path;
         }
 
         return trim($imageLink);
-    }
-
-    private function storeUploadedImageManually(TemporaryUploadedFile $imageUpload): ?string
-    {
-        $realPath = $imageUpload->getRealPath();
-
-        if (! is_string($realPath) || ! is_file($realPath)) {
-            return null;
-        }
-
-        $extension = $imageUpload->guessExtension()
-            ?: $imageUpload->getClientOriginalExtension()
-            ?: 'png';
-        $path = 'generated/sticker/uploads/'.Str::random(40).'.'.strtolower($extension);
-        $stream = fopen($realPath, 'rb');
-
-        if ($stream === false) {
-            return null;
-        }
-
-        try {
-            $stored = Storage::disk('public')->put($path, $stream);
-        } finally {
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-        }
-
-        return $stored ? $path : null;
     }
 
     private function looksLikeImageUrl(string $url): bool

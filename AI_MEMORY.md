@@ -938,3 +938,86 @@ Fix Sticker add bang Ctrl+V/upload tao item nhung anh khong luu duoc va preview 
 
 **Viec can lam tiep:**  
 - User test lai Ctrl+V anh trong Sticker add modal. Cac row cu co file mat can upload/add lai vi file goc da khong ton tai tren ca `xlap.tech` va `xlap.com.vn`.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Fix truong hop user role Manager nhung ngoai bang admin van hien nhu admin.
+
+**File da sua/tao:**  
+- `app/Services/User/UserAccessService.php`
+- `app/Actions/CreateUserWithProductAccess.php`
+- `app/Livewire/Modals/Admin/AddUser.php`
+- `app/Livewire/Modals/Admin/EditUser.php`
+- `resources/views/livewire/pages/admin/list-user.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Chot `role` la nguon su that de xac dinh admin, khong giu `is_admin=true` cho manager/user nua.
+- Khi create/update user, `is_admin` gio chi bang `true` neu `role === admin`.
+- Badge trong bang user admin doi sang check theo `role === admin` thay vi `is_admin` de tranh hien sai.
+
+**Root cause:**  
+- User cu co the con `is_admin = 1` tu logic cu, du da doi role sang `manager`, nen bang admin van hien chu `a` va bi hieu la admin.
+
+**Deploy impact:**  
+- Khong doi database. Can deploy code va clear compiled views.
+
+**Queue impact:**  
+- Khong co.
+
+**Viec can lam tiep:**  
+- Neu co user da luu sai truoc day, chi can mo edit user va save lai la `is_admin` se duoc dong bo theo `role` moi.
+- Graphiti memory turn nay bi 429 quota, da ghi vao `AI_MEMORY.md` local.
+
+
+### 2026-07-09
+
+**Muc tieu:**  
+Fix dropdown loc nhan vien trong Wali bi cat mat goc sau khi mo/chon lai.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/salary/wali.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Bo `overflow-hidden` khoi wrapper cua panel `Danh sach luong` de dropdown filter khong bi parent cat clip.
+- Giu dropdown loc nhan vien cung hang voi tieu de danh sach luong.
+- Sua mot so text giao dien Wali bi loi ma hoa sang tieng Viet co dau dung.
+
+**Root cause:**  
+- Dropdown duoc dat `absolute` ben trong panel co `overflow-hidden`, nen phan noi ra ngoai panel bi cat mat goc.
+
+**Deploy impact:**  
+- Khong doi database. Da chay `php artisan view:clear` va `php artisan view:cache`.
+
+**Queue impact:**  
+- Khong co.
+
+**Viec can lam tiep:**  
+- User reload trang Wali va bam `Loc nhan vien` de kiem tra dropdown khong con bi che/cat.
+
+
+### 2026-07-09
+
+**Muc tieu:**  
+Fix filter nhan vien Wali bi chi giu 1 checkbox va mat tick khi chon nhieu nhan vien.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Salary/Wali.php`
+- `resources/views/livewire/pages/salary/wali.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Bo hook `updatedSelectedEmployeeIds()` de Livewire tu quan ly mang checkbox multi-select.
+- Chuyen sanitize `selectedEmployeeIds` sang luc ap dung filter de tranh ghi de state trong luc user dang tick.
+- Doi checkbox tu `wire:model.live` sang `wire:model` de giam re-render nong gay roi tick.
+
+**Root cause:**  
+- Hook cap nhat state moi lan tick cung voi `wire:model.live` lam mang checkbox bi ghi de va de gay hien tuong chi con 1 nhan vien duoc chon.
+
+**Deploy impact:**  
+- Khong doi database. Da clear va cache lai Blade view.
+
+**Queue impact:**  
+- Khong co.

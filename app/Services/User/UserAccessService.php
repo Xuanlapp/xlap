@@ -68,7 +68,7 @@ class UserAccessService
             'username' => $data['username'] ?? null,
             'email' => $data['email'],
             'status' => $data['status'] ?? 'active',
-            'is_admin' => (bool) (($data['role'] ?? 'user') === 'admin' || ($data['is_admin'] ?? false)),
+            'is_admin' => (string) ($data['role'] ?? 'user') === 'admin',
             'can_generate_amazon_listing' => (bool) ($data['can_generate_amazon_listing'] ?? false),
             'can_generate_etsy_listing' => (bool) ($data['can_generate_etsy_listing'] ?? false),
             'role' => (string) ($data['role'] ?? 'user'),

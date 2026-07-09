@@ -151,7 +151,7 @@
                         wire:target="generatePsdMockups"
                         class="shrink-0 text-xs font-semibold text-orange-600 hover:text-orange-700 disabled:opacity-60"
                     >
-                        <span wire:loading.remove wire:target="generatePsdMockups">Ã¢Å“Â¦ Generate + Update</span>
+                        <span wire:loading.remove wire:target="generatePsdMockups">Generate</span>
                         <span wire:loading wire:target="generatePsdMockups">Generating...</span>
                     </button>
                 @endif

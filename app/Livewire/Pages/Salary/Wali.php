@@ -21,6 +21,10 @@ class Wali extends Component
 
     public int $selectedMonth = 0;
 
+    public string $employeeSearch = '';
+
+    public array $selectedEmployeeIds = [];
+
     public function mount(): void
     {
         $latestMonth = $this->availableMonths()->first();
@@ -51,6 +55,11 @@ class Wali extends Component
     public function updatedSelectedMonth(int $value): void
     {
         $this->selectedMonth = $value;
+    }
+
+    public function updatedEmployeeSearch(string $value): void
+    {
+        $this->employeeSearch = trim($value);
     }
 
     public function openCreatePeriod(): void
@@ -111,16 +120,17 @@ class Wali extends Component
     {
         $month = CarbonImmutable::create($this->selectedYear, max($this->selectedMonth, 1), 1)->startOfMonth();
         $rows = $this->rowsForMonth($month);
+        $employeeOptions = $this->employeeOptionsForMonth($month);
         $availableMonths = $this->availableMonths();
         $yearOptions = $availableMonths->pluck('year')->unique()->sortDesc()->values();
         $monthOptions = $this->monthOptions($this->selectedYear);
-
         return view('livewire.pages.salary.wali', [
             'monthLabel' => $month->translatedFormat('m/Y'),
             'rows' => $rows,
             'summary' => $this->summary($rows),
             'yearOptions' => $yearOptions,
             'monthOptions' => $monthOptions,
+            'employeeOptions' => $employeeOptions,
         ])->layout('layouts.app');
     }
 
@@ -155,6 +165,21 @@ class Wali extends Component
             ->values();
     }
 
+    private function employeeOptionsForMonth(CarbonImmutable $month): Collection
+    {
+        return DataSalaryZhuzhu::query()
+            ->where('user_id', auth()->id())
+            ->whereDate('salary_month', $month->toDateString())
+            ->orderBy('employee_name')
+            ->get(['id', 'employee_id', 'employee_name'])
+            ->map(fn (DataSalaryZhuzhu $row) => [
+                'id' => (string) ($row->employee_id ?? $row->id),
+                'name' => (string) $row->employee_name,
+            ])
+            ->unique('id')
+            ->values();
+    }
+
     private function rowsForMonth(CarbonImmutable $month): Collection
     {
         return $this->exportRowsForMonth($month);
@@ -165,6 +190,7 @@ class Wali extends Component
         $salaryRows = DataSalaryZhuzhu::query()
             ->where('user_id', auth()->id())
             ->whereDate('salary_month', $month->toDateString())
+            ->when($this->employeeSearch !== '', fn ($query) => $query->where('employee_name', 'like', '%'.$this->employeeSearch.'%'))
             ->orderBy('employee_name')
             ->get()
             ->keyBy(fn (DataSalaryZhuzhu $row) => (string) ($row->employee_id ?? $row->id));
@@ -183,8 +209,25 @@ class Wali extends Component
             }
         }
 
-        return $salaryRows
+        $filteredRows = $salaryRows->values();
+
+        if ($this->employeeSearch !== '') {
+            $needle = mb_strtolower($this->employeeSearch);
+            $filteredRows = $filteredRows->filter(fn (DataSalaryZhuzhu $row) => str_contains(mb_strtolower((string) $row->employee_name), $needle));
+        }
+
+        $selectedIds = collect($this->selectedEmployeeIds)
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (string) $id)
+            ->unique()
             ->values()
+            ->all();
+
+        if ($selectedIds !== []) {
+            $filteredRows = $filteredRows->filter(fn (DataSalaryZhuzhu $row) => in_array((string) ($row->employee_id ?? $row->id), $selectedIds, true));
+        }
+
+        return $filteredRows
             ->sortBy(fn (DataSalaryZhuzhu $row) => mb_strtolower((string) $row->employee_name))
             ->map(fn (DataSalaryZhuzhu $row) => $this->decorateRow($row, $month));
     }

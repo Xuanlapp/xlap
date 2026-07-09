@@ -13,7 +13,7 @@
                     </div>
                     <div class="min-w-0">
                         <h1 class="text-base font-bold text-slate-950">Wali ZhuZhu</h1>
-                        <p class="mt-0.5 text-xs text-slate-500">Quản lý theo <tháng></tháng></p>
+                        <p class="mt-0.5 text-xs text-slate-500">Quản lý theo tháng</p>
                     </div>
                 </div>
 
@@ -30,7 +30,7 @@
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
                         </svg>
                         <span wire:loading.remove wire:target="openCreatePeriod">Tạo kỳ lương</span>
-                        <span wire:loading wire:target="openCreatePeriod">Loading...</span>
+                        <span wire:loading wire:target="openCreatePeriod">Đang tải...</span>
                     </button>
 
                     <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
@@ -57,6 +57,7 @@
                         </select>
                     </label>
 
+
                     <a
                         href="{{ $this->exportUrl() }}"
                         class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
@@ -76,7 +77,7 @@
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
                         </svg>
                         <span wire:loading.remove wire:target="openMonthSummary">Tổng kết tháng</span>
-                        <span wire:loading wire:target="openMonthSummary">Loading...</span>
+                        <span wire:loading wire:target="openMonthSummary">Đang tải...</span>
                     </button>
 
                     <button
@@ -91,7 +92,7 @@
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
                         </svg>
                         <span wire:loading.remove wire:target="openAddEmployee">Thêm nhân viên</span>
-                        <span wire:loading wire:target="openAddEmployee">Loading...</span>
+                        <span wire:loading wire:target="openAddEmployee">Đang tải...</span>
                     </button>
                 </div>
             </div>
@@ -115,12 +116,79 @@
             </div>
         </div>
 
-        <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
             <div class="border-b border-slate-200 px-4 py-3">
-                <h2 class="text-sm font-bold text-slate-950">Danh sách lương {{ $monthLabel }}</h2>
-                <p class="mt-1 text-xs text-slate-500">Chi hien thi cac ky luong da co du lieu.</p>
-            </div>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 class="text-sm font-bold text-slate-950">Danh sách lương {{ $monthLabel }}</h2>
 
+                    <div x-data="{ openEmployeeFilter: false }" class="relative">
+                        <button
+                            type="button"
+                            x-on:click="openEmployeeFilter = !openEmployeeFilter"
+                            class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 12h10" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 18h4" />
+                            </svg>
+                            <span>
+                                Lọc nhân viên
+                                @if (count($selectedEmployeeIds) > 0)
+                                    ({{ count($selectedEmployeeIds) }})
+                                @endif
+                            </span>
+                            @if (count($selectedEmployeeIds) > 0)
+                                <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-cyan-100 px-1.5 py-0.5 text-[10px] font-bold text-cyan-700">{{ count($selectedEmployeeIds) }}</span>
+                            @endif
+                        </button>
+
+                        <div
+                            x-show="openEmployeeFilter"
+                            x-cloak
+                            x-transition
+                            x-on:click.outside="openEmployeeFilter = false"
+                            class="absolute right-0 z-30 mt-2 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                        >
+                            <div class="border-b border-slate-100 px-3 py-2">
+                                <p class="text-xs font-bold text-slate-800">Chọn 1 hoặc nhiều nhân viên</p>
+                                <p class="mt-0.5 text-[11px] text-slate-500">Chỉ lọc trong kỳ {{ $monthLabel }} đang chọn.</p>
+                            </div>
+                            <div class="max-h-72 overflow-y-auto px-2 py-2">
+                                @forelse ($employeeOptions as $employee)
+                                    <label class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50">
+                                        <input
+                                            type="checkbox"
+                                            wire:model.live="selectedEmployeeIds"
+                                            value="{{ $employee['id'] }}"
+                                            class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400"
+                                        >
+                                        <span class="truncate">{{ $employee['name'] }}</span>
+                                    </label>
+                                @empty
+                                    <div class="px-2 py-4 text-center text-xs text-slate-400">Chưa có nhân viên trong kỳ này.</div>
+                                @endforelse
+                            </div>
+                            <div class="flex items-center justify-between border-t border-slate-100 px-3 py-2">
+                                <button
+                                    type="button"
+                                    wire:click="$set('selectedEmployeeIds', [])"
+                                    class="text-[11px] font-semibold text-slate-500 transition hover:text-slate-800"
+                                >
+                                    Bỏ chọn
+                                </button>
+                                <button
+                                    type="button"
+                                    x-on:click="openEmployeeFilter = false"
+                                    class="inline-flex h-8 items-center rounded-md bg-slate-900 px-3 text-[11px] font-semibold text-white transition hover:bg-slate-700"
+                                >
+                                    Xong
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full table-auto divide-y divide-slate-200 text-[10px] leading-tight">
                     <thead class="bg-slate-50 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
@@ -212,11 +280,11 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
             </svg>
-            Dang load data...
+            Đang tải dữ liệu...
         </div>
     </div>
     <div x-show="previewImage" x-cloak x-transition class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4" x-on:keydown.escape.window="previewImage = null">
-        <button type="button" class="absolute inset-0" x-on:click="previewImage = null" aria-label="Dong anh"></button>
+        <button type="button" class="absolute inset-0" x-on:click="previewImage = null" aria-label="Đóng ảnh"></button>
         <div class="relative z-[121] max-h-[92vh] max-w-[92vw] overflow-hidden rounded-xl bg-white p-3 shadow-2xl">
             <div class="mb-2 flex items-center justify-between gap-2">
                 <p class="text-sm font-bold text-slate-900" x-text="previewName"></p>

@@ -262,7 +262,7 @@ class EditUser extends Component
                 'username' => $validated['username'],
                 'status' => $validated['status'],
                 'role' => $validated['role'],
-                'is_admin' => (bool) ($validated['is_admin'] ?? false) || $validated['role'] === 'admin',
+                'is_admin' => $validated['role'] === 'admin',
                 'can_generate_amazon_listing' => (bool) ($validated['can_generate_amazon_listing'] ?? false),
                 'can_generate_etsy_listing' => (bool) ($validated['can_generate_etsy_listing'] ?? false),
                 'can_access_wali' => (bool) ($validated['can_access_wali'] ?? false),

@@ -23,7 +23,7 @@ class CreateUserWithProductAccess
             'password' => Hash::make($data['password']),
             'status' => $data['status'] ?? 'active',
             'role' => $role,
-            'is_admin' => $role === 'admin' || (bool) ($data['is_admin'] ?? false),
+            'is_admin' => $role === 'admin',
             'can_generate_amazon_listing' => (bool) ($data['can_generate_amazon_listing'] ?? false),
             'can_generate_etsy_listing' => (bool) ($data['can_generate_etsy_listing'] ?? false),
             'can_access_wali' => (bool) ($data['can_access_wali'] ?? false),
