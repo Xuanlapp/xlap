@@ -1021,3 +1021,364 @@ Fix filter nhan vien Wali bi chi giu 1 checkbox va mat tick khi chon nhieu nhan 
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Them trang `Camp` moi de nhap du lieu campaign theo kieu sheet va tu dong them dong moi o cuoi.
+
+**File da sua/tao:**  
+- `app/Models/CampRow.php`
+- `app/Livewire/Pages/Camp/Index.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `database/migrations/2026_07_09_000100_create_data_camp_rows_table.php`
+- `app/Support/ProductRegistry.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Tao bang `data_camp_rows` co scope theo `user_id` de luu tung dong campaign.
+- Them product/page `camp` vao `ProductRegistry` de route/middleware product hoat dong giong cac page khac.
+- Dung Livewire page `Camp\Index` hien bang nhap lieu theo cot: Campaign Name, Keyword, Bid, SKU target, ID portfolio, Campaign Daily Budget, Start Date.
+- Moi o duoc auto-save khi sua, va neu dong cuoi co du lieu thi tu dong them 1 dong trong moi o duoi.
+- Da chay migrate tao bang va seed product `camp` active cho admin.
+
+**Root cause:**  
+- User can mot page nhap campaign dang bang sheet de xu ly tiep, nhung hien tai project chua co module `camp`.
+
+**Deploy impact:**  
+- Da chay `php artisan migrate --no-ansi` va `php artisan view:clear --no-ansi`.
+
+**Queue impact:**  
+- Khong co.
+
+**Viec can lam tiep:**  
+- Neu can, co the them xoa dong, copy/paste nhieu dong, export Excel, hoac bo sung cac cot khac sau.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Fix sidebar khong hien `Camp` du da cap quyen product cho user.
+
+**File da sua/tao:**  
+- `resources/views/livewire/layout/navigation.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them slug `camp` vao filter nhom `PAGE` trong sidebar navigation.
+- Da clear compiled views sau khi sua.
+
+**Root cause:**  
+- Sidebar `PAGE` dang hardcode danh sach slug va chua include `camp`, nen product co quyen van khong hien o menu.
+
+**Deploy impact:**  
+- Khong doi database. Can deploy code va clear view cache.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Bo sung validation va quan ly dong cho trang `Camp`.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Camp/Index.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- `Bid` chi nhan so, chap nhan so thap phan nhu `0.1`; neu co chu/format sai thi vien o do va hien loi `Chi nhap so, sai dinh dang`.
+- `Campaign Daily Budget` chi nhan so nguyen duong lon hon 0, tu `1` tro len.
+- `Start Date` chi cho chon tu ngay hien tai tro ve sau bang `min=today` va validate backend `after_or_equal`.
+- Them cot `-` de xoa tung dong, co modal confirm Yes moi xoa.
+- Them nut `Clear all`, co modal confirm roi moi xoa toan bo du lieu Camp cua user hien tai.
+- Du lieu Camp van scope theo `user_id`, moi user chi doc/ghi du lieu cua minh va reload/hom sau van con neu khong xoa.
+
+**Root cause:**  
+- Trang Camp moi can rang buoc du lieu va thao tac xoa an toan truoc khi xu ly tiep theo.
+
+**Deploy impact:**  
+- Khong doi database. Da clear compiled views.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Tach trang `Camp` thanh 2 tab rieng: `Camp Keyword` va `Camp Auto`.
+
+**File da sua/tao:**  
+- `app/Models/CampRow.php`
+- `app/Livewire/Pages/Camp/Index.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `database/migrations/2026_07_09_000100_create_data_camp_rows_table.php`
+- `database/migrations/2026_07_09_000200_add_camp_type_to_data_camp_rows_table.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them cot `camp_type` vao `data_camp_rows`, default `keyword` cho du lieu cu.
+- Them tab `Camp Keyword` va `Camp Auto` tren cung mot page.
+- Query/save/delete/clear all deu scope theo `user_id` va `camp_type` hien tai.
+- `Camp Keyword` giu du lieu nãy gi?; `Camp Auto` la dataset rieng doc lap.
+
+**Root cause:**  
+- Trang Camp ban dau chi co mot tap du lieu, trong khi user can 2 khu vuc lam viec rieng tren cung page.
+
+**Deploy impact:**  
+- Da chay `php artisan migrate --no-ansi` them `camp_type` va `php artisan view:clear --no-ansi`.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Them `Campaign bidding strategy` va `Match Type` cho ca 2 tab Camp, dong thoi doi layout Camp Auto va bat loi ngay khi nhap sai.
+
+**File da sua/tao:**  
+- `app/Models/CampRow.php`
+- `app/Livewire/Pages/Camp/Index.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `database/migrations/2026_07_09_000100_create_data_camp_rows_table.php`
+- `database/migrations/2026_07_09_000300_add_strategy_and_match_type_to_data_camp_rows_table.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them 2 cot `bidding_strategy` va `match_type` vao DB va UI.
+- `Camp Keyword` van co `Campaign Name` + `Keyword`; `Camp Auto` an 2 cot nay, chi giu cac cot con lai.
+- Validation doi sang bao loi ngay o tung o, khong bo qua im lang; `Bid`, `Campaign Daily Budget`, `Start Date` se hien loi truoc khi save.
+- `Bid` chap nhan so thap phan nhu `0.1`; `Campaign Daily Budget` la so nguyen duong > 0; `Start Date` khong duoc nho hon ngay hien tai.
+
+**Root cause:**  
+- User can layout giua Keyword va Auto khac nhau, va muon biet sai du lieu ngay khi nhap thay vi doi den luc luu DB.
+
+**Deploy impact:**  
+- Da chay migrate them 2 cot cho database hien tai va clear view cache.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Them dropdown chuan cho `Campaign bidding strategy` / `Match Type` va them import Excel/CSV cho Camp theo tab dang chon.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Camp/Index.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `resources/views/livewire/modals/camp/import-camp-rows.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi `Campaign bidding strategy` thanh dropdown: `Dynamic bids - up and down`, `Dynamic bids - down only`, `Fixed bids`.
+- Doi `Match Type` thanh dropdown: `exact`, `phrase`, `broad`.
+- Them modal import `Excel/CSV` cho Camp, import theo `tab` hien tai (`keyword`/`auto`).
+- Nut import bi disable neu tab dang co du lieu persisted; chi import khi tab trong hoac sau `Clear all`.
+- Neu file co dong sai dinh dang thi bao loi ngay va chan import; neu hop le thi import vao tab hien tai.
+- Sau import dispatch `camp-rows-updated` de page refresh lai du lieu.
+
+**Root cause:**  
+- User can rang buoc gia tri chon tay de tranh sai du lieu, dong thoi can import file hang loat theo tung tab Camp.
+
+**Deploy impact:**  
+- Khong doi schema trong turn nay. Da clear view cache.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Hien preview bang du lieu trong modal import Camp de user check lai truoc khi import.
+
+**File da sua/tao:**  
+- `resources/views/livewire/modals/camp/import-camp-rows.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Modal import Camp doi thanh ban rong hon va them bang preview cac dong hop le se import.
+- Neu `Camp Keyword` thi show ca `Campaign Name` + `Keyword`; neu `Camp Auto` thi an 2 cot nay.
+- Nut `Import` bi disable khi khong co dong hop le hoac con `rowErrors`.
+
+**Root cause:**  
+- User can nhin truoc cac dong du lieu hop le se vao DB, khong chi muon thay thong ke tong quan.
+
+**Deploy impact:**  
+- Khong doi database. Da clear view cache.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Fix loi export Camp Keyword tra ve sai return type.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Camp/Index.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi return type cua `exportData()` tu `StreamedResponse` sang `BinaryFileResponse` vi `response()->download()` tra ve `BinaryFileResponse`.
+- Chay `php -l` va clear view cache.
+
+**Root cause:**  
+- Laravel download response khong phai streamed response, gay TypeError khi Livewire goi export.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Fix import/export `Camp Keyword` de `Portfolio Id` giu dung so day du va `Campaign Daily Budget` khong bi xuat dang thap phan.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `app/Livewire/Pages/Camp/Index.php`
+- `app/Services/Camp/CampKeywordExportService.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them normalize thu cong cho `portfolio_id` dang scientific notation nhu `1.9139E+14` thanh chuoi day du `191390000000000` ngay luc import.
+- Khi load/sua row Camp, `portfolio_id` cung duoc normalize lai de du lieu cu dang `E+` hien thi dung.
+- Export `Portfolio Id` ra dung chuoi day du, tranh mat so do Excel rut gon.
+- Export `Campaign Daily Budget` ra so nguyen duong nhu `3`, khong con `3.00`.
+- Fix import `Start Date` parse ve `Y-m-d` truoc khi so sanh, tranh so sai dinh dang `dd/mm/yyyy` voi `Y-m-d`.
+- Sua lai overlay spinner export trong Blade do co markup loi `x-data>{`.
+
+**Root cause:**  
+- `portfolio_id` dang duoc giu nguyen chuoi Excel rut gon khoa hoc nen UI/export khong ra du so; budget dang lay truc tiep so decimal nen xuat `3.00`; spinner export co markup Blade/Alpine bi loi.
+
+**Deploy impact:**  
+- Khong doi database. Da chay `php -l` cho 3 file PHP va `php artisan view:clear --no-ansi`.
+
+**Queue impact:**  
+- Khong co.
+
+**Follow-up notes:**  
+- Neu DB da co nhieu dong cu dang `E+`, hien tai UI/export da hien dung nhung chua backfill hang loat trong DB. Co the viet lenh normalize du lieu cu neu can.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Fix import `Start Date` cho Camp khi file CSV xuat dang ngay mot chu so, va them spinner phu toan modal trong luc xu ly file/import.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `resources/views/livewire/modals/camp/import-camp-rows.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- `normalizeDate()` cho phep doc them cac dinh dang `j/n/Y`, `m/d/Y`, `n/j/Y` ngoai `Y-m-d` va `d/m/Y`.
+- File CSV user dua co `Start Date` dang `7/9/2026`, truoc do khong match regex nen bi bao nhu trong/khong doc duoc.
+- Them loading overlay che toan card modal khi `importFile` dang parse hoac `startImport` dang chay; trong luc do modal bi khoa thao tac va chi mo lai khi co ket qua hoac loi.
+
+**Root cause:**  
+- Import chi nhan `d/m/Y` hai chu so, trong khi CSV export ra ngay kieu mot chu so `7/9/2026`; UX modal chi doi text o nut chua spin phu het card nen cam giac khong ro dang xu ly.
+
+**Deploy impact:**  
+- Khong doi database. Da chay `php -l app/Livewire/Modals/Camp/ImportCampRows.php` va `php artisan view:clear --no-ansi`.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Them spinner truc tiep tren nut `Export data` cua trang Camp.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Nut `Export data` dung `wire:loading` va `wire:target="exportData"` de doi text/icon spin ngay khi bam.
+- Nut export bi disable trong luc request export dang chay, den khi download response hoac loi tra ve thi Livewire tu dung loading.
+
+**Root cause:**  
+- Trang chi co overlay dua vao `$isExporting`, nhung khi download response Livewire co the khong cap nhat UI nhanh nhu `wire:loading`; user can spin ngay tren nut bam.
+
+**Deploy impact:**  
+- Khong doi database. Da chay `php artisan view:clear --no-ansi`.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Fix logic them dong moi va xoa dong trong bang Camp.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Camp/Index.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Chi them dong trong moi o cuoi bang khi dong cuoi da day du tat ca cot bat buoc.
+- Khong tao record moi trong DB neu dong dang sua chua du cac truong bat buoc.
+- Khi xoa dong, bo cach `array_splice` truc tiep tren state Livewire; doi sang xoa DB xong `loadRows()` lai de index `#` va hang hien thi khong bi lech.
+
+**Root cause:**  
+- Logic cu them dong moi ngay khi dong cuoi co bat ky du lieu nao, gay du dong trong; delete truc tiep trong mang state co the lam Livewire giu key cu va hien thi sai thu tu/hang.
+
+**Deploy impact:**  
+- Khong doi database. Da chay `php -l app/Livewire/Pages/Camp/Index.php` va `php artisan view:clear --no-ansi`.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Si?t validation Camp cho text co dau, so va dinh dang ngay.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Camp/Index.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- `campaign_name`, `keyword`, `sku_target`, `portfolio_id` bao loi khi co ky tu co dau; UI hien message `vui lòng không nh?p d?u` va vi?n d?.
+- `bid` va `campaign_daily_budget` dung regex so, sai dinh dang thi bao `vui lòng ch? nh?p s?`.
+- `start_date` dung `dd/mm/yyyy`, sai thi bao `dd/mm/yyyy`.
+- Update error rendering trong table de lay message tu validator thay vi text hardcode cu.
+
+**Root cause:**  
+- Validation cu chi bao loi chung chung va chua tach ro text co dau / so / dinh dang ngay theo yeu cau user.
+
+**Deploy impact:**  
+- Khong doi database. Da chay `php -l app/Livewire/Pages/Camp/Index.php` va `php artisan view:clear --no-ansi`.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-09
+
+**Muc tieu:**  
+Bat validation Camp ngay khi user dang nhap/sua du lieu trong o.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Camp/Index.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Bo `debounce` o binding Camp de UI validate nhanh hon.
+- Them hook `updated()` cho toan bo property `rows.*.*` de moi lan edit la chay validateCell ngay lap tuc.
+- Giup cac loi `khong nhap dau`, `chi nhap so`, `dd/mm/yyyy` hien ra ngay khi user vua go.
+
+**Root cause:**  
+- Binding cu co debounce va chi validate theo luong `updatedRows`, nen cam giac van co do tre khi user sua tung o.
+
+**Deploy impact:**  
+- Khong doi database. Da chay `php -l app/Livewire/Pages/Camp/Index.php` va `php artisan view:clear --no-ansi`.
+
+**Queue impact:**  
+- Khong co.

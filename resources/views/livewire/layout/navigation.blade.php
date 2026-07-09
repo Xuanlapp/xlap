@@ -60,7 +60,7 @@ new class extends Component
     $activeClass = 'bg-blue-600 text-white shadow-lg shadow-blue-600/18';
     $inactiveClass = 'text-slate-600 hover:bg-slate-100 hover:text-slate-950';
     $iconClass = 'h-5 w-5 shrink-0';
-    $pageProducts = $products->whereIn('slug', ['ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'proxy']);
+    $pageProducts = $products->whereIn('slug', ['ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'proxy', 'camp']);
     $ideaProducts = $products->whereIn('slug', ['ytrends', 'idea-etsy', 'idea-amazon']);
     $avatarPalettes = [
         'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600',

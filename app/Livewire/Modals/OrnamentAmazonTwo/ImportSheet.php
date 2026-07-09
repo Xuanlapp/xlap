@@ -237,55 +237,18 @@ class ImportSheet extends Component
         $row = $this->rows[$nextIndex];
 
         try {
-            $competitorListing = $this->scrapeListingForImport($scraper, $row['product_link']);
-            $inputImage = $this->primaryCompetitorImage($competitorListing);
-            $imageSub = array_values(array_unique(array_filter(
-                $competitorListing['images'] ?? [],
-                fn (mixed $image): bool => is_string($image) && trim($image) !== '' && trim($image) !== $inputImage
-            )));
-            $keyword = filled($competitorListing['productTitle'] ?? null)
-                ? (string) $competitorListing['productTitle']
-                : $this->keywordFromUrl($row['product_link']);
+            $asset = $this->importRowWithRetry($service, $scraper, $row);
 
-            if ($inputImage === '') {
-                throw new RuntimeException('Khong tim thay anh listing tu link nay sau nhieu lan thu.');
+            if ($asset) {
+                unset($this->rows[$nextIndex]);
+                $this->rows = array_values($this->rows);
+                $this->importedRows++;
+                $this->dispatch('product-design-created')->to(ListOrnamentAmazonTwo::class);
+                $this->dispatch('product-design-created')->to(OrnamentAmazonTwoStatusPanel::class);
             }
-
-            if (! filled($keyword)) {
-                throw new RuntimeException('Khong lay duoc product title va khong tao duoc keyword fallback.');
-            }
-
-            $listingPayload = array_merge($competitorListing, [
-                'sku' => $row['sku'] ?? '',
-                'product_link' => $row['product_link'],
-                'main_image_link' => $row['main_image'],
-                'product' => $row['product'] ?? '',
-                'keyword_phrase' => $row['keyword_phrase'] ?? '',
-            ]);
-
-            $keyword = trim((string) ($row['product'] ?? $keyword));
-
-            if ($keyword === '') {
-                throw new RuntimeException('Khong lay duoc Product de tao item.');
-            }
-
-            $asset = $service->createAsset(
-                auth()->user(),
-                $keyword,
-                $inputImage,
-                $imageSub,
-                $listingPayload,
-                $row['sku'],
-            );
-
-            $asset->update(['redesign' => $row['main_image']]);
-            unset($this->rows[$nextIndex]);
-            $this->rows = array_values($this->rows);
-            $this->importedRows++;
-            $this->dispatch('product-design-created')->to(ListOrnamentAmazonTwo::class);
-            $this->dispatch('product-design-created')->to(OrnamentAmazonTwoStatusPanel::class);
         } catch (Throwable $exception) {
             $this->rows[$nextIndex]['status'] = 'false';
+            $this->rows[$nextIndex]['attempts'] = max((int) ($this->rows[$nextIndex]['attempts'] ?? 0), 1);
             $this->rows[$nextIndex]['result_message'] = $exception->getMessage();
             $this->rowErrors[] = [
                 'row' => $row['row'] ?? ($nextIndex + 1),
@@ -311,8 +274,16 @@ class ImportSheet extends Component
     {
         $this->isProcessing = false;
         $this->showRetry = $this->rows !== [];
-        $this->setProgress($this->rows === [] ? 'completed' : 'failed', $this->rows === [] ? 100 : 95, $this->rows === [] ? 'Import completed.' : 'Import finished with errors.');
-        $this->dispatch('toast', type: 'success', title: 'Import success!', message: 'Imported '.$this->importedRows.' rows.');
+        $completed = $this->rows === [];
+        $this->setProgress($completed ? 'completed' : 'failed', $completed ? 100 : 95, $completed ? 'Import completed.' : 'Import finished with errors.');
+        $this->dispatch(
+            'toast',
+            type: $completed ? 'success' : 'warning',
+            title: $completed ? 'Import success!' : 'Import finished with errors!',
+            message: $completed
+                ? 'Imported '.$this->importedRows.' rows.'
+                : 'Imported '.$this->importedRows.' rows, con '.count($this->rows).' dong loi. Ban co the thu lai.'
+        );
 
         if ($this->rows === []) {
             $this->close();
@@ -357,7 +328,7 @@ class ImportSheet extends Component
 
         $gid = $this->extractGid($sheetUrl) ?? '0';
         $csvUrl = "https://docs.google.com/spreadsheets/d/{$sheetId}/export?format=csv&gid={$gid}";
-        $response = Http::timeout(30)->get($csvUrl);
+        $response = $this->retryHttpGet($csvUrl, 2, 3);
 
         if (! $response->successful()) {
             throw new RuntimeException('Khong tai duoc du lieu CSV tu Google Sheet.');
@@ -381,6 +352,131 @@ class ImportSheet extends Component
         fclose($handle);
 
         return $rows;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function importRowWithRetry(OrnamentAmazonTwoService $service, CompetitorListingScraper $scraper, array $row): ?ProductDesignAsset
+    {
+        $maxAttempts = 2;
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return $this->importRow($service, $scraper, $row);
+            } catch (Throwable $exception) {
+                $lastException = $exception;
+
+                foreach ($this->rows as $index => $candidate) {
+                    if (($candidate['row'] ?? null) === ($row['row'] ?? null) && ($candidate['sku'] ?? null) === ($row['sku'] ?? null)) {
+                        $this->rows[$index]['attempts'] = $attempt;
+                        $this->rows[$index]['result_message'] = $exception->getMessage();
+                        break;
+                    }
+                }
+
+                if ($attempt >= $maxAttempts || ! $this->isRetryableImportException($exception)) {
+                    break;
+                }
+
+                usleep(300000);
+            }
+        }
+
+        if ($lastException) {
+            throw $lastException;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function importRow(OrnamentAmazonTwoService $service, CompetitorListingScraper $scraper, array $row): ProductDesignAsset
+    {
+        $competitorListing = $this->scrapeListingForImport($scraper, $row['product_link']);
+        $inputImage = $this->primaryCompetitorImage($competitorListing);
+        $imageSub = array_values(array_unique(array_filter(
+            $competitorListing['images'] ?? [],
+            fn (mixed $image): bool => is_string($image) && trim($image) !== '' && trim($image) !== $inputImage
+        )));
+        $keyword = filled($competitorListing['productTitle'] ?? null)
+            ? (string) $competitorListing['productTitle']
+            : $this->keywordFromUrl($row['product_link']);
+
+        if ($inputImage === '') {
+            throw new RuntimeException('Khong tim thay anh listing tu link nay sau nhieu lan thu.');
+        }
+
+        if (! filled($keyword)) {
+            throw new RuntimeException('Khong lay duoc product title va khong tao duoc keyword fallback.');
+        }
+
+        $listingPayload = array_merge($competitorListing, [
+            'sku' => $row['sku'] ?? '',
+            'product_link' => $row['product_link'],
+            'main_image_link' => $row['main_image'],
+            'product' => $row['product'] ?? '',
+            'keyword_phrase' => $row['keyword_phrase'] ?? '',
+        ]);
+
+        $keyword = trim((string) ($row['product'] ?? $keyword));
+
+        if ($keyword === '') {
+            throw new RuntimeException('Khong lay duoc Product de tao item.');
+        }
+
+        $asset = $service->createAsset(
+            auth()->user(),
+            $keyword,
+            $inputImage,
+            $imageSub,
+            $listingPayload,
+            $row['sku'],
+        );
+
+        $asset->update(['redesign' => $row['main_image']]);
+
+        return $asset;
+    }
+
+    private function retryHttpGet(string $url, int $attempts = 2, int $sleepSeconds = 3)
+    {
+        $lastResponse = null;
+
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            $lastResponse = Http::timeout(30)->get($url);
+
+            if ($lastResponse->successful() && trim((string) $lastResponse->body()) !== '') {
+                return $lastResponse;
+            }
+
+            if ($attempt < $attempts) {
+                sleep($sleepSeconds);
+            }
+        }
+
+        return $lastResponse;
+    }
+
+    private function isRetryableImportException(Throwable $exception): bool
+    {
+        $message = Str::lower($exception->getMessage());
+
+        return Str::contains($message, [
+            'timed out',
+            'timeout',
+            '429',
+            '502',
+            '503',
+            '504',
+            'could not resolve host',
+            'connection refused',
+            'connection reset',
+            'temporarily unavailable',
+        ]);
     }
 
     /**

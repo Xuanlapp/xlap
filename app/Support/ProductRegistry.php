@@ -62,6 +62,16 @@ class ProductRegistry
                 'is_active' => true,
             ],
             [
+                'name' => 'Camp',
+                'slug' => 'camp',
+                'description' => 'Spreadsheet-style campaign input sheet.',
+                'route_name' => 'offorest.products.camp',
+                'path' => 'camp',
+                'component' => \App\Livewire\Pages\Camp\Index::class,
+                'sort_order' => 46,
+                'is_active' => true,
+            ],
+            [
                 'name' => 'Proxy',
                 'slug' => 'proxy',
                 'description' => 'Monitor proxy sources and changes.',
