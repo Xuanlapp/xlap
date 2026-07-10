@@ -9,6 +9,7 @@ use App\Livewire\Modals\Salary\MonthSummary;
 use App\Models\DataSalaryZhuzhu;
 use App\Models\DataSalaryZhuzhuEmployee;
 use App\Models\DataSalaryZhuzhuPeriod;
+use App\Services\Salary\WaliSalaryCalculator;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -234,138 +235,28 @@ class Wali extends Component
 
     private function decorateRow(DataSalaryZhuzhu $row, CarbonImmutable $month): DataSalaryZhuzhu
     {
-        $standardWorkDays = $this->standardWorkDaysForMonth($month);
-        $row->standard_work_days = $standardWorkDays;
+        $computed = app(WaliSalaryCalculator::class)->calculate([
+            'base_salary' => $row->base_salary,
+            'performance_score' => $row->performance_score,
+            'late_minutes' => $row->late_minutes,
+            'leave_days' => $row->leave_days,
+            'allowed_leave_days' => $row->allowed_leave_days,
+            'daily_bonus' => $row->daily_bonus,
+            'supplement' => $row->supplement,
+            'other_money' => $row->other_money,
+        ], $month);
 
-        $latePenaltyScore = $this->lateMinutesToPenaltyPoints((int) $row->late_minutes);
-        $payrollScore = max(0, (float) $row->performance_score - $latePenaltyScore);
-
-        $row->late_days = $latePenaltyScore;
-        $row->score = $payrollScore;
-        $row->actual_work_days = max(0, $standardWorkDays - (float) $row->leave_days);
-        $row->variable_salary = $this->variableSalaryByScore($payrollScore);
-        $row->commission = $this->commissionByScore($payrollScore);
-        $row->odd_point_money = $this->oddPointMoney($payrollScore);
-        $row->total_salary = round((float) $row->base_salary + (float) $row->variable_salary);
-        $row->net_received = round((float) $row->total_salary + (float) $row->odd_point_money + (float) $row->commission + (float) $row->daily_bonus + (float) $row->other_money + (float) $row->supplement);
+        $row->standard_work_days = $computed['standard_work_days'];
+        $row->actual_work_days = $computed['actual_work_days'];
+        $row->late_days = $computed['late_penalty_score'];
+        $row->score = $computed['payroll_score'];
+        $row->variable_salary = $computed['variable_salary'];
+        $row->commission = $computed['commission'];
+        $row->odd_point_money = $computed['odd_point_money'];
+        $row->total_salary = $computed['total_salary'];
+        $row->net_received = $computed['net_received'];
 
         return $row;
-    }
-
-    private function standardWorkDaysForMonth(CarbonImmutable $month): int
-    {
-        $daysInMonth = $month->daysInMonth;
-        $sundays = 0;
-
-        for ($day = 1; $day <= $daysInMonth; $day++) {
-            if ($month->day($day)->isSunday()) {
-                $sundays++;
-            }
-        }
-
-        return $daysInMonth - $sundays;
-    }
-
-    private function lateMinutesToPenaltyPoints(int $lateMinutes): float
-    {
-        if ($lateMinutes <= 0) {
-            return 0;
-        }
-
-        return floor($lateMinutes / 10) * 5;
-    }
-
-    private function variableSalaryByScore(float $score): float
-    {
-        $bands = [
-            600 => 360000,
-            900 => 730000,
-            1200 => 1100000,
-            1500 => 1480000,
-            2000 => 1850000,
-            2500 => 2220000,
-            3000 => 2590000,
-            3500 => 2960000,
-            4000 => 3330000,
-            4500 => 3700000,
-        ];
-
-        if ($score < 600) {
-            return 0;
-        }
-
-        $baseScore = 0;
-        $baseValue = 0;
-
-        foreach ($bands as $threshold => $value) {
-            if ($score >= $threshold) {
-                $baseScore = $threshold;
-                $baseValue = $value;
-            }
-        }
-
-        return $baseValue;
-    }
-
-    private function commissionByScore(float $score): float
-    {
-        $bands = [
-            600 => 0,
-            900 => 0,
-            1200 => 740000,
-            1500 => 1850000,
-            2000 => 5550000,
-            2500 => 9250000,
-            3000 => 12950000,
-            3500 => 16650000,
-            4000 => 20350000,
-            4500 => 24050000,
-        ];
-
-        if ($score < 600) {
-            return 0;
-        }
-
-        $commission = 0;
-
-        foreach ($bands as $threshold => $value) {
-            if ($score >= $threshold) {
-                $commission = $value;
-            }
-        }
-
-        return (float) $commission;
-    }
-
-    private function oddPointMoney(float $score): float
-    {
-        $baseThreshold = $this->baseThresholdForScore($score);
-
-        if ($baseThreshold === 0) {
-            return 0;
-        }
-
-        $remainder = $score - $baseThreshold;
-
-        if ($remainder <= 0) {
-            return 0;
-        }
-
-        return round($remainder * 3700);
-    }
-
-    private function baseThresholdForScore(float $score): int
-    {
-        $thresholds = [600, 900, 1200, 1500, 2000, 2500, 3000, 3500, 4000, 4500];
-        $baseThreshold = 0;
-
-        foreach ($thresholds as $threshold) {
-            if ($score >= $threshold) {
-                $baseThreshold = $threshold;
-            }
-        }
-
-        return $baseThreshold;
     }
 
     private function summary(Collection $rows): array

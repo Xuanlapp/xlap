@@ -20,9 +20,9 @@ class WaliSalaryCalculator
         $supplement = $this->parseNumber($payload['supplement'] ?? 0);
         $otherMoney = $this->parseNumber($payload['other_money'] ?? 0);
 
-        $standardWorkDays = $this->standardWorkDaysForMonth($month);
         $latePenaltyScore = $this->lateMinutesToPenaltyPoints($lateMinutes);
-        $payrollScore = max(0, $performanceScore - $latePenaltyScore);
+        $payrollScore = round(max(0, $performanceScore - $latePenaltyScore), 1);
+        $standardWorkDays = $this->standardWorkDaysForMonth($month, $allowedLeaveDays);
         $variableSalary = $this->variableSalaryByScore($payrollScore);
         $commission = $this->commissionByScore($payrollScore);
         $oddPointMoney = $this->oddPointMoney($payrollScore);
@@ -45,18 +45,9 @@ class WaliSalaryCalculator
         ];
     }
 
-    public function standardWorkDaysForMonth(CarbonImmutable $month): int
+    public function standardWorkDaysForMonth(CarbonImmutable $month, float $allowedLeaveDays = 0): int
     {
-        $daysInMonth = $month->daysInMonth;
-        $sundays = 0;
-
-        for ($day = 1; $day <= $daysInMonth; $day++) {
-            if ($month->day($day)->isSunday()) {
-                $sundays++;
-            }
-        }
-
-        return $daysInMonth - $sundays;
+        return max(0, (int) round($month->daysInMonth - $allowedLeaveDays));
     }
 
     public function lateMinutesToPenaltyPoints(int $lateMinutes): float

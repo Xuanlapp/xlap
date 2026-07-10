@@ -1382,3 +1382,35 @@ Bat validation Camp ngay khi user dang nhap/sua du lieu trong o.
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Fix cong thuc Wali tinh tien diem le va ngay cong theo ngay nghi duoc phep.
+
+**File da sua/tao:**  
+- `app/Services/Salary/WaliSalaryCalculator.php`
+- `app/Livewire/Pages/Salary/Wali.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- `WaliSalaryCalculator` tinh `payroll_score` lam tron 1 chu so thap phan truoc khi tinh tien diem le de khop diem user thay tren UI.
+- `standard_work_days` doi sang cong thuc `so ngay trong thang - so ngay duoc nghi`.
+- `actual_work_days` tinh bang `standard_work_days - max(0, ngay da nghi - ngay duoc nghi)`.
+- Trang Wali khong con dung cong thuc copy rieng nua, ma dung chung `WaliSalaryCalculator` nhu modal tong ket va modal edit.
+
+**Root cause:**  
+- Trang Wali co logic decorate/tinh lai rieng, van dung cong thuc cu tru Chu nhat va tru thang ngay nghi vao cong thuc te.
+- Diem hien thi tren UI la 1 so thap phan nhung tien diem le co the tinh theo diem noi bo nhieu chu so hon, gay lech voi cach user tinh tay.
+
+**Validation:**  
+- `php -l app/Services/Salary/WaliSalaryCalculator.php` pass.
+- `php -l app/Livewire/Pages/Salary/Wali.php` pass.
+- Test mau Lucie: diem 1820.9, thang 06/2026, nghi 7, duoc nghi 6 => cong chuan 24, cong thuc te 23, tien diem le 1.187.330.
+- Da chay `php artisan view:clear` va `php artisan view:cache`.
+
+**Deploy impact:**  
+- Khong doi database. Can deploy code moi va reload trang Wali.
+
+**Queue impact:**  
+- Khong co.
