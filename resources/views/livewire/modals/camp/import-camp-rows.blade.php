@@ -34,6 +34,13 @@
                         @else
                             <span class="font-semibold text-rose-700">Chua co template. Admin can upload trong Admin Users.</span>
                         @endif
+                        <div class="mt-2 text-xs text-emerald-700">
+                            @if ($campType === 'keyword')
+                                Google Sheets: <a href="https://docs.google.com/spreadsheets/d/1bp77L2lRsE89jt_oalWNaD7L8lL7mi1RqOfjA73Ybp0/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="font-semibold underline decoration-emerald-300 underline-offset-4 hover:text-emerald-900">mở sheet mẫu Camp Keyword</a>
+                            @else
+                                Google Sheets: <a href="https://docs.google.com/spreadsheets/d/1xgaZZmLf4sRWOJqKe46pvxXNh71cHXgQ7iR_Ei8aBqY/edit?gid=423333578#gid=423333578" target="_blank" rel="noopener noreferrer" class="font-semibold underline decoration-emerald-300 underline-offset-4 hover:text-emerald-900">mở sheet mẫu Camp Auto</a>
+                            @endif
+                        </div>
                     </div>
 
                     <label class="block text-sm font-bold text-slate-900">File</label>
