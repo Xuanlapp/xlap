@@ -1777,3 +1777,56 @@ Fix loi 500 khi admin upload Camp import template do web server khong co quyen g
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Fix import Camp `.xlsx` khi file co nhieu sheet va du lieu nam o active sheet khac `sheet1`.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Parser `.xlsx` khong con co dinh doc `sheet1` nua.
+- Nay uu tien sheet dang `activeTab` trong `workbook.xml`; neu sheet active khong co data thi fallback sang sheet dau tien co dong du lieu thuc su.
+- Fix case file `camp-auto.xlsx` co `sheet1` trong, du lieu nam o `sheet2`, truoc do gay `No rows found to import.`
+
+**Root cause:**  
+- Nhieu file Excel user tao co tab dau trong hoac tab du lieu nam o sheet khac; parser cu chi doc worksheet dau tien nen bo sot toan bo input.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Camp/ImportCampRows.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Fix import Camp Auto khi `Start Date` trong `.xlsx` duoc Excel luu thanh serial number.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- `normalizeDate()` nay nhan ngay Excel serial nhu `46213` va convert bang `PhpSpreadsheet\Shared\Date::excelToDateTimeObject()` sang `Y-m-d`.
+- Them `cleanText()` cho `SKU target` de xoa newline/tab thua trong cell, vi file `camp-auto (1).xlsx` co SKU bi xuong dong truoc `BH1`.
+
+**Root cause:**  
+- File Excel co o `Start Date` la number serial (`46213`) chu khong phai chuoi `m/d/Y`/`d/m/Y`, parser cu khong hieu nen bao `Start Date khong duoc trong`.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Camp/ImportCampRows.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.

@@ -186,7 +186,7 @@ class ImportCampRows extends Component
                 : '';
             $bid = $this->columnValue($row, $headerIndexes['bid'] ?? null);
             $normalizedBid = $this->normalizeDecimal($bid);
-            $skuTarget = $this->columnValue($row, $headerIndexes['sku_target'] ?? null);
+            $skuTarget = $this->cleanText($this->columnValue($row, $headerIndexes['sku_target'] ?? null));
             $rawPortfolioId = $this->columnValue($row, $headerIndexes['portfolio_id'] ?? null);
             $portfolioId = $this->normalizePortfolioId($rawPortfolioId);
             $campaignDailyBudget = $this->columnValue($row, $headerIndexes['campaign_daily_budget'] ?? null);
@@ -291,7 +291,7 @@ class ImportCampRows extends Component
 
         try {
             $sharedStrings = $this->readSharedStringsFromZip($zip);
-            $worksheetPath = $this->firstWorksheetPathFromZip($zip);
+            $worksheetPath = $this->preferredWorksheetPathFromZip($zip, $sharedStrings);
             $worksheetXml = $worksheetPath ? $zip->getFromName($worksheetPath) : false;
         } finally {
             $zip->close();
@@ -336,7 +336,7 @@ class ImportCampRows extends Component
         return $strings;
     }
 
-    private function firstWorksheetPathFromZip(ZipArchive $zip): ?string
+    private function preferredWorksheetPathFromZip(ZipArchive $zip, array $sharedStrings): ?string
     {
         $workbookXml = $zip->getFromName('xl/workbook.xml');
         $relsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
@@ -362,11 +362,37 @@ class ImportCampRows extends Component
             return null;
         }
 
-        $firstSheet = $sheets[0];
-        $relId = (string) $firstSheet->attributes('r', true)['id'];
+        $activeTab = (int) (($workbook->xpath('//a:bookViews/a:workbookView')[0]['activeTab'] ?? 0));
+        $sheetPaths = [];
 
+        foreach ($sheets as $sheetIndex => $sheet) {
+            $relId = (string) $sheet->attributes('r', true)['id'];
+            $sheetPaths[$sheetIndex] = $this->worksheetTargetFromRelation($rels, $relId) ?? ('xl/worksheets/sheet'.($sheetIndex + 1).'.xml');
+        }
+
+        if (isset($sheetPaths[$activeTab])) {
+            $activeXml = $zip->getFromName($sheetPaths[$activeTab]);
+
+            if (is_string($activeXml) && $this->worksheetHasData($activeXml, $sharedStrings)) {
+                return $sheetPaths[$activeTab];
+            }
+        }
+
+        foreach ($sheetPaths as $path) {
+            $sheetXml = $zip->getFromName($path);
+
+            if (is_string($sheetXml) && $this->worksheetHasData($sheetXml, $sharedStrings)) {
+                return $path;
+            }
+        }
+
+        return $sheetPaths[0] ?? 'xl/worksheets/sheet1.xml';
+    }
+
+    private function worksheetTargetFromRelation(\SimpleXMLElement $rels, string $relId): ?string
+    {
         if ($relId === '') {
-            return 'xl/worksheets/sheet1.xml';
+            return null;
         }
 
         foreach ($rels->xpath('//rel:Relationship') ?: [] as $relation) {
@@ -379,7 +405,24 @@ class ImportCampRows extends Component
             return str_starts_with($target, 'xl/') ? $target : 'xl/'.$target;
         }
 
-        return 'xl/worksheets/sheet1.xml';
+        return null;
+    }
+
+    private function worksheetHasData(string $worksheetXml, array $sharedStrings): bool
+    {
+        $rows = $this->parseWorksheetRows($worksheetXml, $sharedStrings);
+
+        foreach ($rows as $index => $row) {
+            if ($index === 0) {
+                continue;
+            }
+
+            if (collect($row)->map(fn (mixed $value): string => trim((string) $value))->filter()->isNotEmpty()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @param array<int, string> $sharedStrings @return array<int, array<int, string>> */
@@ -549,6 +592,11 @@ class ImportCampRows extends Component
         return trim((string) ($row[$index] ?? ''));
     }
 
+    private function cleanText(string $value): string
+    {
+        return trim(preg_replace('/\s+/u', ' ', str_replace(["\r", "\n", "\t"], ' ', $value)) ?? '');
+    }
+
     private function normalizePortfolioId(string $value): ?string
     {
         $value = trim($value);
@@ -604,6 +652,10 @@ class ImportCampRows extends Component
             return null;
         }
 
+        if (is_numeric($value) && preg_match('/^\d+$/', $value)) {
+            return $this->excelSerialToDate((int) $value);
+        }
+
         foreach (['Y-m-d', 'm/d/Y', 'n/j/Y', 'd/m/Y', 'j/n/Y'] as $format) {
             $date = \DateTime::createFromFormat($format, $value);
 
@@ -613,6 +665,19 @@ class ImportCampRows extends Component
         }
 
         return null;
+    }
+
+    private function excelSerialToDate(int $serial): ?string
+    {
+        if ($serial <= 0) {
+            return null;
+        }
+
+        try {
+            return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($serial)->format('Y-m-d');
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function resetImportState(): void
