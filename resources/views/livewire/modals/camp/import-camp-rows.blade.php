@@ -25,12 +25,12 @@
 
                 <div class="max-h-[calc(100vh-13rem)] overflow-y-auto px-6 py-5" wire:loading.class="pointer-events-none opacity-60" wire:target="startImport,importFile">
                     @php($templateFilename = $campType === 'keyword' ? 'camp-keyword-template.xlsx' : 'camp-auto-template.xlsx')
-                    @php($templatePath = public_path('templates/'.$templateFilename))
+                    @php($templatePath = storage_path('app/public/import-templates/'.$templateFilename))
 
                     <div class="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                         <span class="font-semibold">Template {{ $campType === 'keyword' ? 'Camp Keyword' : 'Camp Auto' }}:</span>
                         @if (\Illuminate\Support\Facades\File::exists($templatePath))
-                            <a href="{{ asset('templates/'.$templateFilename) }}" download="{{ $templateFilename }}" class="font-bold underline decoration-emerald-300 underline-offset-4 hover:text-emerald-900">{{ $templateFilename }}</a>
+                            <a href="{{ asset('storage/import-templates/'.$templateFilename) }}" download="{{ $templateFilename }}" class="font-bold underline decoration-emerald-300 underline-offset-4 hover:text-emerald-900">{{ $templateFilename }}</a>
                         @else
                             <span class="font-semibold text-rose-700">Chua co template. Admin can upload trong Admin Users.</span>
                         @endif

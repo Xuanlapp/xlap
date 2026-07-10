@@ -28,7 +28,7 @@
 
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead class="bg-emerald-800 text-gray-50">
+                    <thead class="bg-emerald-800 text-gray-50"                                                                                                              >
                         <tr>
                             <th class="px-4 py-3 text-left font-semibold">#</th>
                             @if ($selectedType === 'keyword')

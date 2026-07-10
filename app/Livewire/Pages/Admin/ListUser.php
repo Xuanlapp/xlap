@@ -10,6 +10,7 @@ use App\Services\Product\ApprovedAssetDriveExportService;
 use App\Services\User\UserAccessService;
 use App\Support\Traits\BuildsVertexCredentialPayload;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -143,25 +144,25 @@ class ListUser extends Component
                 'key' => 'ornament',
                 'label' => 'Ornament Amazon',
                 'filename' => 'importamaazonxlsx.xlsx',
-                'path' => public_path('templates/importamaazonxlsx.xlsx'),
+                'path' => Storage::disk('public')->path('import-templates/importamaazonxlsx.xlsx'),
             ],
             [
                 'key' => 'sticker',
                 'label' => 'Sticker',
                 'filename' => 'sticker-import-template.xlsx',
-                'path' => public_path('templates/sticker-import-template.xlsx'),
+                'path' => Storage::disk('public')->path('import-templates/sticker-import-template.xlsx'),
             ],
             [
                 'key' => 'camp_keyword',
                 'label' => 'Camp Keyword',
                 'filename' => 'camp-keyword-template.xlsx',
-                'path' => public_path('templates/camp-keyword-template.xlsx'),
+                'path' => Storage::disk('public')->path('import-templates/camp-keyword-template.xlsx'),
             ],
             [
                 'key' => 'camp_auto',
                 'label' => 'Camp Auto',
                 'filename' => 'camp-auto-template.xlsx',
-                'path' => public_path('templates/camp-auto-template.xlsx'),
+                'path' => Storage::disk('public')->path('import-templates/camp-auto-template.xlsx'),
             ],
         ];
     }

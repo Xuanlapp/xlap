@@ -5,6 +5,7 @@ namespace App\Livewire\Modals\Admin;
 use App\Services\Logging\ActivityLogService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -70,16 +71,39 @@ class EditImportTemplate extends Component
             'templateFile' => ['required', 'file', 'mimes:xlsx,xls', 'max:10240'],
         ]);
 
-        $target = public_path('templates/'.$templates[$validated['templateKey']]['filename']);
-        File::ensureDirectoryExists(dirname($target));
-        copy($validated['templateFile']->getRealPath(), $target);
+        $directory = 'import-templates';
+        $filename = $templates[$validated['templateKey']]['filename'];
+        $disk = Storage::disk('public');
+
+        if (! $disk->exists($directory)) {
+            $disk->makeDirectory($directory);
+        }
+
+        $target = $directory.'/'.$filename;
+        $stream = fopen($validated['templateFile']->getRealPath(), 'rb');
+
+        if ($stream === false) {
+            $this->addError('templateFile', 'Khong mo duoc file upload tam thoi.');
+            return;
+        }
+
+        try {
+            $saved = $disk->put($target, $stream);
+        } finally {
+            fclose($stream);
+        }
+
+        if (! $saved) {
+            $this->addError('templateFile', 'Khong luu duoc template moi. Kiem tra quyen ghi thu muc storage/public.');
+            return;
+        }
 
         app(ActivityLogService::class)->record(
             event: 'admin.import_template_updated',
             description: 'Admin updated an import template file.',
             properties: [
                 'template_key' => $validated['templateKey'],
-                'filename' => $templates[$validated['templateKey']]['filename'],
+                'filename' => $filename,
             ],
             actor: auth()->user(),
             actorType: 'admin',

@@ -1742,3 +1742,38 @@ Gan template import rieng cho Camp Keyword / Camp Auto va cho admin thay templat
 
 **Follow-up notes:**  
 - 2 path desktop user dua (`C:\Users\Admin\OneDrive\Desktop\camp-keywrok`, `C:\Users\Admin\OneDrive\Desktop\camp-auto`) khong ton tai trong local run nay, nen da bootstrap tu cac file mau trong Downloads/public templates thay the.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Fix loi 500 khi admin upload Camp import template do web server khong co quyen ghi `public/templates`.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Admin/EditImportTemplate.php`
+- `app/Livewire/Pages/Admin/ListUser.php`
+- `resources/views/livewire/pages/admin/list-user.blade.php`
+- `resources/views/livewire/modals/camp/import-camp-rows.blade.php`
+- `storage/app/public/import-templates/*`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi noi luu template admin upload tu `public/templates` sang disk `public` tai `storage/app/public/import-templates` de dung thu muc writable cua Laravel.
+- Link tai template doi sang `asset('storage/import-templates/...')`.
+- Khi upload file moi, `Storage::disk('public')->put()` ghi de cung filename co dinh, nen file cu bi thay the va khong phinh dung luong.
+- Them guard neu luu that bai thi hien validation error thay vi nem 500.
+- Bootstrap template hien co tu `public/templates` sang `storage/app/public/import-templates`.
+
+**Root cause:**  
+- Production `/www/wwwroot/xlap.tech/public/templates` khong writable boi PHP user, nen `copy()` vao public path bi `Permission denied`.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Admin/EditImportTemplate.php` pass.
+- `php -l app/Livewire/Pages/Admin/ListUser.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+- `php artisan storage:link --no-ansi` bao link da ton tai tai local, chap nhan duoc.
+
+**Deploy impact:**  
+- Tren production can dam bao `storage/app/public` writable va `public/storage` symlink ton tai (`php artisan storage:link` neu chua co).
+
+**Queue impact:**  
+- Khong co.

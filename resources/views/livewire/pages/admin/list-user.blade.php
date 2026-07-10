@@ -130,7 +130,7 @@
                                 <td class="px-4 py-3 font-semibold text-slate-900">{{ $template['label'] }}</td>
                                 <td class="px-4 py-3 text-slate-600">
                                     @if ($exists)
-                                        <a href="{{ asset('templates/'.$template['filename']) }}" download="{{ $template['filename'] }}" class="font-semibold text-cyan-600 underline decoration-cyan-200 underline-offset-4 hover:text-cyan-700">{{ $template['filename'] }}</a>
+                                        <a href="{{ asset('storage/import-templates/'.$template['filename']) }}" download="{{ $template['filename'] }}" class="font-semibold text-cyan-600 underline decoration-cyan-200 underline-offset-4 hover:text-cyan-700">{{ $template['filename'] }}</a>
                                     @else
                                         {{ $template['filename'] }}
                                     @endif
