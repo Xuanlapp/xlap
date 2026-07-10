@@ -117,7 +117,7 @@ class CreatePeriod extends Component
 
             $employeeSnapshots = collect($this->employees)->keyBy('id')->only($selectedIds);
 
-            foreach ($employeeSnapshots as $employee) {
+            foreach ($employeeSnapshots->values() as $index => $employee) {
                 DataSalaryZhuzhu::updateOrCreate(
                     [
                         'user_id' => auth()->id(),
@@ -131,6 +131,7 @@ class CreatePeriod extends Component
                         'salary_month' => $period->toDateString(),
                         'base_salary' => (float) $employee['base_salary'],
                         'allowed_leave_days' => (int) $employee['allowed_leave_days'],
+                        'sort_order' => (int) ($employee['sort_order'] ?? 0) > 0 ? (int) $employee['sort_order'] : $index + 1,
                     ]
                 );
             }
@@ -177,6 +178,7 @@ class CreatePeriod extends Component
             $this->employees = DataSalaryZhuzhu::query()
                 ->where('user_id', auth()->id())
                 ->whereDate('salary_month', $previousMonth->toDateString())
+                ->orderBy('sort_order')
                 ->orderBy('employee_name')
                 ->get()
                 ->map(fn (DataSalaryZhuzhu $row): array => [
@@ -184,6 +186,7 @@ class CreatePeriod extends Component
                     'name' => $row->employee_name,
                     'base_salary' => (float) $row->base_salary,
                     'allowed_leave_days' => (int) $row->allowed_leave_days,
+                    'sort_order' => (int) $row->sort_order,
                     'source' => $previousMonth->format('m/Y'),
                 ])
                 ->filter(fn (array $row): bool => $row['id'] > 0)

@@ -8,10 +8,16 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
 class OrnamentAmazonTwoWorkflowImageController extends Controller
 {
+    public function downloadMockups(Request $request, int $asset): BinaryFileResponse
+    {
+        return app(OrnamentAmazonTwoService::class)->downloadWorkflowZip($request->user(), $asset);
+    }
+
     public function redesign(Request $request, int $asset): JsonResponse
     {
         $payload = $request->validate([

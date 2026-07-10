@@ -13,6 +13,7 @@ class DataSalaryZhuzhu extends Model
         'user_id',
         'employee_id',
         'employee_name',
+        'sort_order',
         'salary_month',
         'base_salary',
         'variable_salary',
@@ -37,6 +38,7 @@ class DataSalaryZhuzhu extends Model
     protected $casts = [
         'user_id' => 'integer',
         'salary_month' => 'date',
+        'sort_order' => 'integer',
         'base_salary' => 'decimal:2',
         'variable_salary' => 'decimal:2',
         'late_days' => 'decimal:2',

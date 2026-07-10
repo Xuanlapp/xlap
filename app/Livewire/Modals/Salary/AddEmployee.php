@@ -89,6 +89,11 @@ class AddEmployee extends Component
                 'salary_month' => $month->toDateString(),
             ]);
 
+            $nextSortOrder = (int) DataSalaryZhuzhu::query()
+                ->where('user_id', auth()->id())
+                ->whereDate('salary_month', $month->toDateString())
+                ->max('sort_order') + 1;
+
             DataSalaryZhuzhu::updateOrCreate(
                 [
                     'user_id' => auth()->id(),
@@ -101,6 +106,11 @@ class AddEmployee extends Component
                     'employee_name' => $employee->employee_name,
                     'salary_month' => $month->toDateString(),
                     'base_salary' => (float) $employee->base_salary,
+                    'sort_order' => (int) (DataSalaryZhuzhu::query()
+                        ->where('user_id', auth()->id())
+                        ->where('employee_id', $employee->id)
+                        ->whereDate('salary_month', $month->toDateString())
+                        ->value('sort_order') ?: $nextSortOrder),
                 ]
             );
 

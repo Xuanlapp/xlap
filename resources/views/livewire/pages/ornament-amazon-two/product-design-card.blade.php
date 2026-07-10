@@ -921,6 +921,7 @@
                 imageModel: @js($imageModel),
                 prepareUrl: @js(route('offorest.ornament-amazon-2.workflow.listing-images.prepare', ['asset' => $asset->id])),
                 generateUrlTemplate: @js(route('offorest.ornament-amazon-2.workflow.listing-images.generate', ['asset' => $asset->id, 'slot' => '__slot__'])),
+                downloadMockupsUrl: @js(route('offorest.ornament-amazon-2.workflow.mockups.download', ['asset' => $asset->id])),
                 csrfToken: document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '',
                 init() {
                     this.doneCount = this.doneImageCount();
@@ -1012,6 +1013,31 @@
                     if (! current) return Math.max(0, this.slots.indexOf(slot));
 
                     return Math.max(0, this.gallery().findIndex((image) => image.original === current || image.src === current));
+                },
+                downloadableImages() {
+                    return this.slots
+                        .map((slot) => ({
+                            slot,
+                            number: this.slotNumber(slot),
+                            url: this.originalUrl(slot) || this.imageUrl(slot) || null,
+                        }))
+                        .filter((image) => !!image.url);
+                },
+                async downloadAll() {
+                    const images = this.downloadableImages();
+
+                    if (images.length === 0) {
+                        window.dispatchEvent(new CustomEvent('toast', {
+                            detail: {
+                                type: 'error',
+                                title: 'Action failed!',
+                                message: 'Chua co mockup nao de tai.',
+                            },
+                        }));
+                        return;
+                    }
+
+                    window.location.href = this.downloadMockupsUrl;
                 },
                 previewSlot(dispatch, slot) {
                     const src = this.imageUrl(slot);
@@ -1132,6 +1158,17 @@
                 <x-label class="truncate text-xs font-bold uppercase text-orange-600">6. Mockup</x-label>
                 @if (! $asset->is_approved)
                     <div class="flex min-w-0 items-center gap-2">
+                        @if ($mockupDoneCount >= 6)
+                            <button
+                                type="button"
+                                x-on:click="downloadAll()"
+                                x-bind:disabled="downloadableImages().length < 6"
+                                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Download all 6 mockup images"
+                            >
+                                Download all
+                            </button>
+                        @endif
                         @if ($generateDisabledReason)
                             <span class="hidden max-w-32 truncate text-[10px] font-semibold text-slate-400 sm:inline" title="{{ $generateDisabledReason }}">
                                 {{ $generateDisabledReason }}

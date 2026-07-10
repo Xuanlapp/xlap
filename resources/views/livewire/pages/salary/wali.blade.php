@@ -217,7 +217,17 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($rows as $row)
-                            <tr wire:key="salary-row-{{ $selectedYear }}-{{ $selectedMonth }}-{{ $row->employee_id ?? $row->id }}" x-on:click="openingEmployeeModal = true; setTimeout(() => openingEmployeeModal = false, 900)" wire:click="$dispatch('openModal', { component: 'modals.salary.edit-employee-salary', arguments: { employeeId: {{ $row->employee_id ?? $row->id }}, salaryMonth: '{{ sprintf('%04d-%02d', $selectedYear, max($selectedMonth, 1)) }}' } })" class="cursor-pointer hover:bg-slate-50">
+                            <tr
+                                wire:key="salary-row-{{ $selectedYear }}-{{ $selectedMonth }}-{{ $row->employee_id ?? $row->id }}"
+                                x-data="{ isDragOver: false }"
+                                x-on:dragover.prevent="isDragOver = true"
+                                x-on:dragleave="isDragOver = false"
+                                x-on:drop.prevent="isDragOver = false; const draggedEmployeeId = Number($event.dataTransfer.getData('text/plain') || 0); if (draggedEmployeeId) { $wire.reorderEmployee(draggedEmployeeId, {{ $row->employee_id ?? $row->id }}) }"
+                                x-on:click="openingEmployeeModal = true; setTimeout(() => openingEmployeeModal = false, 900)"
+                                wire:click="$dispatch('openModal', { component: 'modals.salary.edit-employee-salary', arguments: { employeeId: {{ $row->employee_id ?? $row->id }}, salaryMonth: '{{ sprintf('%04d-%02d', $selectedYear, max($selectedMonth, 1)) }}' } })"
+                                x-bind:class="isDragOver ? 'bg-cyan-50 ring-1 ring-inset ring-cyan-200' : ''"
+                                class="cursor-pointer hover:bg-slate-50"
+                            >
                                 <td class="w-[1%] px-1.5 py-2 align-top whitespace-nowrap">
                                     <div class="flex items-center gap-2">
                                         @if ($row->avatar_path)
@@ -235,8 +245,41 @@
                                                 {{ mb_strtoupper(mb_substr((string) $row->employee_name, 0, 2)) }}
                                             </div>
                                         @endif
-                                        <div>
-                                            <p class="font-semibold text-[10px] text-slate-950">{{ $row->employee_name }}</p>
+                                        <div class="min-w-0">
+                                            <div class="group flex items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    draggable="true"
+                                                    x-on:click.stop
+                                                    x-on:dragstart="$event.dataTransfer.effectAllowed = 'move'; $event.dataTransfer.setData('text/plain', '{{ $row->employee_id ?? $row->id }}')"
+                                                    x-on:dragend="$event.dataTransfer.clearData()"
+                                                    class="inline-flex h-6 w-6 cursor-grab items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[11px] text-slate-400 transition group-hover:text-slate-700 active:cursor-grabbing"
+                                                    title="Kéo để sắp xếp"
+                                                >
+                                                    ☰
+                                                </button>
+                                                <p class="truncate font-semibold text-[10px] text-slate-950">{{ $row->employee_name }}</p>
+                                                <div class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1 py-0.5 opacity-0 transition group-hover:opacity-100">
+                                                    <button
+                                                        type="button"
+                                                        x-on:click.stop
+                                                        wire:click="moveEmployee({{ $row->employee_id ?? $row->id }}, 'up')"
+                                                        wire:loading.attr="disabled"
+                                                        @disabled($loop->first)
+                                                        class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-slate-500 transition hover:bg-cyan-100 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-30"
+                                                        title="Đưa lên"
+                                                    >↑</button>
+                                                    <button
+                                                        type="button"
+                                                        x-on:click.stop
+                                                        wire:click="moveEmployee({{ $row->employee_id ?? $row->id }}, 'down')"
+                                                        wire:loading.attr="disabled"
+                                                        @disabled($loop->last)
+                                                        class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-slate-500 transition hover:bg-cyan-100 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-30"
+                                                        title="Đưa xuống"
+                                                    >↓</button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>

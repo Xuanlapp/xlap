@@ -1414,3 +1414,113 @@ Fix cong thuc Wali tinh tien diem le va ngay cong theo ngay nghi duoc phep.
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Them sap xep thu tu nhan vien Wali va luu lai de lan sau khong phai keo/sap xep lai.
+
+**File da sua/tao:**  
+- `database/migrations/2026_07_10_090000_add_sort_order_to_data_salary_zhuzhu_table.php`
+- `app/Models/DataSalaryZhuzhu.php`
+- `app/Livewire/Modals/Salary/CreatePeriod.php`
+- `app/Livewire/Modals/Salary/AddEmployee.php`
+- `app/Livewire/Pages/Salary/Wali.php`
+- `resources/views/livewire/pages/salary/wali.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them cot `sort_order` vao `data_salary_zhuzhu` va backfill thu tu theo tung user/ky luong.
+- Danh sach Wali order theo `sort_order`, sau do moi theo ten nhan vien.
+- Tao ky moi copy thu tu tu ky truoc; neu khong co ky truoc thi gan thu tu tu dau danh sach.
+- Them nhan vien moi vao ky hien tai thi tu dong nam cuoi danh sach.
+- Them cot `Sap xep` tren table voi nut len/xuong, bam la luu ngay vao database.
+
+**Root cause:**  
+- Truoc do khong co field luu thu tu rieng theo ky luong nen moi lan load lai se sap xep theo ten.
+
+**Validation:**  
+- `php -l` pass cho cac file PHP da sua.
+- `php artisan view:clear` va `php artisan view:cache` pass.
+
+**Deploy impact:**  
+- Can chay migration `php artisan migrate` tren moi truong deploy.
+- Khong co queue impact.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Lam UI sap xep nhan vien Wali gon hon, de nhin hon.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/salary/wali.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Bo cot rieng `Sap xep` de table khong bi dai them.
+- Dua nut len/xuong vao ngay trong cot `Nhan vien`, nam canh ten/avatar.
+- Giu `click.stop` de bam sap xep khong mo modal edit.
+
+**Root cause:**  
+- Cot sap xep rieng chiem dien tich va lam UI bang luong rong/roi hon.
+
+**Validation:**  
+- Da chay `php artisan view:clear` va `php artisan view:cache`.
+
+**Deploy impact:**  
+- Khong doi database. Chi doi Blade UI.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Doi UI sap xep Wali sang kieu co icon `☰`, hover moi hien nut len/xuong.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/salary/wali.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them icon `☰` nho canh ten nhan vien de goi y co the sap xep.
+- Nut `↑ ↓` mac dinh an, chi hien khi hover vao khu vuc ten nhan vien.
+- Giu nguyen `click.stop` de thao tac sap xep khong mo modal edit.
+
+**Validation:**  
+- Da chay `php artisan view:clear` va `php artisan view:cache`.
+
+**Deploy impact:**  
+- Khong doi database. Chi doi Blade UI.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Cho phep cam icon `☰` de keo-tha sap xep nhan vien Wali.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Salary/Wali.php`
+- `resources/views/livewire/pages/salary/wali.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them method `reorderEmployee()` de doi thu tu theo thao tac keo-tha va luu lai `sort_order` theo thu tu moi.
+- Icon `☰` chuyen thanh handle `draggable=true`.
+- Moi dong nhan vien nhan `dragover/drop` va goi Livewire de luu thu tu ngay.
+- Giu nut `↑ ↓` lam fallback khi hover.
+
+**Validation:**  
+- `php -l app/Livewire/Pages/Salary/Wali.php` pass.
+- Da chay `php artisan view:clear` va `php artisan view:cache`.
+
+**Deploy impact:**  
+- Khong them package moi, khong doi database ngoai migration `sort_order` da co truoc do.
+
+**Queue impact:**  
+- Khong co.

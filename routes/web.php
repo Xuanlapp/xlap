@@ -187,6 +187,10 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
         ->middleware('product:ornament-amazon-2')
         ->name('offorest.ornament-amazon-2.workflow.listing-images.status');
 
+    Route::get('ornament-amazon-2/workflow/{asset}/mockups/download', [OrnamentAmazonTwoWorkflowImageController::class, 'downloadMockups'])
+        ->middleware('product:ornament-amazon-2')
+        ->name('offorest.ornament-amazon-2.workflow.mockups.download');
+
     Route::post('ornament-amazon-2/workflow/{asset}/redesign', [OrnamentAmazonTwoWorkflowImageController::class, 'redesign'])
         ->middleware('product:ornament-amazon-2')
         ->name('offorest.ornament-amazon-2.workflow.redesign');

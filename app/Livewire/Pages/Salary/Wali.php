@@ -10,6 +10,7 @@ use App\Models\DataSalaryZhuzhu;
 use App\Models\DataSalaryZhuzhuEmployee;
 use App\Models\DataSalaryZhuzhuPeriod;
 use App\Services\Salary\WaliSalaryCalculator;
+use Illuminate\Support\Facades\DB;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -104,6 +105,86 @@ class Wali extends Component
         ])->to(EditEmployeeSalary::class);
     }
 
+    public function moveEmployee(int $employeeId, string $direction): void
+    {
+        $month = CarbonImmutable::create($this->selectedYear, max($this->selectedMonth, 1), 1)->startOfMonth();
+
+        $rows = DataSalaryZhuzhu::query()
+            ->where('user_id', auth()->id())
+            ->whereDate('salary_month', $month->toDateString())
+            ->orderBy('sort_order')
+            ->orderBy('employee_name')
+            ->orderBy('id')
+            ->get();
+
+        $index = $rows->search(fn (DataSalaryZhuzhu $row) => (int) ($row->employee_id ?? $row->id) === $employeeId);
+
+        if ($index === false) {
+            return;
+        }
+
+        $targetIndex = $direction === 'up' ? $index - 1 : $index + 1;
+
+        if (! isset($rows[$targetIndex])) {
+            return;
+        }
+
+        $current = $rows[$index];
+        $target = $rows[$targetIndex];
+
+        DB::transaction(function () use ($current, $target): void {
+            $currentSort = (int) ($current->sort_order ?? 0);
+            $targetSort = (int) ($target->sort_order ?? 0);
+
+            $current->forceFill(['sort_order' => $targetSort])->save();
+            $target->forceFill(['sort_order' => $currentSort])->save();
+        });
+
+        $this->dispatch('wali-salary-updated', salaryMonth: $this->selectedSalaryMonth())->to(self::class);
+    }
+
+    public function reorderEmployee(int $draggedEmployeeId, int $targetEmployeeId): void
+    {
+        if ($draggedEmployeeId === $targetEmployeeId) {
+            return;
+        }
+
+        $month = CarbonImmutable::create($this->selectedYear, max($this->selectedMonth, 1), 1)->startOfMonth();
+
+        $rows = DataSalaryZhuzhu::query()
+            ->where('user_id', auth()->id())
+            ->whereDate('salary_month', $month->toDateString())
+            ->orderBy('sort_order')
+            ->orderBy('employee_name')
+            ->orderBy('id')
+            ->get();
+
+        $draggedIndex = $rows->search(fn (DataSalaryZhuzhu $row) => (int) ($row->employee_id ?? $row->id) === $draggedEmployeeId);
+        $targetIndex = $rows->search(fn (DataSalaryZhuzhu $row) => (int) ($row->employee_id ?? $row->id) === $targetEmployeeId);
+
+        if ($draggedIndex === false || $targetIndex === false) {
+            return;
+        }
+
+        $draggedRow = $rows->pull($draggedIndex);
+        $rows = $rows->values();
+        $insertIndex = $rows->search(fn (DataSalaryZhuzhu $row) => (int) ($row->employee_id ?? $row->id) === $targetEmployeeId);
+
+        if ($insertIndex === false) {
+            return;
+        }
+
+        $rows->splice($insertIndex, 0, [$draggedRow]);
+
+        DB::transaction(function () use ($rows): void {
+            foreach ($rows->values() as $index => $row) {
+                $row->forceFill(['sort_order' => $index + 1])->save();
+            }
+        });
+
+        $this->dispatch('wali-salary-updated', salaryMonth: $this->selectedSalaryMonth())->to(self::class);
+    }
+
     #[On('wali-salary-updated')]
     public function salaryUpdated(?string $salaryMonth = null): void
     {
@@ -171,6 +252,7 @@ class Wali extends Component
         return DataSalaryZhuzhu::query()
             ->where('user_id', auth()->id())
             ->whereDate('salary_month', $month->toDateString())
+            ->orderBy('sort_order')
             ->orderBy('employee_name')
             ->get(['id', 'employee_id', 'employee_name'])
             ->map(fn (DataSalaryZhuzhu $row) => [
@@ -192,6 +274,7 @@ class Wali extends Component
             ->where('user_id', auth()->id())
             ->whereDate('salary_month', $month->toDateString())
             ->when($this->employeeSearch !== '', fn ($query) => $query->where('employee_name', 'like', '%'.$this->employeeSearch.'%'))
+            ->orderBy('sort_order')
             ->orderBy('employee_name')
             ->get()
             ->keyBy(fn (DataSalaryZhuzhu $row) => (string) ($row->employee_id ?? $row->id));
@@ -229,7 +312,7 @@ class Wali extends Component
         }
 
         return $filteredRows
-            ->sortBy(fn (DataSalaryZhuzhu $row) => mb_strtolower((string) $row->employee_name))
+            ->sortBy(fn (DataSalaryZhuzhu $row) => [(int) ($row->sort_order ?? 0), mb_strtolower((string) $row->employee_name)])
             ->map(fn (DataSalaryZhuzhu $row) => $this->decorateRow($row, $month));
     }
 
