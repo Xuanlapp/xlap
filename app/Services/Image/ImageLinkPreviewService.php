@@ -73,7 +73,7 @@ class ImageLinkPreviewService
         $previewUrl = $url;
 
         if (str_contains($host, 'drive.google.com')) {
-            $previewUrl = $this->googleDrivePreviewUrl($url) ?? $url;
+            return $this->googleDrivePreviewUrl($url) ?? $url;
         }
 
         if (str_contains($host, 'dropbox.com')) {

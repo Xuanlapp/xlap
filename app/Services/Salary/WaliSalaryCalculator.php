@@ -28,7 +28,8 @@ class WaliSalaryCalculator
         $oddPointMoney = $this->oddPointMoney($payrollScore);
         $overLeaveDays = max(0, $leaveDays - $allowedLeaveDays);
         $actualWorkDays = max(0, $standardWorkDays - $leaveDays);
-        $totalSalary = round($baseSalary + $variableSalary);
+        $baseSalaryByWorkDays = $standardWorkDays > 0 ? ($baseSalary / $standardWorkDays) * $actualWorkDays : 0;
+        $totalSalary = round($baseSalaryByWorkDays + $variableSalary);
         $netReceived = round($totalSalary + $oddPointMoney + $commission + $dailyBonus + $supplement + $otherMoney);
 
         return [

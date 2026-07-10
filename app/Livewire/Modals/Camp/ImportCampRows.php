@@ -656,7 +656,7 @@ class ImportCampRows extends Component
             return $this->excelSerialToDate((float) $value);
         }
 
-        foreach (['Y-m-d', 'm/d/Y', 'n/j/Y', 'd/m/Y', 'j/n/Y'] as $format) {
+        foreach (['Y-m-d', 'd/m/Y', 'j/n/Y', 'm/d/Y', 'n/j/Y'] as $format) {
             $date = \DateTime::createFromFormat($format, $value);
 
             if ($date instanceof \DateTime) {

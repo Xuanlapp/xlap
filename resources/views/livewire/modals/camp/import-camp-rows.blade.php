@@ -63,10 +63,10 @@
                         <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
                             <div class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
                                 <div>
-                                    <h3 class="text-sm font-bold text-slate-900">Preview d? li?u s? import</h3>
-                                    <p class="mt-0.5 text-xs text-slate-500">Ki?m tra l?i b?ng n?y tr??c khi b?m Import.</p>
+                                    <h3 class="text-sm font-bold text-slate-900">Preview dữ liệu sau import</h3>
+                                    <p class="mt-0.5 text-xs text-slate-500">Kiểm tra lại bảng này trước khi bấm Import.</p>
                                 </div>
-                                <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{{ count($rows) }} d?ng h?p l?</span>
+                                <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{{ count($rows) }} dòng hợp lệ</span>
                             </div>
                             <div class="max-h-[420px] overflow-auto">
                                 <table class="min-w-full divide-y divide-slate-200 text-xs">

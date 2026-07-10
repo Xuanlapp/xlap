@@ -1830,3 +1830,283 @@ Fix import Camp Auto khi `Start Date` trong `.xlsx` duoc Excel luu thanh serial 
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Thong nhat dinh dang ngay Camp import/export theo chuan ngay/thang/nam de `10/07/2026` xuat ra `20260710`.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi thu tu parse ngay trong import Camp: uu tien `d/m/Y`, `j/n/Y` truoc `m/d/Y`, `n/j/Y`.
+- Giu export Camp Auto dang `Ymd`, nen DB date `2026-07-10` se xuat thanh `20260710`.
+
+**Root cause:**  
+- Chuoi ngay co dau `/` nhu `09/01/2026`/`10/07/2026` truoc do bi uu tien doc theo kieu thang/ngay/nam, lam dau ra bi lech logic ngay thang.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Camp/ImportCampRows.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+- Check nhanh `10/07/2026` parse thanh `2026-07-10`, export Auto se thanh `20260710`.
+
+**Deploy impact:**  
+- Khong doi database. Can deploy code va clear view/cache neu production dang cache.
+
+**Queue impact:**  
+- Khong co.
+
+**Follow-up notes:**  
+- Neu file Excel luu Start Date bang serial number thi serial `46213` moi la `2026-07-10`; serial `46031` la ngay khac theo Excel 1900 date system, nen can dam bao file nguon that su luu dung ngay.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Thong nhat dinh dang ngay cho ca Camp Auto va Camp Keyword.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `app/Services/Camp/CampKeywordExportService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Import ca 2 tab Camp nay uu tien parse ngay chuoi theo `dd/mm/yyyy`.
+- Export Camp Keyword doi `Start Date` tu `Y-m-d` sang `Ymd` de dong bo voi Camp Auto.
+- Ket qua: ngay nhap `10/07/2026` se luu thanh `2026-07-10`, export ra `20260710` cho ca Auto va Keyword.
+
+**Root cause:**  
+- Import dang uu tien `m/d/Y`, con export Keyword lai dung format khac Auto, nen 2 tab khong dong bo.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Camp/ImportCampRows.php` pass.
+- `php -l app/Services/Camp/CampKeywordExportService.php` pass.
+- `php -l app/Services/Camp/CampAutoExportService.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Giam hien tuong chopup/chop chop anh o 4. Person A/B va 6. Mockup cua Ornament Amazon 2.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/ornament-amazon-two/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Bo `wire:key` phu thuoc vao hash URL/hinh anh o block Person A/B.
+- Bo `wire:key` phu thuoc vao hash images/states o block Mockup B5.
+- Dung key on dinh theo `asset id`/`person key` de Livewire khong remount ca block moi lan URL anh/state doi.
+
+**Root cause:**  
+- `wire:key` dang gan theo `md5(url)` va `md5(images/state)`, nen moi lan cap nhat anh hoac state, Livewire xem nhu node moi va mount lai Alpine/img -> gay nhap nhay, reload anh, cam giac chop chop.
+
+**Validation:**  
+- `php -l resources/views/livewire/pages/ornament-amazon-two/product-design-card.blade.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Chot lai cong thuc `Tong luong` Wali theo rule moi nhat cua user.
+
+**File da sua/tao:**  
+- `app/Services/Salary/WaliSalaryCalculator.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- `tong_luong = luong_co_ban / cong_chuan * cong_thuc_te + thuong_ngay`.
+- `bo_sung` va `tien_khac` khong con nam trong `tong_luong`.
+- `thuc_nhan = tong_luong + tien_diem_le + hoa_hong + bo_sung + tien_khac`.
+
+**Validation:**  
+- `php -l app/Services/Salary/WaliSalaryCalculator.php` pass.
+- Test mau: base 10.000.000, cong chuan 24, cong thuc te 17, thuong ngay 100.000 => tong luong 7.183.333.
+- Da chay `php artisan view:clear` va `php artisan view:cache`.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Can bang kich thuoc card 1. Input Image voi 2. Main Image va 3. Script o Ornament Amazon 2.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/ornament-amazon-two/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Dua `aspect-[4/4.45]` vao wrapper card Input Image, cung cau truc voi Main Image/Script.
+- Doi `x-image-preview` ben trong sang `h-full w-full` de anh fill dung khung, giu overlay thong tin san pham trong card.
+
+**Root cause:**  
+- Input Image dat ty le/kieu khung o component con thay vi wrapper card, khac cau truc voi Main Image va Script nen height/position hien thi khong dong deu.
+
+**Validation:**  
+- `php -l resources/views/livewire/pages/ornament-amazon-two/product-design-card.blade.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Tang toc hien thi anh Drive tren Ornament Amazon 2 card va chi reload card khi workflow Auto dang chay.
+
+**File da sua/tao:**  
+- `app/Services/Image/ImageLinkPreviewService.php`
+- `resources/views/livewire/pages/ornament-amazon-two/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Preview Google Drive tra truc tiep URL thumbnail `drive.google.com/thumbnail` thay vi di qua signed preview proxy cua app, bo qua mot request server trung gian.
+- Card Ornament Amazon 2 chi con `wire:poll.5s` khi `workflow_status` la `running`; khi khong Auto dang chay, card khong tu reload nua.
+
+**Root cause:**  
+- Anh Drive truoc do phai qua image preview controller truoc khi browser nhan duoc image, lam tang do tre.
+- Card poll moi 0.5 giay ke ca khi idle lam DOM bi morph/reload lap lai, anh lazy preview de cham hien hoac chop.
+
+**Validation:**  
+- `php -l app/Services/Image/ImageLinkPreviewService.php` pass.
+- `php -l resources/views/livewire/pages/ornament-amazon-two/product-design-card.blade.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database. Trinh duyet can truy cap duoc Google Drive thumbnail cua file da share.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Giam thoi gian load va lag trang Ornament Amazon 2.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/OrnamentAmazonTwo/ProductDesignCard.php`
+- `app/Livewire/Pages/OrnamentAmazonTwo/ListOrnamentAmazonTwo.php`
+- `resources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Card khong con goi `workflowData()` 2 lan trong cung mot render; workflow duoc lay mot lan va truyen sang preview/view.
+- Cache ket qua `Schema::hasTable('sub_product_design_assets')` trong request thay vi check lai tren tung card.
+- Trang list chi mount panel cua tab dang mo; truoc do ca 3 panel `all/unapproved/approved` deu duoc mount du chi an bang Alpine `x-show`.
+- Them `activeStatus` vao Livewire session va dong bo voi localStorage khi user doi tab.
+
+**Root cause:**  
+- 3 status panel va nhieu nested card cung render/query dong thoi, trong khi 2 tab an van tai data. Moi card cung lap lai workflow/schema lookup nen tang request/DB work.
+
+**Validation:**  
+- `php -l app/Livewire/Pages/OrnamentAmazonTwo/ProductDesignCard.php` pass.
+- `php -l app/Livewire/Pages/OrnamentAmazonTwo/ListOrnamentAmazonTwo.php` pass.
+- `php -l resources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Chot cong thuc `Tong luong` Wali theo ban cuoi cung user vua xac nhan.
+
+**File da sua/tao:**  
+- `app/Services/Salary/WaliSalaryCalculator.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- `tong_luong = (luong_co_ban / cong_chuan * cong_thuc_te) + luong_cung_bien_dong`.
+- `thuc_nhan = tong_luong + tien_diem_le + hoa_hong + thuong_ngay + bo_sung + tien_khac`.
+- Khong dung `thuong_ngay` cho cong thuc `tong_luong` nua.
+
+**Validation:**  
+- `php -l app/Services/Salary/WaliSalaryCalculator.php` pass.
+- Test mau: base 10.000.000, cong chuan 24, cong thuc te 17, diem 1820.9 => `luong_cung_bien_dong` 1.480.000, `tong_luong` 8.563.333.
+- Da chay `php artisan view:clear` va `php artisan view:cache`.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Fix loi Livewire `setActiveStatus` khong tim thay khi doi tab Ornament Amazon 2.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/OrnamentAmazonTwo/ListOrnamentAmazonTwo.php`
+- `resources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Parent List component lang nghe event `ornament-amazon-two-active-status-changed` bang `#[On(...)]` va xu ly `setActiveStatus()`.
+- Alpine doi tab dispatch Livewire event toan cuc thay vi goi `this.$wire.setActiveStatus()`.
+
+**Root cause:**  
+- Trong DOM nested Livewire, `$wire` tu Alpine duoc resolve thanh StatusPanel con, component nay khong co public method `setActiveStatus`, gay HTTP 500.
+
+**Validation:**  
+- `php -l app/Livewire/Pages/OrnamentAmazonTwo/ListOrnamentAmazonTwo.php` pass.
+- `php -l resources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Them fallback de tab Ornament Amazon 2 chuyen muot va khong 500 neu request va nham vao StatusPanel con.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/OrnamentAmazonTwo/OrnamentAmazonTwoStatusPanel.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them public method `setActiveStatus()` ngay tren `OrnamentAmazonTwoStatusPanel`.
+- Khi bi goi tren component con, method nay cap nhat `status`, reset page va dispatch event len parent de dong bo active tab.
+- Chay them `php artisan optimize:clear` de production nhan code/view moi ngay, tranh JS/view cache cu.
+
+**Root cause:**  
+- Production van con request Livewire goi `setActiveStatus` vao component con `pages.ornament-amazon-two.ornament-amazon-two-status-panel`; neu component con khong co method nay thi van 500 du parent da co listener.
+
+**Validation:**  
+- `php -l app/Livewire/Pages/OrnamentAmazonTwo/OrnamentAmazonTwoStatusPanel.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+- `php artisan optimize:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.

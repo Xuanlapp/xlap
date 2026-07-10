@@ -715,26 +715,27 @@ class ProductDesignCard extends Component
 
     public function render(): View
     {
-        $asset = app(OrnamentAmazonTwoService::class)->assetForUser(auth()->user(), $this->assetId);
-        $this->appendPreviewUrls($asset);
+        $service = app(OrnamentAmazonTwoService::class);
+        $asset = $service->assetForUser(auth()->user(), $this->assetId);
+        $workflow = $this->workflowData($asset);
+        $this->appendPreviewUrls($asset, $workflow);
 
         return view('livewire.pages.ornament-amazon-two.product-design-card', [
             'asset' => $asset,
-            'automation' => app(OrnamentAmazonTwoService::class)->automationForUser(auth()->user(), $this->assetId),
+            'automation' => $service->automationForUser(auth()->user(), $this->assetId),
             'providerLabel' => config("ai_providers.providers.{$this->providerKey}.label", $this->providerKey ?: 'Default'),
             'imageModel' => $this->imageModel,
             'textModel' => $this->textModel,
-            'workflow' => $this->workflowData($asset),
-            'workflowSlots' => app(OrnamentAmazonTwoService::class)->workflowImageSlots(),
-            'workflowAplusSlots' => app(OrnamentAmazonTwoService::class)->workflowAplusSlots(),
+            'workflow' => $workflow,
+            'workflowSlots' => $service->workflowImageSlots(),
+            'workflowAplusSlots' => $service->workflowAplusSlots(),
         ]);
     }
 
-    private function appendPreviewUrls(ProductDesignAsset $asset): void
+    private function appendPreviewUrls(ProductDesignAsset $asset, array $workflow): void
     {
         $imagePreview = app(ImageLinkPreviewService::class);
 
-        $workflow = $this->workflowData($asset);
         $b2 = is_array($workflow['b2'] ?? null) ? $workflow['b2'] : [];
 
         $asset->setAttribute('image_preview_url', $imagePreview->previewUrl($asset->image_link));
@@ -766,7 +767,11 @@ class ProductDesignCard extends Component
      */
     private function workflowData(ProductDesignAsset $asset): array
     {
-        $workflowRecord = Schema::hasTable('sub_product_design_assets')
+        static $hasWorkflowTable = null;
+
+        $hasWorkflowTable ??= Schema::hasTable('sub_product_design_assets');
+
+        $workflowRecord = $hasWorkflowTable
             ? OrnamentAmazonTwoWorkflow::query()
                 ->where('product_design_asset_id', $asset->id)
                 ->first()

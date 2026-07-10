@@ -1,4 +1,4 @@
-<article wire:poll.5s="refreshWhenUpdated" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+<article @if(($automation?->workflow_status ?? null) === 'running') wire:poll.5s="refreshWhenUpdated" @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     @php
         $automationRunning = (($automation?->workflow_status ?? null) === 'running');
         $automationFailed = (($automation?->workflow_status ?? null) === 'failed');
@@ -154,7 +154,7 @@
                         </span>
                     </div>
                     <p class="mt-1 text-xs font-medium leading-5 text-cyan-900/80">
-                        Vui lòng không tắt trang. Hệ thống đang chạy từng bước và sẽ tự cập nhật khi xong.
+                        Vui lÃ²ng khÃ´ng táº¯t trang. Há»‡ thá»‘ng Ä‘ang cháº¡y tá»«ng bÆ°á»›c vÃ  sáº½ tá»± cáº­p nháº­t khi xong.
                     </p>
 
                     <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
@@ -279,8 +279,8 @@
                 <x-label class="truncate text-xs font-bold uppercase text-slate-600">1. Input Image</x-label>
             </div>
 
-            <div class="relative overflow-hidden rounded-xl">
-                <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="ornament-amazon-2" :keyword="$asset->keyword">
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm ring-1 ring-slate-950/[0.03]">
+                <x-image-preview reviewable class="h-full w-full rounded-none border-0 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="ornament-amazon-2" :keyword="$asset->keyword">
                     <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
                 </x-image-preview>
 
@@ -451,7 +451,7 @@
                         @endphp
 
                         <div
-                            wire:key="ornament-amazon-two-person-{{ $asset->id }}-{{ $personKey }}-{{ md5((string) $refValue) }}-{{ md5((string) $refPreviewValue) }}"
+                            wire:key="ornament-amazon-two-person-{{ $asset->id }}-{{ $personKey }}"
                                 x-data="{
                                     showUrl: false,
                                 personGenerating: @js($automationRunning && $currentAutomationStep === ('person_'.$personKey)),
@@ -897,7 +897,7 @@
         @endonce
 
         <div
-            wire:key="ornament-amazon-two-mockup-b5-{{ $asset->id }}-{{ md5(json_encode($mockupB5Images)) }}-{{ md5(json_encode($mockupBatchStates)) }}-{{ $mockupBatchRunning ? '1' : '0' }}"
+            wire:key="ornament-amazon-two-mockup-b5-{{ $asset->id }}"
             data-ornament-amazon-two-mockup-root
             data-asset-id="{{ $asset->id }}"
             x-on:ornament-amazon-two-preview-mockup-generation-started.window="if (($event.detail?.assetId ?? null) === assetId && ($event.detail?.slot ?? null)) { running = true; setSlotState($event.detail.slot, 'generating'); statusMessage = `Generating ${doneCount}/${targetCount || promptSlots.length}...`; }"

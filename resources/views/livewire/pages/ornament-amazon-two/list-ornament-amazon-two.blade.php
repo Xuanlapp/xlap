@@ -1,10 +1,6 @@
 <div
     x-data="{
-        activeTab: ['all', 'unapproved', 'approved'].includes(localStorage.getItem('ornament-amazon-two.status-filter'))
-            ? localStorage.getItem('ornament-amazon-two.status-filter')
-            : ['pending_review', 'not_started'].includes(localStorage.getItem('ornament-amazon-two.status-filter'))
-                ? 'unapproved'
-            : 'all',
+        activeTab: @js($activeStatus),
         setTab(tab) {
             if (this.activeTab === tab) {
                 return;
@@ -12,10 +8,15 @@
 
             this.activeTab = tab;
             localStorage.setItem('ornament-amazon-two.status-filter', tab);
+            window.Livewire.dispatch('ornament-amazon-two-active-status-changed', { status: tab });
             window.dispatchEvent(new CustomEvent('ornament-amazon-two-tab-changed', { detail: { tab } }));
         }
     }"
     x-init="
+        if (['all', 'unapproved', 'approved'].includes(localStorage.getItem('ornament-amazon-two.status-filter')) && localStorage.getItem('ornament-amazon-two.status-filter') !== activeTab) {
+            setTab(localStorage.getItem('ornament-amazon-two.status-filter'));
+        }
+
         if (! window.__ornamentAmazonTwoBeforeUnloadGuardInstalled) {
             window.__ornamentAmazonTwoBeforeUnloadGuardInstalled = true;
             window.__ornamentAmazonTwoGenerationCount = window.__ornamentAmazonTwoGenerationCount || 0;
@@ -211,27 +212,18 @@
             </div>
         </div>
 
-        <div class="mt-4">
-            @foreach (['all', 'unapproved', 'approved'] as $status)
-                <div
-                    x-show="activeTab === '{{ $status }}'"
-                    x-transition.opacity.duration.150ms
-                    x-cloak
-                    wire:key="ornament-amazon-two-panel-shell-{{ $status }}"
-                >
-                    <livewire:pages.ornament-amazon-two.ornament-amazon-two-status-panel
-                        :status="$status"
-                        :per-page="$perPage"
-                        :active-psd-template-name="$activePsdTemplateName"
-                        :provider-key="$selectedAiProvider"
-                        :image-model="$selectedImageModel"
-                        :text-model="$selectedTextModel"
-                        :status-counts="$statusCounts"
-                        :key="'ornament-amazon-two-status-panel-'.$status.'-'.$perPage.'-'.$selectedAiProvider.'-'.$selectedImageModel.'-'.$selectedTextModel"
-                        lazy
-                    />
-                </div>
-            @endforeach
+        <div class="mt-4" wire:key="ornament-amazon-two-panel-shell-{{ $activeStatus }}">
+            <livewire:pages.ornament-amazon-two.ornament-amazon-two-status-panel
+                :status="$activeStatus"
+                :per-page="$perPage"
+                :active-psd-template-name="$activePsdTemplateName"
+                :provider-key="$selectedAiProvider"
+                :image-model="$selectedImageModel"
+                :text-model="$selectedTextModel"
+                :status-counts="$statusCounts"
+                :key="'ornament-amazon-two-status-panel-'.$activeStatus.'-'.$perPage.'-'.$selectedAiProvider.'-'.$selectedImageModel.'-'.$selectedTextModel"
+                lazy
+            />
         </div>    </div>
 
     <livewire:modals.ornament-amazon-two.add-product-design />

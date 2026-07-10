@@ -63,6 +63,21 @@ class OrnamentAmazonTwoStatusPanel extends Component
     {
         $this->resetPage($this->pageName());
     }
+
+    public function setActiveStatus(string $status): void
+    {
+        if (! in_array($status, self::STATUS_OPTIONS, true)) {
+            return;
+        }
+
+        if ($this->status === $status) {
+            return;
+        }
+
+        $this->status = $status;
+        $this->resetPage($this->pageName());
+        $this->dispatch('ornament-amazon-two-active-status-changed', status: $status);
+    }
     #[On('ornament-amazon-two-tab-changed')]
     public function resetPageWhenTabChanges(string $tab): void
     {
