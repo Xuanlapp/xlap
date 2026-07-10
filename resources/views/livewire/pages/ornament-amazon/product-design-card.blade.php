@@ -1,4 +1,4 @@
-<article wire:poll.5s class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+<article @if(($automation?->status ?? null) === 'running') wire:poll.5s @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
             <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
@@ -173,9 +173,11 @@
                 <x-label class="truncate text-xs font-bold uppercase text-slate-600">1. Input Image</x-label>
             </div>
 
-            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="ornament" :keyword="$asset->keyword">
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm ring-1 ring-slate-950/[0.03]">
+                <x-image-preview reviewable class="h-full w-full rounded-none border-0 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="ornament" :keyword="$asset->keyword">
                 <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
-            </x-image-preview>
+                </x-image-preview>
+            </div>
 
         </div>
 

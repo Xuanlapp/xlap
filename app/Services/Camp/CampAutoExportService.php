@@ -71,27 +71,29 @@ class CampAutoExportService
         foreach ($targetTypes as $targetType) {
             $campaignName = trim($sku.' - Auto '.$targetType.' - '.$startDate);
             $adGroupName = trim($sku.' - Auto - '.$targetType.' - '.$startDate);
+            $campaignState = 'enabled';
+            $adGroupState = 'enabled';
 
             $rows[] = $this->row([
                 'A' => 'Sponsored Products', 'B' => 'Campaign', 'C' => 'Create', 'D' => $campaignName,
-                'E' => $campaignName, 'F' => $startDate, 'G' => 'AUTO', 'H' => 'enabled', 'I' => 'enabled',
+                'E' => $campaignName, 'F' => $startDate, 'G' => 'AUTO', 'H' => $campaignState, 'I' => $campaignState,
                 'J' => $budget, 'K' => $biddingStrategy, 'L' => $portfolioId,
             ]);
 
             $rows[] = $this->row([
                 'A' => 'Sponsored Products', 'B' => 'Bidding Adjustment', 'C' => 'Create', 'D' => $campaignName,
-                'I' => 'enabled', 'K' => $biddingStrategy, 'M' => 'placementProductPage', 'N' => 0,
+                'I' => $campaignState, 'K' => $biddingStrategy, 'M' => 'placementProductPage', 'N' => 0,
             ]);
 
             $rows[] = $this->row([
                 'A' => 'Sponsored Products', 'B' => 'Bidding Adjustment', 'C' => 'Create', 'D' => $campaignName,
-                'I' => 'enabled', 'K' => $biddingStrategy, 'M' => 'placementTop', 'N' => 0,
+                'I' => $campaignState, 'K' => $biddingStrategy, 'M' => 'placementTop', 'N' => 0,
             ]);
 
             $rows[] = $this->row([
                 'A' => 'Sponsored Products', 'B' => 'Ad Group', 'C' => 'Create', 'D' => $campaignName,
-                'H' => 'enabled', 'I' => 'enabled', 'O' => $adGroupName, 'P' => $adGroupName,
-                'Q' => 'enabled', 'R' => $bid,
+                'H' => $campaignState, 'I' => $campaignState, 'O' => $adGroupName, 'P' => $adGroupName,
+                'Q' => $adGroupState, 'R' => $bid,
             ]);
 
             $rows[] = $this->row([
@@ -103,7 +105,7 @@ class CampAutoExportService
             foreach (['close-match', 'loose-match', 'complements', 'substitutes'] as $productTarget) {
                 $rows[] = $this->row([
                     'A' => 'Sponsored Products', 'B' => 'Product Targeting', 'C' => 'Create', 'D' => $campaignName,
-                    'H' => 'paused', 'I' => 'enabled', 'O' => $adGroupName, 'Q' => 'paused', 'U' => '2',
+                    'H' => $productTarget === $targetType ? 'enabled' : 'paused', 'I' => 'enabled', 'O' => $adGroupName, 'Q' => $productTarget === $targetType ? 'enabled' : 'paused', 'U' => $bid,
                     'V' => $productTarget, 'W' => $productTarget,
                 ]);
             }

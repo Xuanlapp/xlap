@@ -53,6 +53,36 @@ class OrnamentAmazonStatusPanel extends Component
         $this->statusCounts = $statusCounts;
     }
 
+    public function updatedPerPage(): void
+    {
+        $this->resetPage($this->pageName());
+    }
+
+    public function setActiveStatus(string $status): void
+    {
+        if (! in_array($status, self::STATUS_OPTIONS, true)) {
+            return;
+        }
+
+        if ($this->status === $status) {
+            return;
+        }
+
+        $this->status = $status;
+        $this->resetPage($this->pageName());
+        $this->dispatch('ornament-amazon-active-status-changed', status: $status);
+    }
+
+    #[On('ornament-amazon-tab-changed')]
+    public function resetPageWhenTabChanges(string $tab): void
+    {
+        if ($tab !== $this->status) {
+            return;
+        }
+
+        $this->resetPage($this->pageName());
+    }
+
     #[On('product-design-created')]
     #[On('ornament-amazon-product-design-approval-updated')]
     #[On('ornament-amazon-product-design-workflow-updated')]

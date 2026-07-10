@@ -31,10 +31,24 @@ class ListOrnamentAmazon extends Component
     #[Session(key: 'ornament.text-model')]
     public ?string $selectedTextModel = null;
 
+    #[Session(key: 'ornament.active-status')]
+    public string $activeStatus = 'all';
+
     public function mount(): void
     {
+        $this->activeStatus = in_array($this->activeStatus, ['all', 'unapproved', 'approved'], true) ? $this->activeStatus : 'all';
         $this->selectedAiProvider = $this->validProviderKey($this->selectedAiProvider);
         $this->syncSelectedModels();
+    }
+
+    #[On('ornament-amazon-active-status-changed')]
+    public function setActiveStatus(string $status): void
+    {
+        if (! in_array($status, ['all', 'unapproved', 'approved'], true)) {
+            return;
+        }
+
+        $this->activeStatus = $status;
     }
 
     #[On('product-design-created')]
@@ -116,6 +130,7 @@ class ListOrnamentAmazon extends Component
             'pageTitle' => $this->pageTitle,
             'pageSubtitle' => $this->pageSubtitle,
             'addButtonLabel' => $this->addButtonLabel,
+            'activeStatus' => $this->activeStatus,
         ])->layout('layouts.app');
     }
 

@@ -67,9 +67,9 @@ class CampKeywordExportService
     {
         $campaignName = (string) $campRow->campaign_name;
         $adGroupName = $campaignName;
-        $startDate = optional($campRow->start_date)?->format('Y-m-d') ?? '';
+        $startDate = optional($campRow->start_date)?->format('Ymd') ?? '';
         $budget = $this->formatPositiveInteger($campRow->campaign_daily_budget);
-        $bid = $campRow->bid;
+        $bid = $campRow->bid !== null ? rtrim(rtrim(number_format((float) $campRow->bid, 2, '.', ''), '0'), '.') : '';
         $portfolioId = $this->normalizePortfolioId((string) ($campRow->portfolio_id ?? ''));
         $sku = (string) ($campRow->sku_target ?? '');
         $matchType = (string) ($campRow->match_type ?: 'exact');
@@ -93,7 +93,7 @@ class CampKeywordExportService
             $this->row([
                 'A' => 'Sponsored Products', 'B' => 'Product Ad', 'C' => 'Create', 'D' => $campaignName, 'E' => $adGroupName,
                 'O' => 'enabled', 'Q' => $sku, 'Y' => 'Percentage', 'AL' => $campaignName, 'AM' => $adGroupName,
-                'AN' => 'paused', 'AP' => 100,
+                'AN' => 'paused', 'AO' => '', 'AP' => 100,
             ]),
         ];
 
@@ -101,7 +101,7 @@ class CampKeywordExportService
             $rows[] = $this->row([
                 'A' => 'Sponsored Products', 'B' => 'Keyword', 'C' => 'Create', 'D' => $campaignName, 'E' => $adGroupName,
                 'O' => 'enabled', 'T' => $bid, 'U' => $keyword, 'V' => $matchType, 'Y' => 'Percentage',
-                'AL' => $campaignName, 'AM' => $adGroupName, 'AN' => 'paused', 'AP' => 100,
+                'AL' => $campaignName, 'AM' => $adGroupName, 'AN' => 'paused', 'AO' => '', 'AP' => 100,
             ]);
         }
 
@@ -250,3 +250,4 @@ class CampKeywordExportService
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>XLAP</dc:creator></cp:coreProperties>';
     }
 }
+

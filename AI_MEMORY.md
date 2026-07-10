@@ -2110,3 +2110,102 @@ Them fallback de tab Ornament Amazon 2 chuyen muot va khong 500 neu request va n
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Dong bo Ornament Amazon theo UX/hieu nang cua Ornament Amazon 2.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/OrnamentAmazon/ListOrnamentAmazon.php`
+- `app/Livewire/Pages/OrnamentAmazon/OrnamentAmazonStatusPanel.php`
+- `resources/views/livewire/pages/ornament-amazon/list-ornament-amazon.blade.php`
+- `resources/views/livewire/pages/ornament-amazon/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them `activeStatus` server-side cho Ornament Amazon, giong Amazon 2.
+- Trang list chi mount panel cua tab dang mo thay vi render ca 3 panel cung luc.
+- Tab switch dung event Livewire + fallback `setActiveStatus()` tren StatusPanel de tranh 500 khi snapshot cu/goi nham component con.
+- Card chi `wire:poll.5s` khi automation dang `running`, giong huong toi uu cua Amazon 2.
+- Input Image card doi sang cung wrapper `aspect-[4/4.45]`/border/shadow nhu Amazon 2.
+
+**Root cause:**  
+- Ornament Amazon con dung luong render/tab cu, tai ca panel an, va poll card ngay ca khi idle nen lag hon Amazon 2.
+
+**Validation:**  
+- `php -l app/Livewire/Pages/OrnamentAmazon/ListOrnamentAmazon.php` pass.
+- `php -l app/Livewire/Pages/OrnamentAmazon/OrnamentAmazonStatusPanel.php` pass.
+- `php -l resources/views/livewire/pages/ornament-amazon/list-ornament-amazon.blade.php` pass.
+- `php -l resources/views/livewire/pages/ornament-amazon/product-design-card.blade.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+**Follow-up notes:**  
+- Hien da dong bo cac diem UX/hieu nang quan trong. Neu can "y choc" hon nua thi tiep theo nen sync sau: banner auto state chi tiet, retry/continue semantics, Person/Mockup anti-flicker keys, va cac route/controller generation truc tiep nhu Amazon 2.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Fix export Camp Auto + Keyword: state dung camp dang chay va Bid phai lay dung tu file nhap.
+
+**File da sua/tao:**  
+- `app/Services/Camp/CampAutoExportService.php`
+- `app/Services/Camp/CampKeywordExportService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Camp Auto: khong con hardcode `Bid = 2` o row `Product Targeting`; gio dung bien `$bid` tu `CampRow` cho ca Ad Group va Product Targeting.
+- Camp Auto: state campaign/ad group/product ad/product targeting nay dong bo theo target dang active. Hien target `close-match` duoc `enabled`, cac target khac `paused`.
+- Camp Keyword: `Bid` duoc normalize tu input (`0.15`, `0,2`, ... -> string xuat ra dung gia tri) thay vi co nguy co sai dinh dang.
+- Camp Keyword: `Campaign State (Informational only)` va `Ad Group State (Informational only)` nay la `enabled` de phan anh dung camp/ad group dang chay.
+- Camp Keyword: `Start Date` xuat `Ymd` cho dong bo luong export camp moi.
+
+**Root cause:**  
+- Auto export con hardcode `U = 2` cho product targeting row va state thong tin chua dung logic camp dang chay. Keyword export chua normalize bid tu input va state thong tin dang de sai.
+
+**Validation:**  
+- `php -l app/Services/Camp/CampAutoExportService.php` pass.
+- `php -l app/Services/Camp/CampKeywordExportService.php` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Sua lai export Camp theo file mau dung `Auto Campaign (1).xlsx` va `Keyword Campaign (2).xlsx`.
+
+**File da sua/tao:**  
+- `app/Services/Camp/CampAutoExportService.php`
+- `app/Services/Camp/CampKeywordExportService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doc file mau Auto Campaign: campaign/ad group/product ad cua moi target campaign (`close-match`, `loose-match`, `substitutes`) deu `State` va `Campaign State`/`Ad Group State` la `enabled`.
+- Trong moi Auto campaign, 4 row `Product Targeting` chi row co `Product Targeting Expression` trung voi target campaign moi `enabled`; 3 row con lai `paused`. `Campaign State (Informational only)` van `enabled`.
+- Auto export giu `Bid` lay tu input cho Ad Group default bid va Product Targeting bid, khong hardcode `2` nua.
+- Doc file mau Keyword: `Campaign State (Informational only)` la `paused`; `Ad Group State (Informational only)` chi co `enabled` tren row Ad Group; Product Ad/Keyword de trong AO, AP = 100.
+- Keyword export giu `Bid` tu input va format date `Ymd`.
+
+**Root cause:**  
+- Lan truoc hieu nham rang target campaign khong active phai paused toan bo. File mau that su tao nhieu campaign enabled, va chi pause/enable tung Product Targeting expression ben trong moi campaign.
+
+**Validation:**  
+- `php -l app/Services/Camp/CampAutoExportService.php` pass.
+- `php -l app/Services/Camp/CampKeywordExportService.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
