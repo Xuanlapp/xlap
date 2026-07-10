@@ -652,8 +652,8 @@ class ImportCampRows extends Component
             return null;
         }
 
-        if (is_numeric($value) && preg_match('/^\d+$/', $value)) {
-            return $this->excelSerialToDate((int) $value);
+        if (is_numeric($value) && preg_match('/^\d+(?:\.\d+)?$/', $value)) {
+            return $this->excelSerialToDate((float) $value);
         }
 
         foreach (['Y-m-d', 'm/d/Y', 'n/j/Y', 'd/m/Y', 'j/n/Y'] as $format) {
@@ -667,14 +667,18 @@ class ImportCampRows extends Component
         return null;
     }
 
-    private function excelSerialToDate(int $serial): ?string
+    private function excelSerialToDate(float $serial): ?string
     {
         if ($serial <= 0) {
             return null;
         }
 
         try {
-            return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($serial)->format('Y-m-d');
+            $wholeDays = (int) floor($serial);
+
+            return (new \DateTimeImmutable('1899-12-30'))
+                ->modify('+'.$wholeDays.' days')
+                ->format('Y-m-d');
         } catch (Throwable) {
             return null;
         }
