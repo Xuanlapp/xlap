@@ -151,6 +151,18 @@ class ListUser extends Component
                 'filename' => 'sticker-import-template.xlsx',
                 'path' => public_path('templates/sticker-import-template.xlsx'),
             ],
+            [
+                'key' => 'camp_keyword',
+                'label' => 'Camp Keyword',
+                'filename' => 'camp-keyword-template.xlsx',
+                'path' => public_path('templates/camp-keyword-template.xlsx'),
+            ],
+            [
+                'key' => 'camp_auto',
+                'label' => 'Camp Auto',
+                'filename' => 'camp-auto-template.xlsx',
+                'path' => public_path('templates/camp-auto-template.xlsx'),
+            ],
         ];
     }
 }

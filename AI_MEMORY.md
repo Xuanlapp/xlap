@@ -1524,3 +1524,221 @@ Cho phep cam icon `☰` de keo-tha sap xep nhan vien Wali.
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Tach luong Camp Auto va Camp Keyword trong UI/import, bo `Match Type` khoi Camp Auto.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Camp/Index.php`
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `resources/views/livewire/modals/camp/import-camp-rows.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Camp Auto khong con hien cot `Match Type` tren table.
+- Camp Auto khong validate/khong require/khong luu `match_type`; khi save auto thi `match_type = null`.
+- Import Camp Auto khong can cot `Match Type`; Import Camp Keyword van can `Campaign Name`, `Keyword`, `Match Type`.
+- Preview import Auto an `Match Type` va modal hien note template rieng cho Auto/Keyword.
+- Nut import doi label theo tab: `Import Camp Keyword` hoac `Import Camp Auto`.
+
+**Root cause:**  
+- Truoc do Camp Auto va Camp Keyword dang dung chung cot/rule `Match Type`, trong khi user can moi tab la mot template va logic rieng.
+
+**Deploy impact:**  
+- Khong doi database. Da chay `php -l` cho `Index.php`, `ImportCampRows.php` va `php artisan view:clear --no-ansi`.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Cap nhat lai cong thuc ngay cong Wali theo rule moi user chot.
+
+**File da sua/tao:**  
+- `app/Services/Salary/WaliSalaryCalculator.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Giu `cong_chuan = so_ngay_trong_thang - so_ngay_duoc_nghi`.
+- Doi `cong_thuc_te = cong_chuan - so_ngay_xin_nghi`.
+- `so_ngay_duoc_nghi` chi de tinh cong chuan, khong bu tru cho `xin_nghi` trong cong thuc te.
+- `nghi_vuot` van tinh rieng de hien thi thong tin.
+
+**Validation:**  
+- `php -l app/Services/Salary/WaliSalaryCalculator.php` pass.
+- Test mau 06/2026: duoc nghi 6, xin nghi 7 => cong chuan 24, cong thuc te 17.
+- Da chay `php artisan view:clear` va `php artisan view:cache`.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Doc mau input/output Camp Auto va lam export/import Auto rieng theo template `Auto Campaign.xlsx`.
+
+**File da sua/tao:**  
+- `app/Models/CampRow.php`
+- `app/Livewire/Pages/Camp/Index.php`
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `app/Services/Camp/CampAutoExportService.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `database/migrations/2026_07_10_140000_add_keyword_negative_to_data_camp_rows_table.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them cot DB `keyword_negative` cho Camp Auto input `Keyword Text Negative`.
+- Tab Auto co them cot `Keyword Text Negative`; tab Keyword khong dung cot nay.
+- Nut export Camp ho tro ca `keyword` va `auto`; Auto dung service rieng `CampAutoExportService`.
+- Import Auto doc template rieng, khong can `Match Type`, co the doc them `Keyword Text Negative`.
+- Export Auto duoc map theo mau `Auto Campaign.xlsx`: moi dong input sinh 3 block campaign (`close-match`, `loose-match`, `substitutes`), moi block gom `Campaign`, 2 dong `Bidding Adjustment`, `Ad Group`, `Product Ad`, 4 dong `Product Targeting` (`close-match`, `loose-match`, `complements`, `substitutes`) va 1 dong trong phan cach.
+
+**Root cause:**  
+- Camp Auto va Camp Keyword co template output khac nhau hoan toan; logic cu dung chung luong Keyword nen khong the map dung file Auto mau.
+
+**Validation:**  
+- `php -l app/Services/Camp/CampAutoExportService.php` pass.
+- `php -l app/Livewire/Pages/Camp/Index.php` pass.
+- `php -l app/Livewire/Modals/Camp/ImportCampRows.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+- `php artisan migrate --no-ansi` da chay them cot `keyword_negative`.
+
+**Deploy impact:**  
+- Can chay migration `2026_07_10_140000_add_keyword_negative_to_data_camp_rows_table.php` tren moi truong deploy.
+
+**Queue impact:**  
+- Khong co.
+
+**Follow-up notes:**  
+- Mau output Auto user dua khong co gia tri thuc te cho `Keyword Text Negative` o file dau ra, nen hien tai cot nay moi duoc luu/input; chua map vao block export vi khong co mau xac dinh de noi chinh xac.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Fix import Camp Auto de doc dung `Bid` dang dau phay thap phan va uu tien cach hieu ngay theo file Excel mau.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them `normalizeDecimal()` de `Bid` dang `0,2` duoc hieu thanh `0.2` truoc khi validate va luu DB.
+- Doi thu tu parse ngay trong `normalizeDate()` de uu tien `m/d/Y`, `n/j/Y` truoc `d/m/Y`, `j/n/Y`; file mau `9/1/2026` se duoc hieu theo kieu Excel Auto user gui.
+
+**Root cause:**  
+- `is_numeric('0,2')` tra ve false nen toan bo dong import Auto bi bao `Bid khong hop le`; ngay dang `9/1/2026` can uu tien parse theo thu tu file mau thay vi logic cu.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Camp/ImportCampRows.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Bo hoan toan cot `Keyword Text Negative` khoi Camp Auto vi user khong can.
+
+**File da sua/tao:**  
+- `app/Models/CampRow.php`
+- `app/Livewire/Pages/Camp/Index.php`
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `resources/views/livewire/pages/camp/index.blade.php`
+- `database/migrations/2026_07_10_140100_drop_keyword_negative_from_data_camp_rows_table.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Xoa `keyword_negative` khoi model fillable, state page, validation, import parser va UI Camp Auto.
+- Xoa cot hien thi `Keyword Text Negative` tren tab Auto.
+- Tao migration cleanup drop cot `keyword_negative` khoi DB hien tai vi cot da tung duoc migrate vao local.
+- Sua nut `Export data` de tab Auto cung bam export duoc, khong con bi khoa boi dieu kien chi cho Keyword.
+
+**Validation:**  
+- `php -l app/Models/CampRow.php` pass.
+- `php -l app/Livewire/Pages/Camp/Index.php` pass.
+- `php -l app/Livewire/Modals/Camp/ImportCampRows.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+- `php artisan migrate --no-ansi` da drop cot `keyword_negative`.
+
+**Deploy impact:**  
+- Can chay migration `2026_07_10_140100_drop_keyword_negative_from_data_camp_rows_table.php` tren moi truong deploy neu da tung co cot `keyword_negative`.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Chan import sai `ID portfolio` khi Excel rut gon khoa hoc mat so chinh xac.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- `normalizePortfolioId()` cua import Camp nay tra ve `null` khi gap scientific notation qua ngan nhu `2.60912E+14` vi khong the khoi phuc so goc `260911546954776`.
+- Import se bao loi ro: `ID portfolio dang bi Excel rut gon, vui long format cot nay thanh Text hoac paste day du so goc.` thay vi tu convert sai thanh `260912000000000`.
+- Neu file `.xlsx` con raw value day du hoac scientific du day du chu so co nghia, import van normalize dung.
+
+**Root cause:**  
+- Khi Excel/CSV chi con hien thi `2.60912E+14`, cac chu so giua/cuoi da mat nen PHP khong the doan lai chinh xac; can chan de tranh luu sai portfolio id.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Camp/ImportCampRows.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-10
+
+**Muc tieu:**  
+Gan template import rieng cho Camp Keyword / Camp Auto va cho admin thay template moi de de doi file mau.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Admin/EditImportTemplate.php`
+- `app/Livewire/Pages/Admin/ListUser.php`
+- `resources/views/livewire/modals/camp/import-camp-rows.blade.php`
+- `resources/views/livewire/pages/admin/list-user.blade.php`
+- `public/templates/camp-keyword-template.xlsx`
+- `public/templates/camp-auto-template.xlsx`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them 2 template key moi trong admin: `camp_keyword` va `camp_auto`.
+- Admin Users > Import Templates gio quan ly duoc ca template Camp Keyword va Camp Auto; click vao row de upload file moi.
+- File moi duoc copy de len `public/templates/` voi ten co dinh (`camp-keyword-template.xlsx`, `camp-auto-template.xlsx`), nen file cu bi ghi de -> khong phinh dung luong.
+- Modal import Camp show link tai template theo tab dang chon; neu chua co file thi bao admin can upload.
+- Bootstrap template tu file local dang co: `Keyword Campaign (2).xlsx` va `Auto Campaign.xlsx`.
+
+**Root cause:**  
+- Camp can 2 template import rieng cho 2 luong Keyword/Auto, va user muon admin tu thay file mau sau nay ma khong giu nhieu file cu.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Admin/EditImportTemplate.php` pass.
+- `php -l app/Livewire/Pages/Admin/ListUser.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+- Verify co file `public/templates/camp-keyword-template.xlsx` va `public/templates/camp-auto-template.xlsx`.
+
+**Deploy impact:**  
+- Khong doi database. Can dam bao thu muc `public/templates/` ghi duoc tren moi truong deploy.
+
+**Queue impact:**  
+- Khong co.
+
+**Follow-up notes:**  
+- 2 path desktop user dua (`C:\Users\Admin\OneDrive\Desktop\camp-keywrok`, `C:\Users\Admin\OneDrive\Desktop\camp-auto`) khong ton tai trong local run nay, nen da bootstrap tu cac file mau trong Downloads/public templates thay the.

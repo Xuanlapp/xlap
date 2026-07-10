@@ -109,6 +109,14 @@ class EditImportTemplate extends Component
                 'label' => 'Sticker template',
                 'filename' => 'sticker-import-template.xlsx',
             ],
+            'camp_keyword' => [
+                'label' => 'Camp Keyword template',
+                'filename' => 'camp-keyword-template.xlsx',
+            ],
+            'camp_auto' => [
+                'label' => 'Camp Auto template',
+                'filename' => 'camp-auto-template.xlsx',
+            ],
         ];
     }
 }

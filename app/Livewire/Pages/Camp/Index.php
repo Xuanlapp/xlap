@@ -7,10 +7,12 @@ use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Index extends Component
 {
+    #[Url(as: 'type', keep: true)]
     public string $selectedType = 'keyword';
 
     /**
@@ -40,11 +42,19 @@ class Index extends Component
 
     public function mount(): void
     {
+        if (! in_array($this->selectedType, ['keyword', 'auto'], true)) {
+            $this->selectedType = 'keyword';
+        }
+
         $this->loadRows();
     }
 
     public function updatedSelectedType(): void
     {
+        if (! in_array($this->selectedType, ['keyword', 'auto'], true)) {
+            $this->selectedType = 'keyword';
+        }
+
         $this->resetErrorBag();
         $this->loadRows();
     }
@@ -87,21 +97,25 @@ class Index extends Component
 
     public function exportData(): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
-        abort_unless($this->selectedType === 'keyword', 404);
+        abort_unless(in_array($this->selectedType, ['keyword', 'auto'], true), 404);
 
         $this->isExporting = true;
 
         try {
             $rows = CampRow::query()
                 ->where('user_id', auth()->id())
-                ->where('camp_type', 'keyword')
+                ->where('camp_type', $this->selectedType)
                 ->orderBy('row_order')
                 ->get();
 
-            $filename = 'camp-keyword-export-'.now()->format('Ymd_His').'.xlsx';
+            $filename = 'camp-'.$this->selectedType.'-export-'.now()->format('Ymd_His').'.xlsx';
             $tempPath = storage_path('app/tmp/'.$filename);
 
-            app(\App\Services\Camp\CampKeywordExportService::class)->create($rows, $tempPath);
+            if ($this->selectedType === 'auto') {
+                app(\App\Services\Camp\CampAutoExportService::class)->create($rows, $tempPath);
+            } else {
+                app(\App\Services\Camp\CampKeywordExportService::class)->create($rows, $tempPath);
+            }
 
             return response()->download($tempPath, $filename, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -198,7 +212,7 @@ class Index extends Component
                 'campaign_name' => (string) ($row->campaign_name ?? ''),
                 'keyword' => (string) ($row->keyword ?? ''),
                 'bidding_strategy' => (string) ($row->bidding_strategy ?? ''),
-                'match_type' => (string) ($row->match_type ?? ''),
+                'match_type' => $this->selectedType === 'keyword' ? (string) ($row->match_type ?? '') : '',
                 'bid' => $row->bid !== null ? rtrim(rtrim(number_format((float) $row->bid, 2, '.', ''), '0'), '.') : '',
                 'sku_target' => (string) ($row->sku_target ?? ''),
                 'portfolio_id' => $this->normalizePortfolioId((string) ($row->portfolio_id ?? '')),
@@ -231,7 +245,7 @@ class Index extends Component
             'campaign_name' => $this->selectedType === 'keyword' ? $this->nullableString($row['campaign_name'] ?? null) : null,
             'keyword' => $this->selectedType === 'keyword' ? $this->nullableString($row['keyword'] ?? null) : null,
             'bidding_strategy' => $this->nullableString($row['bidding_strategy'] ?? null),
-            'match_type' => $this->nullableString($row['match_type'] ?? null),
+            'match_type' => $this->selectedType === 'keyword' ? $this->nullableString($row['match_type'] ?? null) : null,
             'bid' => $this->nullableDecimal($row['bid'] ?? null),
             'sku_target' => $this->nullableString($row['sku_target'] ?? null),
             'portfolio_id' => $this->nullablePortfolioId($row['portfolio_id'] ?? null),
@@ -303,6 +317,10 @@ class Index extends Component
      */
     private function rulesForField(string $field): ?array
     {
+        if ($this->selectedType === 'auto' && in_array($field, ['campaign_name', 'keyword', 'match_type'], true)) {
+            return null;
+        }
+
         return match ($field) {
             'bid' => ['nullable', 'regex:/^\d+(?:\.\d+)?$/'],
             'campaign_daily_budget' => ['nullable', 'regex:/^[1-9]\d*$/'],
@@ -356,7 +374,7 @@ class Index extends Component
      */
     private function rowHasContent(array $row): bool
     {
-        foreach (['campaign_name', 'keyword', 'bidding_strategy', 'match_type', 'bid', 'sku_target', 'portfolio_id', 'campaign_daily_budget', 'start_date'] as $field) {
+        foreach ($this->rowFieldsForCurrentType() as $field) {
             if (trim((string) ($row[$field] ?? '')) !== '') {
                 return true;
             }
@@ -370,9 +388,10 @@ class Index extends Component
      */
     private function rowIsComplete(array $row): bool
     {
-        $requiredFields = ['bidding_strategy', 'match_type', 'bid', 'sku_target', 'portfolio_id', 'campaign_daily_budget', 'start_date'];
+        $requiredFields = ['bidding_strategy', 'bid', 'sku_target', 'portfolio_id', 'campaign_daily_budget', 'start_date'];
 
         if ($this->selectedType === 'keyword') {
+            array_splice($requiredFields, 1, 0, ['match_type']);
             array_unshift($requiredFields, 'campaign_name', 'keyword');
         }
 
@@ -395,7 +414,7 @@ class Index extends Component
             'campaign_name' => '',
             'keyword' => '',
             'bidding_strategy' => $this->biddingStrategies[0] ?? '',
-            'match_type' => $this->matchTypes[0] ?? '',
+            'match_type' => $this->selectedType === 'keyword' ? ($this->matchTypes[0] ?? '') : '',
             'bid' => '',
             'sku_target' => '',
             'portfolio_id' => '',
@@ -407,6 +426,21 @@ class Index extends Component
     private function nextRowOrder(): int
     {
         return (int) CampRow::query()->where('user_id', auth()->id())->where('camp_type', $this->selectedType)->max('row_order') + 1;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function rowFieldsForCurrentType(): array
+    {
+        $fields = ['bidding_strategy', 'bid', 'sku_target', 'portfolio_id', 'campaign_daily_budget', 'start_date'];
+
+        if ($this->selectedType === 'keyword') {
+            array_splice($fields, 1, 0, ['match_type']);
+            array_unshift($fields, 'campaign_name', 'keyword');
+        }
+
+        return $fields;
     }
 
     private function nullableString(mixed $value): ?string

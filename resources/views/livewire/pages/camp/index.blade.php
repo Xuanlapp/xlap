@@ -8,14 +8,14 @@
                     <p class="mt-1 text-sm text-slate-500">Chon tab de lam viec rieng giua Camp Keyword va Camp Auto.</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" wire:click="exportData" wire:loading.attr="disabled" wire:target="exportData" @disabled($selectedType !== 'keyword' || $isExporting) class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50">
+                    <button type="button" wire:click="exportData" wire:loading.attr="disabled" wire:target="exportData" @disabled($isExporting) class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50">
                         <span wire:loading.remove wire:target="exportData">Export data</span>
                         <span wire:loading wire:target="exportData" class="inline-flex items-center gap-2">
                             <svg class="h-4 w-4 animate-spin text-emerald-700" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path></svg>
                             Dang export...
                         </span>
                     </button>
-                    <button type="button" wire:click="$dispatch('openModal', { component: 'modals.camp.import-camp-rows', arguments: { campType: '{{ $selectedType }}' } })" @disabled($hasPersistedRows || $isExporting) class="inline-flex items-center justify-center rounded-lg border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-bold text-cyan-700 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-50">Import Excel/CSV</button>
+                    <button type="button" wire:click="$dispatch('openModal', { component: 'modals.camp.import-camp-rows', arguments: { campType: '{{ $selectedType }}' } })" @disabled($hasPersistedRows || $isExporting) class="inline-flex items-center justify-center rounded-lg border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-bold text-cyan-700 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-50">{{ $selectedType === 'keyword' ? 'Import Camp Keyword' : 'Import Camp Auto' }}</button>
                     <button type="button" wire:click="promptClearAll" @disabled($isExporting) class="inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50">Clear all</button>
                     <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">{{ $isExporting ? 'Dang export data...' : ($hasPersistedRows ? 'Dang co du lieu, muon import hay clear all truoc.' : 'Tab dang trong, ban co the import file.') }}</div>
                 </div>
@@ -36,7 +36,9 @@
                                 <th class="px-4 py-3 text-left font-semibold">Keyword</th>
                             @endif
                             <th class="px-4 py-3 text-left font-semibold">Campaign bidding strategy</th>
-                            <th class="px-4 py-3 text-left font-semibold">Match Type</th>
+                            @if ($selectedType === 'keyword')
+                                <th class="px-4 py-3 text-left font-semibold">Match Type</th>
+                            @endif
                             <th class="px-4 py-3 text-left font-semibold">Bid</th>
                             <th class="px-4 py-3 text-left font-semibold">SKU target</th>
                             <th class="px-4 py-3 text-left font-semibold">ID portfolio</th>
@@ -76,14 +78,16 @@
                                     </select>
                                     @error('rows.'.$index.'.bidding_strategy') <p class="mt-1 text-xs font-semibold text-red-600">Campaign bidding strategy khong hop le</p> @enderror
                                 </td>
-                                <td class="px-2 py-2">
-                                    <select wire:model.live="rows.{{ $index }}.match_type" class="h-10 w-40 rounded-lg bg-white text-sm text-slate-950 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 {{ $matchInvalid ? 'border-red-400 ring-1 ring-red-200 focus:border-red-500 focus:ring-red-300' : 'border-slate-200' }}">
-                                        @foreach ($matchTypes as $matchType)
-                                            <option value="{{ $matchType }}">{{ $matchType }}</option>
-                                        @endforeach
-                                    </select>
-                                    @error('rows.'.$index.'.match_type') <p class="mt-1 text-xs font-semibold text-red-600">Match Type khong hop le</p> @enderror
-                                </td>
+                                @if ($selectedType === 'keyword')
+                                    <td class="px-2 py-2">
+                                        <select wire:model.live="rows.{{ $index }}.match_type" class="h-10 w-40 rounded-lg bg-white text-sm text-slate-950 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 {{ $matchInvalid ? 'border-red-400 ring-1 ring-red-200 focus:border-red-500 focus:ring-red-300' : 'border-slate-200' }}">
+                                            @foreach ($matchTypes as $matchType)
+                                                <option value="{{ $matchType }}">{{ $matchType }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('rows.'.$index.'.match_type') <p class="mt-1 text-xs font-semibold text-red-600">Match Type khong hop le</p> @enderror
+                                    </td>
+                                @endif
                                 <td class="px-2 py-2">
                                     <input wire:model.live="rows.{{ $index }}.bid" type="text" inputmode="decimal" class="h-10 w-28 rounded-lg bg-white text-sm text-slate-950 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 {{ $bidInvalid ? 'border-red-400 ring-1 ring-red-200 focus:border-red-500 focus:ring-red-300' : 'border-slate-200' }}" placeholder="0.3">
                                     @error('rows.'.$index.'.bid') <p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p> @enderror

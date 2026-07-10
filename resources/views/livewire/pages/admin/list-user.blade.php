@@ -103,7 +103,7 @@
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2 class="text-base font-bold text-slate-950">Import Templates</h2>
-                    <p class="mt-1 text-sm text-slate-500">Quan ly file Excel template cho Ornament Amazon va Sticker.</p>
+                    <p class="mt-1 text-sm text-slate-500">Quan ly file Excel template cho Ornament Amazon, Sticker va Camp.</p>
                 </div>
             </div>
 

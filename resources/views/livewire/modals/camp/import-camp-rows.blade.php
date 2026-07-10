@@ -16,6 +16,7 @@
                         <p class="text-xs font-bold uppercase tracking-wide text-cyan-600">Camp Import</p>
                         <h2 class="mt-1 text-xl font-bold">Import Excel / CSV</h2>
                         <p class="mt-1 text-sm text-slate-500">Tab hien tai: {{ $campType === 'keyword' ? 'Camp Keyword' : 'Camp Auto' }}</p>
+                        <p class="mt-1 text-xs text-slate-400">{{ $campType === 'keyword' ? 'Template keyword co Match Type.' : 'Template auto khong dung Match Type.' }}</p>
                     </div>
                     <button type="button" wire:click="close" class="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
@@ -23,6 +24,18 @@
                 </div>
 
                 <div class="max-h-[calc(100vh-13rem)] overflow-y-auto px-6 py-5" wire:loading.class="pointer-events-none opacity-60" wire:target="startImport,importFile">
+                    @php($templateFilename = $campType === 'keyword' ? 'camp-keyword-template.xlsx' : 'camp-auto-template.xlsx')
+                    @php($templatePath = public_path('templates/'.$templateFilename))
+
+                    <div class="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                        <span class="font-semibold">Template {{ $campType === 'keyword' ? 'Camp Keyword' : 'Camp Auto' }}:</span>
+                        @if (\Illuminate\Support\Facades\File::exists($templatePath))
+                            <a href="{{ asset('templates/'.$templateFilename) }}" download="{{ $templateFilename }}" class="font-bold underline decoration-emerald-300 underline-offset-4 hover:text-emerald-900">{{ $templateFilename }}</a>
+                        @else
+                            <span class="font-semibold text-rose-700">Chua co template. Admin can upload trong Admin Users.</span>
+                        @endif
+                    </div>
+
                     <label class="block text-sm font-bold text-slate-900">File</label>
                     <input type="file" wire:model.live="importFile" accept=".xlsx,.xls,.csv,.txt" class="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
                     @error('importFile') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
@@ -58,7 +71,9 @@
                                                 <th class="px-3 py-2 text-left font-semibold">Keyword</th>
                                             @endif
                                             <th class="px-3 py-2 text-left font-semibold">Campaign bidding strategy</th>
-                                            <th class="px-3 py-2 text-left font-semibold">Match Type</th>
+                                            @if ($campType === 'keyword')
+                                                <th class="px-3 py-2 text-left font-semibold">Match Type</th>
+                                            @endif
                                             <th class="px-3 py-2 text-left font-semibold">Bid</th>
                                             <th class="px-3 py-2 text-left font-semibold">SKU target</th>
                                             <th class="px-3 py-2 text-left font-semibold">ID portfolio</th>
@@ -75,7 +90,9 @@
                                                     <td class="px-3 py-2 text-slate-700">{{ $row['keyword'] ?? '-' }}</td>
                                                 @endif
                                                 <td class="px-3 py-2 text-slate-700">{{ $row['bidding_strategy'] ?? '-' }}</td>
-                                                <td class="px-3 py-2 text-slate-700">{{ $row['match_type'] ?? '-' }}</td>
+                                                @if ($campType === 'keyword')
+                                                    <td class="px-3 py-2 text-slate-700">{{ $row['match_type'] ?? '-' }}</td>
+                                                @endif
                                                 <td class="px-3 py-2 text-slate-700">{{ $row['bid'] ?? '-' }}</td>
                                                 <td class="px-3 py-2 text-slate-700">{{ $row['sku_target'] ?? '-' }}</td>
                                                 <td class="px-3 py-2 text-slate-700">{{ $row['portfolio_id'] ?? '-' }}</td>

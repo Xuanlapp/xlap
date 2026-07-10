@@ -181,14 +181,18 @@ class ImportCampRows extends Component
             $campaignName = $this->columnValue($row, $headerIndexes['campaign_name'] ?? null);
             $keyword = $this->columnValue($row, $headerIndexes['keyword'] ?? null);
             $biddingStrategy = $this->columnValue($row, $headerIndexes['bidding_strategy'] ?? null);
-            $matchType = $this->columnValue($row, $headerIndexes['match_type'] ?? null);
+            $matchType = $this->campType === 'keyword'
+                ? $this->columnValue($row, $headerIndexes['match_type'] ?? null)
+                : '';
             $bid = $this->columnValue($row, $headerIndexes['bid'] ?? null);
+            $normalizedBid = $this->normalizeDecimal($bid);
             $skuTarget = $this->columnValue($row, $headerIndexes['sku_target'] ?? null);
-            $portfolioId = $this->normalizePortfolioId($this->columnValue($row, $headerIndexes['portfolio_id'] ?? null));
+            $rawPortfolioId = $this->columnValue($row, $headerIndexes['portfolio_id'] ?? null);
+            $portfolioId = $this->normalizePortfolioId($rawPortfolioId);
             $campaignDailyBudget = $this->columnValue($row, $headerIndexes['campaign_daily_budget'] ?? null);
             $startDate = $this->columnValue($row, $headerIndexes['start_date'] ?? null);
 
-            if (collect([$campaignName, $keyword, $biddingStrategy, $matchType, $bid, $skuTarget, $portfolioId, $campaignDailyBudget, $startDate])->filter()->isEmpty()) {
+            if (collect([$campaignName, $keyword, $biddingStrategy, $bid, $skuTarget, $portfolioId, $campaignDailyBudget, $startDate, $this->campType === 'keyword' ? $matchType : null])->filter()->isEmpty()) {
                 continue;
             }
 
@@ -202,18 +206,23 @@ class ImportCampRows extends Component
                 continue;
             }
 
-            if ($matchType === '' || ! in_array(Str::lower($matchType), ['exact', 'phrase', 'broad'], true)) {
+            if ($this->campType === 'keyword' && ($matchType === '' || ! in_array(Str::lower($matchType), ['exact', 'phrase', 'broad'], true))) {
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Match Type khong hop le.'];
                 continue;
             }
 
-            if ($bid === '' || ! is_numeric($bid)) {
+            if ($normalizedBid === null) {
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Bid khong hop le.'];
                 continue;
             }
 
             if ($campaignDailyBudget === '' || ! preg_match('/^[1-9]\d*$/', $campaignDailyBudget)) {
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Campaign Daily Budget phai la so nguyen duong.'];
+                continue;
+            }
+
+            if ($rawPortfolioId !== '' && $portfolioId === null) {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'ID portfolio dang bi Excel rut gon, vui long format cot nay thanh Text hoac paste day du so goc.'];
                 continue;
             }
 
@@ -233,8 +242,8 @@ class ImportCampRows extends Component
                 'campaign_name' => $this->campType === 'keyword' ? $campaignName : null,
                 'keyword' => $this->campType === 'keyword' ? $keyword : null,
                 'bidding_strategy' => $biddingStrategy,
-                'match_type' => Str::lower($matchType),
-                'bid' => (float) str_replace(',', '.', $bid),
+                'match_type' => $this->campType === 'keyword' ? Str::lower($matchType) : null,
+                'bid' => $normalizedBid,
                 'sku_target' => $skuTarget !== '' ? $skuTarget : null,
                 'portfolio_id' => $portfolioId !== '' ? $portfolioId : null,
                 'campaign_daily_budget' => (int) $campaignDailyBudget,
@@ -458,7 +467,7 @@ class ImportCampRows extends Component
                 $indexes['bidding_strategy'] = $index;
             }
 
-            if (in_array($normalized, ['match type', 'match'], true)) {
+            if ($this->campType === 'keyword' && in_array($normalized, ['match type', 'match'], true)) {
                 $indexes['match_type'] = $index;
             }
 
@@ -495,7 +504,6 @@ class ImportCampRows extends Component
     {
         $requiredColumns = [
             'bidding_strategy' => 'Campaign bidding strategy',
-            'match_type' => 'Match Type',
             'bid' => 'Bid',
             'sku_target' => 'SKU target',
             'portfolio_id' => 'ID portfolio',
@@ -507,6 +515,7 @@ class ImportCampRows extends Component
             $requiredColumns = [
                 'campaign_name' => 'Campaign Name',
                 'keyword' => 'Keyword',
+                'match_type' => 'Match Type',
                 ...$requiredColumns,
             ];
         }
@@ -540,7 +549,7 @@ class ImportCampRows extends Component
         return trim((string) ($row[$index] ?? ''));
     }
 
-    private function normalizePortfolioId(string $value): string
+    private function normalizePortfolioId(string $value): ?string
     {
         $value = trim($value);
 
@@ -557,6 +566,10 @@ class ImportCampRows extends Component
         $exponent = (int) $matches[3];
         $digits = ltrim($integer.$fraction, '0');
 
+        if (strlen($digits) < 12) {
+            return null;
+        }
+
         if ($digits === '') {
             return '0';
         }
@@ -570,6 +583,19 @@ class ImportCampRows extends Component
         return substr($digits, 0, $zeros).'.'.substr($digits, $zeros);
     }
 
+    private function normalizeDecimal(string $value): ?float
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $normalized = str_replace(',', '.', $value);
+
+        return is_numeric($normalized) ? (float) $normalized : null;
+    }
+
     private function normalizeDate(string $value): ?string
     {
         $value = trim($value);
@@ -578,7 +604,7 @@ class ImportCampRows extends Component
             return null;
         }
 
-        foreach (['Y-m-d', 'd/m/Y', 'j/n/Y', 'm/d/Y', 'n/j/Y'] as $format) {
+        foreach (['Y-m-d', 'm/d/Y', 'n/j/Y', 'd/m/Y', 'j/n/Y'] as $format) {
             $date = \DateTime::createFromFormat($format, $value);
 
             if ($date instanceof \DateTime) {
