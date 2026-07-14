@@ -27,7 +27,7 @@ class PsdMockupRenderer
             throw new RuntimeException('Chua cau hinh PSD renderer. Can set PSD_MOCKUP_RENDERER_COMMAND de render layer Design.');
         }
 
-        $outputDirectory = storage_path("app/public/generated/ornament-etsy/mockups/{$assetId}");
+        $outputDirectory = storage_path("app/public/generated/suncatcher-etsy/mockups/{$assetId}");
         File::ensureDirectoryExists($outputDirectory);
         $this->clearPngFiles($outputDirectory);
 
@@ -84,7 +84,7 @@ class PsdMockupRenderer
             return collect($outputs)
                 ->map(fn (mixed $path): string => (string) $path)
                 ->filter(fn (string $path): bool => str_starts_with(realpath($path) ?: '', realpath($outputDirectory) ?: ''))
-                ->map(fn (string $path): string => '/storage/generated/ornament-etsy/mockups/'.$assetId.'/'.basename($path))
+                ->map(fn (string $path): string => '/storage/generated/suncatcher-etsy/mockups/'.$assetId.'/'.basename($path))
                 ->take(10)
                 ->values()
                 ->all();
@@ -95,7 +95,7 @@ class PsdMockupRenderer
             ->sortBy(fn (\SplFileInfo $file): int => (int) preg_replace('/\D+/', '', $file->getFilename()))
             ->values()
             ->take(10)
-            ->map(fn (\SplFileInfo $file): string => '/storage/generated/ornament-etsy/mockups/'.$assetId.'/'.$file->getFilename())
+            ->map(fn (\SplFileInfo $file): string => '/storage/generated/suncatcher-etsy/mockups/'.$assetId.'/'.$file->getFilename())
             ->all();
     }
 

@@ -1,5 +1,5 @@
-﻿if (! window.ornamentAmazonTwoMockupB5) {
-    window.ornamentAmazonTwoMockupB5 = function (config) {
+if (! window.suncatcherAmazonTwoMockupB5) {
+    window.suncatcherAmazonTwoMockupB5 = function (config) {
         return {
             slots: config.slots || [],
             promptSlots: config.promptSlots || [],
@@ -108,7 +108,7 @@
                     title: `MOCKUP ${this.slotNumber(slot)}`,
                     gallery: this.gallery(),
                     currentIndex: this.galleryIndex(slot),
-                    action: 'ornament-amazon-two-custom-image',
+                    action: 'suncatcher-two-custom-image',
                     productSlug: 'ornament-amazon-2',
                     assetId: config.assetId,
                     keyword: config.keyword,
@@ -183,7 +183,7 @@
                     }
                 });
 
-                window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-started'));
+                window.dispatchEvent(new CustomEvent('suncatcher-two-generation-started'));
 
                 try {
                     try {
@@ -209,7 +209,7 @@
                         : `Done ${this.doneCount}/${this.targetCount}, ${this.errorCount} failed`;
                 } finally {
                     this.running = false;
-                    window.dispatchEvent(new CustomEvent('ornament-amazon-two-generation-finished'));
+                    window.dispatchEvent(new CustomEvent('suncatcher-two-generation-finished'));
                 }
             },
 

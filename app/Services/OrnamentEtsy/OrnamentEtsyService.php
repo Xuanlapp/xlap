@@ -155,7 +155,7 @@ class OrnamentEtsyService
                 user: $user,
                 imageUri: $asset->image_link,
                 prompt: $this->promptContent($user, 1),
-                folder: 'generated/ornament-etsy/redesign',
+                folder: 'generated/suncatcher-etsy/redesign',
                 removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
             ),
         );
@@ -177,21 +177,21 @@ class OrnamentEtsyService
             user: $user,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 2),
-            folder: 'generated/ornament-etsy/final',
+            folder: 'generated/suncatcher-etsy/final',
         );
 
         $lifestyle2 = $this->generator->generate(
             user: $user,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 3),
-            folder: 'generated/ornament-etsy/final',
+            folder: 'generated/suncatcher-etsy/final',
         );
 
         $lifestyle3 = $this->generator->generate(
             user: $user,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 4),
-            folder: 'generated/ornament-etsy/final',
+            folder: 'generated/suncatcher-etsy/final',
         );
 
         return $this->assets->updateLifestyleImages($asset, $lifestyle1, $lifestyle2, $lifestyle3);

@@ -872,7 +872,7 @@
         },
 
         requiredKeywordForSlug(slug) {
-            return slug === 'ornament-amazon' ? 'ornament' : slug;
+            return slug === 'suncatcher' ? 'ornament' : slug;
         },
 
         targetProductName(slug) {

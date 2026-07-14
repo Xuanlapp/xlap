@@ -103,7 +103,7 @@
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2 class="text-base font-bold text-slate-950">Import Templates</h2>
-                    <p class="mt-1 text-sm text-slate-500">Quan ly file Excel template cho Ornament Amazon, Sticker va Camp.</p>
+                    <p class="mt-1 text-sm text-slate-500">Quan ly file Excel template cho Suncatcher, Sticker va Camp.</p>
                 </div>
             </div>
 
@@ -178,7 +178,7 @@
                                 class="cursor-pointer transition hover:bg-cyan-50"
                             >
                                 <td class="px-5 py-4">
-                                    <p class="font-semibold text-slate-950">{{ $product->name }}</p>
+                                    <p class="font-semibold text-slate-950">{{ $product->display_name }}</p>
                                     <p class="mt-1 text-xs text-slate-400">{{ $product->slug }}</p>
                                 </td>
                                 <td class="px-5 py-4 text-center">
@@ -224,7 +224,7 @@
                             <th class="px-5 py-4 text-center font-medium">AI provider</th>
                             <th class="px-5 py-4 text-center font-medium">Listing</th>
                             @foreach ($products as $product)
-                                <th class="px-5 py-4 text-center font-medium">{{ $product->name }}</th>
+                                <th class="px-5 py-4 text-center font-medium">{{ $product->display_name }}</th>
                             @endforeach
                         </tr>
                     </thead>

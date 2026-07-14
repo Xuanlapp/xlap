@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Marketplace;
 use App\Models\DataImportUser;
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
+use App\Models\User;
 use App\Services\Google\GoogleDriveService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -86,6 +87,9 @@ class MarketplaceExports extends Component
     #[Session(key: 'marketplace-export.marketplace')]
     public string $marketplace = 'all';
 
+    #[Session(key: 'marketplace-export.owner-user-id')]
+    public string $selectedOwnerUserId = 'all';
+
     #[Session(key: 'marketplace-export.per-page')]
     public int $perPage = 20;
 
@@ -114,6 +118,13 @@ class MarketplaceExports extends Component
     public function updatedMarketplace(string $marketplace): void
     {
         $this->marketplace = in_array($marketplace, self::MARKETPLACE_OPTIONS, true) ? $marketplace : 'all';
+        $this->resetPage();
+    }
+
+    public function updatedSelectedOwnerUserId(int|string $userId): void
+    {
+        $this->selectedOwnerUserId = $this->normalizeOwnerUserId($userId);
+        $this->setSelectedIds([]);
         $this->resetPage();
     }
 
@@ -155,10 +166,6 @@ class MarketplaceExports extends Component
     public function openExportToSheet(): void
     {
         $selectedIds = $this->selectedIds();
-
-        if (auth()->user()->isManager()) {
-            $selectedIds = $this->exportableQuery()->whereKey($selectedIds->all())->pluck('id');
-        }
 
         if ($selectedIds->isEmpty()) {
             $this->message = 'Hay chon it nhat 1 item de export len sheet.';
@@ -264,6 +271,8 @@ class MarketplaceExports extends Component
             'allVisibleSelected' => $visibleIds->isNotEmpty() && $visibleIds->diff($selectedIds)->isEmpty(),
             'selectedIds' => $selectedIds->all(),
             'sheetUrl' => $this->ornamentAmazonTwoSheetUrl(),
+            'userOptions' => $this->userOptions(),
+            'selectedOwnerUserId' => $this->selectedOwnerUserId,
         ])->layout('layouts.app');
     }
 
@@ -304,8 +313,7 @@ class MarketplaceExports extends Component
 
     private function exportableQuery(): Builder
     {
-        return $this->readyQuery()
-            ->when(auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()));
+        return $this->readyQuery();
     }
 
     private function readyQuery(): Builder
@@ -335,6 +343,22 @@ class MarketplaceExports extends Component
                 }
             })
             ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()))
+            ->when(auth()->user()->isManager(), function (Builder $query): void {
+                $query->where(function (Builder $query): void {
+                    $query
+                        ->orWhere('user_id', auth()->id())
+                        ->orWhereHas('user', function (Builder $query): void {
+                            $query
+                                ->where('is_admin', false)
+                                ->where(function (Builder $query): void {
+                                    $query
+                                        ->whereNull('role')
+                                        ->orWhere('role', '!=', 'admin');
+                                });
+                        });
+                });
+            })
+            ->when($this->selectedOwnerId() !== null, fn (Builder $query) => $query->where('user_id', $this->selectedOwnerId()))
             ->when($this->marketplace !== 'all', fn (Builder $query) => $this->applyMarketplaceFilter($query, $this->marketplace))
             ->when($this->normalizedSearch() !== null, function (Builder $query): void {
                 $search = $this->normalizedSearch();
@@ -385,6 +409,54 @@ class MarketplaceExports extends Component
             'amazon' => $this->applyMarketplaceFilter((clone $query), 'amazon')->count(),
             'etsy' => $this->applyMarketplaceFilter((clone $query), 'etsy')->count(),
         ];
+    }
+
+
+    private function selectedOwnerId(): ?int
+    {
+        return ctype_digit($this->selectedOwnerUserId) ? (int) $this->selectedOwnerUserId : null;
+    }
+
+    private function normalizeOwnerUserId(int|string $userId): string
+    {
+        $userId = (string) $userId;
+
+        if ($userId === 'all') {
+            return 'all';
+        }
+
+        return $this->userOptions()->contains('id', (int) $userId) ? $userId : 'all';
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function userOptions(): Collection
+    {
+        if (! auth()->user()->is_admin && ! auth()->user()->isManager()) {
+            return collect();
+        }
+
+        return User::query()
+            ->select(['id', 'name', 'email', 'is_admin', 'role'])
+            ->when(auth()->user()->isManager(), function (Builder $query): void {
+                $query->where(function (Builder $query): void {
+                    $query
+                        ->whereKey(auth()->id())
+                        ->orWhere(function (Builder $query): void {
+                            $query
+                                ->where('is_admin', false)
+                                ->where(function (Builder $query): void {
+                                    $query
+                                        ->whereNull('role')
+                                        ->orWhere('role', '!=', 'admin');
+                                });
+                        });
+                });
+            })
+            ->orderBy('name')
+            ->orderBy('email')
+            ->get();
     }
 
     private function applyMarketplaceFilter(Builder $query, string $marketplace): Builder
@@ -777,3 +849,4 @@ class MarketplaceExports extends Component
         return addcslashes($value, '\%_');
     }
 }
+

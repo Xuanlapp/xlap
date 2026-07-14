@@ -2209,3 +2209,406 @@ Sua lai export Camp theo file mau dung `Auto Campaign (1).xlsx` va `Keyword Camp
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-13
+
+**Muc tieu:**  
+Doi ten Ornamental Amazon thanh Suncatcher cho tuong lai mo rong nhieu design tren cung trang.
+
+**File da sua/tao:**  
+- `app/Support/ProductRegistry.php`
+- `app/Livewire/Pages/OrnamentAmazon/ListOrnamentAmazon.php`
+- `routes/web.php`
+- `resources/views/livewire/layout/navigation.blade.php`
+- `resources/views/livewire/pages/ornament-amazon/automation-catalog.blade.php`
+- `app/Livewire/Pages/Admin/ListUser.php`
+- `app/Livewire/Modals/Admin/EditImportTemplate.php`
+- `app/Livewire/Modals/ProductDesign/DeleteIdeaConfirm.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi ten hien thi va label tu `Ornament Amazon` sang `Suncatcher` o registry, navigation, trang catalog, admin template label va modal xoa item.
+- Doi route catalog thanh `suncatcher-catalog` nhung giu route cu `ornament-amazon-catalog` de khong vo link cu.
+- Doi route product page sang slug/route name moi `offorest.products.suncatcher` va `path` `suncatcher` trong registry, dong thoi giu alias cu `ornament-ornament` de an toan.
+- Khong doi data slug trong DB ngay luc nay, chi doi nhan dien/URL va alias route.
+
+**Root cause:**  
+- Ten hien thi cu con rang buoc voi `Ornament Amazon`, trong khi user muon mo rong thanh khu vuc chung cho nhieu design sau nay.
+
+**Validation:**  
+- `php -l app/Support/ProductRegistry.php` pass.
+- `php -l app/Livewire/Pages/OrnamentAmazon/ListOrnamentAmazon.php` pass.
+- `php -l routes/web.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database. Co route alias cu nen link cu van hoat dong.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-13
+
+**Muc tieu:**  
+Port toan bo workflow Ornament Amazon 2 sang Suncatcher nhung giu rieng namespace/data/route.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/OrnamentAmazon/ListOrnamentAmazon.php`
+- `app/Livewire/Pages/OrnamentAmazon/OrnamentAmazonStatusPanel.php`
+- `app/Livewire/Pages/OrnamentAmazon/ProductDesignCard.php`
+- `app/Livewire/Pages/OrnamentAmazon/WorkflowActionButton.php`
+- `app/Http/Controllers/OrnamentAmazonWorkflowImageController.php`
+- `app/Services/OrnamentAmazon/OrnamentAmazonService.php`
+- `resources/views/livewire/pages/ornament-amazon/*`
+- `routes/web.php`
+- `public/js/ornament-amazon-mockup-b5.js`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Sao chep bo flow Amazon 2 sang module Suncatcher/OrnamentAmazon goc.
+- Doi namespace/class/view event/slug sang `ornament` va nhan dien hien thi thanh `Suncatcher`.
+- Them route mockup download cho Suncatcher va giu alias route cu de khong vo link.
+- Tat ca action/nut/step trong UI duoc port theo Amazon 2, nhung backend van tach rieng cho Suncatcher.
+
+**Root cause:**  
+- User muon Suncatcher co day du 6 step va nut bam giong Amazon 2, nhung van can hoat dong lap va du lieu rieng, khong dung chung voi `ornament-amazon-2`.
+
+**Validation:**  
+- `php -l app/Livewire/Pages/OrnamentAmazon/ListOrnamentAmazon.php` pass.
+- `php -l app/Livewire/Pages/OrnamentAmazon/OrnamentAmazonStatusPanel.php` pass.
+- `php -l app/Livewire/Pages/OrnamentAmazon/ProductDesignCard.php` pass.
+- `php -l app/Livewire/Pages/OrnamentAmazon/WorkflowActionButton.php` pass.
+- `php -l app/Http/Controllers/OrnamentAmazonWorkflowImageController.php` pass.
+- `php -l app/Services/OrnamentAmazon/OrnamentAmazonService.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database. Co route alias cu nen link cu van hoat dong.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-13
+
+**Muc tieu:**  
+Fix loi missing Livewire modal sau khi port Amazon 2 workflow sang Suncatcher.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/OrnamentAmazon/ExcelImportOrnament.php`
+- `app/Livewire/Modals/OrnamentAmazon/ImportSheet.php`
+- `app/Livewire/Modals/OrnamentAmazon/EditImportSheet.php`
+- `resources/views/livewire/modals/ornament-amazon/excel-import-ornament.blade.php`
+- `resources/views/livewire/modals/ornament-amazon/import-sheet.blade.php`
+- `resources/views/livewire/modals/ornament-amazon/edit-import-sheet.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Copy 3 modal tu Amazon 2 sang OrnamentAmazon/Suncatcher: import excel, import sheet, edit import sheet.
+- Doi namespace/component/view string tu `ornament-amazon-two` sang `ornament-amazon` de list page mount duoc day du cac modal moi.
+
+**Root cause:**  
+- Khi copy giao dien list/product card tu Amazon 2, page Suncatcher goi cac modal moi ma module cu chua co class/component tuong ung, gay `ComponentNotFoundException`.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/OrnamentAmazon/ExcelImportOrnament.php` pass.
+- `php -l app/Livewire/Modals/OrnamentAmazon/ImportSheet.php` pass.
+- `php -l app/Livewire/Modals/OrnamentAmazon/EditImportSheet.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Khong doi database.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-13
+
+**Muc tieu:**  
+Doi toan bo module Ornament Amazon cu sang Suncatcher, giu nguyen Ornament Amazon 2.
+
+**File da sua/tao:**  
+- `app/Support/ProductRegistry.php`
+- `routes/web.php`
+- `app/Http/Controllers/SuncatcherWorkflowImageController.php`
+- `app/Livewire/Pages/Suncatcher/*`
+- `app/Livewire/Modals/Suncatcher/*`
+- `app/Services/Suncatcher/*`
+- `resources/views/livewire/pages/suncatcher/*`
+- `resources/views/livewire/modals/suncatcher/*`
+- `resources/views/layouts/app.blade.php`
+- `public/js/suncatcher-mockup-b5.js`
+- `database/migrations/2026_07_13_000100_rename_ornament_product_to_suncatcher.php`
+
+**Thay doi chinh:**  
+- Doi product goc tu `ornament` sang `suncatcher` trong registry + route + UI + Livewire + service.
+- Tao route workflow moi cho `/offorest/suncatcher/workflow/*` va giu `ornament-amazon-2` nguyen trang.
+- Them migration doi `products` slug/name/description sang Suncatcher.
+- Chuyen modal import cua Suncatcher sang ten `excel-import-suncatcher`.
+
+**Root cause:**  
+- Module goc van dung ten ornament lan voi Amazon 2, lam route/component/UI khong dong bo.
+
+**Validation:**  
+- `php -l` pass cho cac file chinh.
+- `php artisan route:list --path=suncatcher` pass.
+- `php artisan route:list --path=ornament-amazon-2` van giu nguyen.
+- `php artisan migrate --pretend` hien migration doi slug sang `suncatcher`.
+
+**Deploy impact:**  
+- Can chay migration moi de doi product slug/name.
+- Can `composer dump-autoload`, `php artisan optimize:clear` va restart queue/web.
+
+**Queue impact:**  
+- Queue/workflow Suncatcher se dung queue/prefix moi; can restart worker sau deploy.
+
+**Follow-up:**  
+- Cac file shared voi Amazon 2 van can soi lai neu muon doi tiep label noi dung, vi toi da giu Amazon 2 theo dung yeu cau.
+
+### 2026-07-13
+
+**Muc tieu:**  
+Fix viec page Suncatcher khong hien/quyen user van thay Ornament Amazon trong add/edit user truoc khi chay migration slug moi.
+
+**File da sua/tao:**  
+- `app/Models/User.php`
+- `app/Repositories/Product/ProductRepository.php`
+- `app/Models/Product.php`
+- `app/Services/User/UserAccessService.php`
+- `resources/views/livewire/modals/admin/add-user.blade.php`
+- `resources/views/livewire/modals/admin/edit-user.blade.php`
+- `resources/views/livewire/pages/admin/list-user.blade.php`
+- `resources/views/livewire/layout/navigation.blade.php`
+
+**Thay doi chinh:**  
+- Them tuong thich tam thoi cho slug `suncatcher` map sang ca `ornament` de user mo page duoc ngay ca khi DB chua migrate.
+- Them `display_name` cho product de admin/add/edit user va navigation hien `Suncatcher` thay vi `Ornament Amazon` neu DB van con slug cu.
+- Khi sync quyen product, neu chon Suncatcher thi dong bo ca id `ornament/suncatcher` de tranh mat quyen trong giai doan chuyen doi.
+
+**Root cause:**  
+- Code da doi route/slug sang `suncatcher` nhung DB product/quyen user co the van dang la `ornament`, nen menu va check access lech nhau.
+
+**Validation:**  
+- `php -l app/Models/User.php` pass.
+- `php -l app/Repositories/Product/ProductRepository.php` pass.
+- `php -l app/Models/Product.php` pass.
+- `php -l app/Services/User/UserAccessService.php` pass.
+- `php artisan route:list --path=suncatcher` pass.
+
+**Deploy impact:**  
+- Van nen chay migration `2026_07_13_000100_rename_ornament_product_to_suncatcher.php` de dong bo DB that su.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-13
+
+**Muc tieu:**  
+Fix loi `Route [offorest.products.ornament] not defined` khi vao Suncatcher Catalog.
+
+**File da sua/tao:**  
+- `resources/views/livewire/layout/navigation.blade.php`
+- `app/Livewire/Pages/Suncatcher/AutomationCatalog.php`
+- `app/Services/Suncatcher/SuncatcherAutomationService.php`
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `resources/views/livewire/pages/suncatcher/automation-catalog.blade.php`
+
+**Thay doi chinh:**  
+- Navigation map product slug cu `ornament` sang route slug moi `suncatcher` khi build link/active state.
+- Sua mobile navigation Page/Idea loop bi lech sau rename.
+- Suncatcher Catalog va automation service tiep tuc dung bang chung `data_ornament_amazon`, khong tim `data_suncatcher` nua.
+
+**Root cause:**  
+- DB/quyen user van co product slug `ornament`, layout build route `offorest.products.ornament` trong khi route moi la `offorest.products.suncatcher`.
+
+**Validation:**  
+- `php -l resources/views/livewire/layout/navigation.blade.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+- Khong con reference route dynamic truc tiep toi `offorest.products.ornament` trong navigation.
+
+**Deploy impact:**  
+- Clear view/cache sau deploy.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-13
+
+**Muc tieu:**  
+Fix ParseError `unexpected token endif` trong `resources/views/livewire/layout/navigation.blade.php` sau khi sua route Suncatcher.
+
+**File da sua/tao:**  
+- `resources/views/livewire/layout/navigation.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Xoa `@endif` du trong mobile sidebar.
+- Kiem tra lai can bang Blade `@if/@endif` ve 0.
+- Chay `php artisan view:cache` de compile view thanh cong.
+
+**Root cause:**  
+- Khi sua dynamic route slug `ornament` -> `suncatcher`, block mobile navigation bi chen sai va du mot `@endif`.
+
+**Validation:**  
+- `php -l resources/views/livewire/layout/navigation.blade.php` pass.
+- `php artisan view:cache --no-ansi` pass.
+
+**Deploy impact:**  
+- Can clear/cache view sau deploy.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-13
+
+**Muc tieu:**  
+Fix loi Laravel khong rename duoc compiled view trong `storage/framework/views` gay HTTP 500 dashboard.
+
+**File da sua/tao:**  
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Khong sua code.
+- Go co read-only trong `storage/framework/views`, xoa file `.tmp` bi ket va rebuild view cache.
+
+**Root cause:**  
+- Windows/Laravel bi ket file temp compiled view (`*.tmp`) trong `storage/framework/views`, lam `rename()` bao `Access is denied (code: 5)`.
+
+**Validation:**  
+- `php artisan view:clear --no-ansi` pass.
+- `php artisan view:cache --no-ansi` pass.
+- `php -l app/Models/User.php`, `routes/web.php`, `navigation.blade.php` pass.
+
+**Deploy impact:**  
+- Neu lap lai tren server/local, clear `storage/framework/views/*.tmp` va dam bao web process co quyen ghi folder views.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-14
+
+**Muc tieu:**  
+Doi rule luu marketplace/Amazon metadata theo gioi han moi cua user.
+
+**File da sua/tao:**  
+- `app/Repositories/Product/ProductDesignAssetRepository.php`
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Khi luu metadata vao DB: `title` toi da 199 ky tu va moi tu trong title chi duoc giu toi da 2 lan.
+- `description` doi tu 1999 xuong 199 ky tu de dam bao `< 200`.
+- `bullet_point_1..5` giu 699 ky tu de dam bao `< 700`.
+- `generic_keyword` giu 249 ky tu de dam bao `< 250`.
+- Cap nhat service generate Amazon metadata de lay `description` 199 va `generic_keyword` 249 truoc khi goi repository.
+
+**Root cause:**  
+- Rule cu dang dung description 1999 va title chi cat length, chua loc tu lap qua 2 lan.
+
+**Validation:**  
+- `php -l app/Repositories/Product/ProductDesignAssetRepository.php` pass.
+- `php -l app/Services/Marketplace/MarketplaceListingMetadataService.php` pass.
+
+**Deploy impact:**  
+- Khong doi database. Can deploy code va clear cache neu server dang cache.
+
+**Queue impact:**  
+- Cac job/listing metadata moi se luu theo rule moi. Queue worker can restart de nap code moi.
+
+**Follow-up:**  
+- Chua cat lai du lieu cu trong DB; neu user muon thi can chay script cleanup cac row da ton tai.
+
+### 2026-07-14
+
+**Muc tieu:**  
+Chuan hoa du lieu metadata cu cho `user_id=1`, `product_id=3` de test theo rule moi.
+
+**File da sua/tao:**  
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Chay script one-off cap nhat 257 row trong `product_design_assets` cho `user_id=1`, `product_id=3`.
+- Cat `title` ve toi da 199 ky tu va loai bo tu lap qua 2 lan.
+- Cat `description` ve 199 ky tu.
+- Cat `bullet_point_1..5` ve 699 ky tu.
+- Cat `generic_keyword` ve 249 ky tu.
+- Verify lai: khong con row nao vuot gioi han va khong con title nao co tu lap qua 2 lan.
+
+**Root cause:**  
+- Rule moi da ap vao code nhung du lieu cu trong DB van dang theo rule cu (`description` 1999, v.v.).
+
+**Validation:**  
+- `total=258`, `updated=257`.
+- Max sau khi chuan hoa: `title=199`, `description=199`, `bullet_point_1..5=699`, `generic_keyword=249`.
+- `title_repeat_violations=0`.
+
+**Deploy impact:**  
+- Khong doi schema. Day la data cleanup mot lan tren local DB.
+
+**Queue impact:**  
+- Khong co.
+
+**Follow-up:**  
+- Neu muon ap dung cho product/user khac hoac production, can chay script tuong tu theo filter mong muon.
+
+### 2026-07-14
+
+**Muc tieu:**  
+Them filter chon user cho trang Marketplace Export theo quyen admin/manager.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Marketplace/MarketplaceExports.php`
+- `resources/views/livewire/pages/marketplace/marketplace-exports.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them state session `selectedOwnerUserId` mac dinh `all`.
+- Admin/manager thay dropdown User trong filter Marketplace Export.
+- Admin xem/chon duoc tat ca user.
+- Manager xem/chon duoc tat ca user khong phai admin (`is_admin=false`, `role!='admin'`).
+- Non-admin van chi thay du lieu cua chinh ho nhu cu.
+- Bo gioi han cu khien manager chi export duoc item cua chinh minh.
+- Khi doi user filter thi clear selection va reset page.
+
+**Root cause:**  
+- Marketplace Export truoc do khong co filter user rieng; manager query co the thay nhieu user nhung export sheet lai bi gioi han ve auth user, va manager chua loai admin ro rang.
+
+**Validation:**  
+- `php -l app/Livewire/Pages/Marketplace/MarketplaceExports.php` pass.
+- `php -l resources/views/livewire/pages/marketplace/marketplace-exports.blade.php` pass.
+- `php artisan view:clear` pass.
+
+**Deploy impact:**  
+- Khong doi database. Can deploy code va clear view/cache.
+
+**Queue impact:**  
+- Khong co.
+
+**Follow-up:**  
+- Test UI voi admin va manager de xac nhan manager khong thay admin trong dropdown.
+
+### 2026-07-14
+
+**Muc tieu:**  
+Fix Marketplace Export user filter thieu kha nang manager tu xem chinh minh.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Marketplace/MarketplaceExports.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Dropdown user cho manager van loai admin nhung luon include `auth()->id()` bang `orWhereKey(auth()->id())`.
+- Query du lieu Marketplace Export cua manager cung luon include item cua chinh manager bang `orWhere('user_id', auth()->id())`.
+- Xoa BOM bi PowerShell chen vao file PHP va chay lai syntax check.
+
+**Root cause:**  
+- Filter manager chi dua vao `is_admin=false` va `role!='admin'`; neu account manager co flag/role dac biet thi co the bi loai khoi danh sach va query cua chinh minh.
+
+**Validation:**  
+- `php -l app/Livewire/Pages/Marketplace/MarketplaceExports.php` pass.
+- `php artisan view:clear` pass.
+
+**Deploy impact:**  
+- Khong doi database. Can deploy code va clear view/cache.
+
+**Queue impact:**  
+- Khong co.

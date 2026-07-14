@@ -393,11 +393,14 @@ class ProductDesignAssetRepository
                     return [$field => $value];
                 }
 
+                if ($field === 'title') {
+                    return [$field => $this->normalizeListingTitle($value)];
+                }
+
                 $limit = match ($field) {
-                    'description' => 1999,
+                    'description' => 199,
                     'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5' => 699,
                     'generic_keyword' => 249,
-                    'title' => 199,
                     default => null,
                 };
 
@@ -408,6 +411,32 @@ class ProductDesignAssetRepository
         $asset->update($sanitized);
 
         return $asset->refresh();
+    }
+
+
+    private function normalizeListingTitle(string $value): string
+    {
+        $tokens = preg_split('/\s+/u', trim($value)) ?: [];
+        $counts = [];
+        $filtered = [];
+
+        foreach ($tokens as $token) {
+            $normalized = mb_strtolower(preg_replace('/[^\pL\pN]+/u', '', $token) ?? '');
+
+            if ($normalized === '') {
+                $filtered[] = $token;
+
+                continue;
+            }
+
+            $counts[$normalized] = ($counts[$normalized] ?? 0) + 1;
+
+            if ($counts[$normalized] <= 2) {
+                $filtered[] = $token;
+            }
+        }
+
+        return mb_substr(trim(preg_replace('/\s+/u', ' ', implode(' ', $filtered)) ?? ''), 0, 199);
     }
 
     /**

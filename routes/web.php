@@ -5,7 +5,7 @@ use App\Http\Controllers\Admin\GoogleDriveOAuthController;
 use App\Http\Controllers\IdeaEtsyExtensionDownloadController;
 use App\Http\Controllers\IdeaAmazonExtensionDownloadController;
 use App\Http\Controllers\ImagePreviewController;
-use App\Http\Controllers\OrnamentAmazonWorkflowImageController;
+use App\Http\Controllers\SuncatcherWorkflowImageController;
 use App\Http\Controllers\OrnamentAmazonTwoWorkflowImageController;
 use App\Http\Controllers\Webhook\TelegramWebhookController;
 use App\Livewire\Pages\Admin\ActivityLogs;
@@ -16,7 +16,7 @@ use App\Livewire\Pages\Dashboard\Index as DashboardIndex;
 use App\Livewire\Pages\Drive\DriveUploads;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
-use App\Livewire\Pages\OrnamentAmazon\AutomationCatalog;
+use App\Livewire\Pages\Suncatcher\AutomationCatalog;
 use App\Livewire\Pages\Salary\Wali;
 use App\Livewire\Modals\Salary\MonthSummary;
 use App\Support\ProductRegistry;
@@ -59,6 +59,7 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
             ->middleware('product:'.$product['slug'])
             ->name($product['route_name']);
     }
+    Route::redirect('ornament-ornament', 'suncatcher');
 
     Route::get('admin/users', ListUser::class)
         ->middleware('admin')
@@ -115,8 +116,9 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
         }
     })->middleware('admin')->name('offorest.admin.debug.listing-metadata.retry');
 
-    Route::get('ornament-amazon-catalog', AutomationCatalog::class)
-        ->name('offorest.ornament-amazon.catalog');
+    Route::get('suncatcher-catalog', AutomationCatalog::class)
+        ->middleware('product:suncatcher')
+        ->name('offorest.suncatcher.catalog');
 
     Route::get('exports', MarketplaceExports::class)
         ->name('offorest.exports');
@@ -155,29 +157,33 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
         ->middleware('product:idea-amazon')
         ->name('offorest.idea-amazon.extension.download');
 
-    Route::post('ornament/workflow/{asset}/listing-images/prepare', [OrnamentAmazonWorkflowImageController::class, 'prepare'])
-        ->middleware('product:ornament')
-        ->name('offorest.ornament.workflow.listing-images.prepare');
+    Route::post('suncatcher/workflow/{asset}/listing-images/prepare', [SuncatcherWorkflowImageController::class, 'prepare'])
+        ->middleware('product:suncatcher')
+        ->name('offorest.suncatcher.workflow.listing-images.prepare');
 
-    Route::get('ornament/workflow/{asset}/listing-images/status', [OrnamentAmazonWorkflowImageController::class, 'status'])
-        ->middleware('product:ornament')
-        ->name('offorest.ornament.workflow.listing-images.status');
+    Route::get('suncatcher/workflow/{asset}/listing-images/status', [SuncatcherWorkflowImageController::class, 'status'])
+        ->middleware('product:suncatcher')
+        ->name('offorest.suncatcher.workflow.listing-images.status');
 
-    Route::post('ornament/workflow/{asset}/redesign', [OrnamentAmazonWorkflowImageController::class, 'redesign'])
-        ->middleware('product:ornament')
-        ->name('offorest.ornament.workflow.redesign');
+    Route::get('suncatcher/workflow/{asset}/mockups/download', [SuncatcherWorkflowImageController::class, 'downloadMockups'])
+        ->middleware('product:suncatcher')
+        ->name('offorest.suncatcher.workflow.mockups.download');
 
-    Route::post('ornament/workflow/{asset}/script', [OrnamentAmazonWorkflowImageController::class, 'script'])
-        ->middleware('product:ornament')
-        ->name('offorest.ornament.workflow.script');
+    Route::post('suncatcher/workflow/{asset}/redesign', [SuncatcherWorkflowImageController::class, 'redesign'])
+        ->middleware('product:suncatcher')
+        ->name('offorest.suncatcher.workflow.redesign');
 
-    Route::post('ornament/workflow/{asset}/person/{person}', [OrnamentAmazonWorkflowImageController::class, 'person'])
-        ->middleware('product:ornament')
-        ->name('offorest.ornament.workflow.person');
+    Route::post('suncatcher/workflow/{asset}/script', [SuncatcherWorkflowImageController::class, 'script'])
+        ->middleware('product:suncatcher')
+        ->name('offorest.suncatcher.workflow.script');
 
-    Route::post('ornament/workflow/{asset}/listing-images/{slot}', [OrnamentAmazonWorkflowImageController::class, 'generate'])
-        ->middleware('product:ornament')
-        ->name('offorest.ornament.workflow.listing-images.generate');
+    Route::post('suncatcher/workflow/{asset}/person/{person}', [SuncatcherWorkflowImageController::class, 'person'])
+        ->middleware('product:suncatcher')
+        ->name('offorest.suncatcher.workflow.person');
+
+    Route::post('suncatcher/workflow/{asset}/listing-images/{slot}', [SuncatcherWorkflowImageController::class, 'generate'])
+        ->middleware('product:suncatcher')
+        ->name('offorest.suncatcher.workflow.listing-images.generate');
 
     Route::post('ornament-amazon-2/workflow/{asset}/listing-images/prepare', [OrnamentAmazonTwoWorkflowImageController::class, 'prepare'])
         ->middleware('product:ornament-amazon-2')

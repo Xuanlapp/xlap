@@ -157,13 +157,13 @@ class ReviewImage extends Component
             );
 
             app(ActivityLogService::class)->record(
-                event: 'ornament_amazon_two.preview_mockup_queued',
+                event: 'suncatcher_two.preview_mockup_queued',
                 description: 'User queued one Ornament Amazon 2 mockup from preview.',
                 subject: $asset,
                 properties: ['item_number' => $asset->item_number, 'target' => $this->editTarget, 'slot' => $slot, 'provider' => $this->modalProviderKey],
             );
         } catch (RuntimeException $exception) {
-            $this->reportUserActionError($exception, 'ornament_amazon_two.preview_generate_mockup', [
+            $this->reportUserActionError($exception, 'suncatcher_two.preview_generate_mockup', [
                 'asset_id' => $this->assetId,
                 'target' => $this->editTarget,
                 'slot' => $slot,
@@ -173,7 +173,7 @@ class ReviewImage extends Component
 
             return;
         } catch (Throwable $exception) {
-            $this->reportUserActionError($exception, 'ornament_amazon_two.preview_generate_mockup', [
+            $this->reportUserActionError($exception, 'suncatcher_two.preview_generate_mockup', [
                 'asset_id' => $this->assetId,
                 'target' => $this->editTarget,
                 'slot' => $slot,
@@ -227,13 +227,13 @@ class ReviewImage extends Component
                 );
 
                 app(ActivityLogService::class)->record(
-                    event: 'ornament_amazon_two.preview_image_edit_queued',
+                    event: 'suncatcher_two.preview_image_edit_queued',
                     description: 'User queued an Ornament Amazon 2 preview mockup edit.',
                     subject: $asset,
                     properties: ['item_number' => $asset->item_number, 'target' => $this->editTarget, 'slot' => $slot, 'provider' => $this->modalProviderKey],
                 );
             } catch (RuntimeException $exception) {
-                $this->reportUserActionError($exception, 'ornament_amazon_two.customize_preview_image', [
+                $this->reportUserActionError($exception, 'suncatcher_two.customize_preview_image', [
                     'asset_id' => $this->assetId,
                     'target' => $this->editTarget,
                 ]);
@@ -241,7 +241,7 @@ class ReviewImage extends Component
 
                 return;
             } catch (Throwable $exception) {
-                $this->reportUserActionError($exception, 'ornament_amazon_two.customize_preview_image', [
+                $this->reportUserActionError($exception, 'suncatcher_two.customize_preview_image', [
                     'asset_id' => $this->assetId,
                     'target' => $this->editTarget,
                 ]);
@@ -277,13 +277,13 @@ class ReviewImage extends Component
             );
 
             app(ActivityLogService::class)->record(
-                event: 'ornament_amazon_two.preview_image_customized',
+                event: 'suncatcher_two.preview_image_customized',
                 description: 'User customized an Ornament Amazon 2 preview image.',
                 subject: $asset,
                 properties: ['item_number' => $asset->item_number, 'target' => $this->editTarget, 'provider' => $this->modalProviderKey],
             );
         } catch (RuntimeException $exception) {
-            $this->reportUserActionError($exception, 'ornament_amazon_two.customize_preview_image', [
+            $this->reportUserActionError($exception, 'suncatcher_two.customize_preview_image', [
                 'asset_id' => $this->assetId,
                 'target' => $this->editTarget,
             ]);
@@ -291,7 +291,7 @@ class ReviewImage extends Component
 
             return;
         } catch (Throwable $exception) {
-            $this->reportUserActionError($exception, 'ornament_amazon_two.customize_preview_image', [
+            $this->reportUserActionError($exception, 'suncatcher_two.customize_preview_image', [
                 'asset_id' => $this->assetId,
                 'target' => $this->editTarget,
             ]);

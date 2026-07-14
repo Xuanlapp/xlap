@@ -271,7 +271,22 @@ class ExportToSheet extends Component
             ->whereIn('id', $this->selectedAssetIds)
             ->where('is_approved', true)
             ->whereNotNull('title')
-            ->when(! auth()->user()->is_admin, fn (Builder $query) => $query->where('user_id', auth()->id()))
+            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()))
+            ->when(auth()->user()->isManager(), function (Builder $query): void {
+                $query->where(function (Builder $query): void {
+                    $query
+                        ->orWhere('user_id', auth()->id())
+                        ->orWhereHas('user', function (Builder $query): void {
+                            $query
+                                ->where('is_admin', false)
+                                ->where(function (Builder $query): void {
+                                    $query
+                                        ->whereNull('role')
+                                        ->orWhere('role', '!=', 'admin');
+                                });
+                        });
+                });
+            })
             ->when($this->marketplace === 'amazon', fn (Builder $query) => $this->applyAmazonFilter($query))
             ->orderBy('item_number')
             ->get();

@@ -39,7 +39,7 @@
             </div>
 
             <livewire:modals.image.review-image />
-            <livewire:modals.ornament-amazon.review-image />
+            <livewire:modals.suncatcher.review-image />
             <x-toast />
         </div>
         @livewireScripts

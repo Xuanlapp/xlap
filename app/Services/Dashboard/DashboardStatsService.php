@@ -57,7 +57,7 @@ class DashboardStatsService
     private function visibleProducts(User $viewer, ?User $owner): Collection
     {
         $sortMap = collect(ProductRegistry::all())->pluck('sort_order', 'slug');
-        $pageSlugs = ['ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'proxy'];
+        $pageSlugs = ['suncatcher', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'proxy'];
 
         if ($owner) {
             $products = $owner->products()->where('is_active', true)->whereIn('slug', $pageSlugs)->orderBy('name')->get();

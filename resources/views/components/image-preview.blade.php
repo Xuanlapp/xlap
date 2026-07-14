@@ -1,4 +1,4 @@
-﻿@props([
+@props([
     'src' => null,
     'original' => null,
     'alt' => 'Image preview',
@@ -23,7 +23,7 @@
             <button
                 type="button"
                 x-show="! failed"
-                wire:click="$dispatch('{{ $productSlug === 'ornament' ? 'review-image-ornament' : 'review-image' }}', { src: @js($src), original: @js($original ?: $src), title: @js($alt), assetId: @js($assetId), productSlug: @js($productSlug), keyword: @js($keyword), action: @js($action), editTarget: @js($editTarget), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
+                wire:click="$dispatch('{{ $productSlug === 'suncatcher' ? 'review-image-suncatcher' : 'review-image' }}', { src: @js($src), original: @js($original ?: $src), title: @js($alt), assetId: @js($assetId), productSlug: @js($productSlug), keyword: @js($keyword), action: @js($action), editTarget: @js($editTarget), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
                 class="flex h-full w-full cursor-zoom-in items-center justify-center"
             >
                 <img

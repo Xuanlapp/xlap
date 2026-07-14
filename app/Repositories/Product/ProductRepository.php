@@ -17,9 +17,12 @@ class ProductRepository
 
     public function findActiveBySlug(string $slug): Product
     {
+        $slugs = $slug === 'suncatcher' ? ['suncatcher', 'ornament'] : [$slug];
+
         return Product::query()
-            ->where('slug', $slug)
+            ->whereIn('slug', $slugs)
             ->where('is_active', true)
+            ->orderByRaw("CASE WHEN slug = ? THEN 0 ELSE 1 END", [$slug])
             ->firstOrFail();
     }
 

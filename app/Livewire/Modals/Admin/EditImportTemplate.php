@@ -126,7 +126,7 @@ class EditImportTemplate extends Component
     {
         return [
             'ornament' => [
-                'label' => 'Ornament Amazon template',
+                'label' => 'Suncatcher template',
                 'filename' => 'importamaazonxlsx.xlsx',
             ],
             'sticker' => [

@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Livewire\Pages\OrnamentAmazon\ListOrnamentAmazon;
+use App\Livewire\Pages\Suncatcher\ListSuncatcher;
 use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\Proxy\Index as ProxyPage;
@@ -32,12 +32,12 @@ class ProductRegistry
                 'is_active' => true,
             ],
             [
-                'name' => 'Ornament Amazon',
-                'slug' => 'ornament',
+                'name' => 'Suncatcher',
+                'slug' => 'suncatcher',
                 'description' => 'Create Amazon ornament-ready artwork.',
-                'route_name' => 'offorest.products.ornament',
-                'path' => 'ornament-ornament',
-                'component' => ListOrnamentAmazon::class,
+                'route_name' => 'offorest.products.suncatcher',
+                'path' => 'suncatcher',
+                'component' => ListSuncatcher::class,
                 'sort_order' => 35,
                 'is_active' => true,
             ],

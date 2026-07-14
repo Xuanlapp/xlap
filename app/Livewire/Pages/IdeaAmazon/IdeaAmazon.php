@@ -3,7 +3,7 @@
 namespace App\Livewire\Pages\IdeaAmazon;
 
 use App\Services\Image\ImageLinkPreviewService;
-use App\Services\OrnamentAmazon\OrnamentAmazonService;
+use App\Services\Suncatcher\SuncatcherService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
@@ -29,7 +29,7 @@ class IdeaAmazon extends Component
             'imageLink' => $imageLink,
             'forceKeyword' => $forceKeyword,
         ], [
-            'productSlug' => ['required', 'string', Rule::in(['sticker', 'ornament', 'ornament-etsy', 'ornament-amazon-2'])],
+            'productSlug' => ['required', 'string', Rule::in(['sticker', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'])],
             'keyword' => ['required', 'string', 'max:255'],
             'imageLink' => ['required', 'string', 'max:1000'],
             'forceKeyword' => ['boolean'],
@@ -64,7 +64,7 @@ class IdeaAmazon extends Component
         try {
             match ($validated['productSlug']) {
                 'sticker' => app(StickerService::class)->createAsset($user, $keyword, $validated['imageLink']),
-                'ornament' => app(OrnamentAmazonService::class)->createAsset($user, $keyword, $validated['imageLink']),
+                'suncatcher' => app(SuncatcherService::class)->createAsset($user, $keyword, $validated['imageLink']),
                 'ornament-etsy' => app(OrnamentEtsyService::class)->createAsset($user, $keyword, $validated['imageLink']),
                 'ornament-amazon-2' => app(OrnamentAmazonTwoService::class)->createAsset($user, $keyword, $validated['imageLink']),
             };
@@ -94,7 +94,7 @@ class IdeaAmazon extends Component
         $targetProducts = auth()->user()
             ? auth()->user()
                 ->products()
-                ->whereIn('slug', ['sticker', 'ornament', 'ornament-etsy', 'ornament-amazon-2'])
+                ->whereIn('slug', ['sticker', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'])
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(['products.name', 'products.slug'])

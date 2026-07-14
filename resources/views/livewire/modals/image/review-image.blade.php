@@ -3,7 +3,7 @@
         @php
             $displayOriginalUrl = $original;
             $isOrnamentAmazonTwoPreview = $action === 'ornament-amazon-two-custom-image';
-            $ornamentPreviewPrefix = $isOrnamentAmazonTwoPreview ? 'ornament-amazon-two' : 'ornament-amazon';
+            $ornamentPreviewPrefix = $isOrnamentAmazonTwoPreview ? 'ornament-amazon-two' : 'suncatcher';
             $ornamentGenerateMethod = $isOrnamentAmazonTwoPreview ? 'generateOrnamentAmazonTwoMockupImage' : 'generateOrnamentAmazonMockupImage';
             $ornamentCustomizeMethod = $isOrnamentAmazonTwoPreview ? 'customizeOrnamentAmazonTwoImage' : 'customizeOrnamentAmazonImage';
             $appUrl = rtrim((string) config('app.url'), '/');

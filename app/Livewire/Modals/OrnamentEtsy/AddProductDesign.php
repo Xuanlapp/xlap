@@ -130,7 +130,7 @@ class AddProductDesign extends Component
     private function resolveImageSource(string $imageLink, ?TemporaryUploadedFile $imageUpload): string
     {
         if ($imageUpload) {
-            $path = $imageUpload->storePublicly('generated/ornament-etsy/uploads', 'public');
+            $path = $imageUpload->storePublicly('generated/suncatcher-etsy/uploads', 'public');
 
             return '/storage/'.$path;
         }

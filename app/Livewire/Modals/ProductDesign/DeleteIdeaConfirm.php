@@ -3,8 +3,8 @@
 namespace App\Livewire\Modals\ProductDesign;
 
 use App\Livewire\Concerns\ReportsUserActionErrors;
-use App\Livewire\Pages\OrnamentAmazon\ListOrnamentAmazon;
-use App\Livewire\Pages\OrnamentAmazon\OrnamentAmazonStatusPanel;
+use App\Livewire\Pages\Suncatcher\ListSuncatcher;
+use App\Livewire\Pages\Suncatcher\SuncatcherStatusPanel;
 use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentAmazonTwo\OrnamentAmazonTwoStatusPanel;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
@@ -13,7 +13,7 @@ use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
 use App\Models\ProductDesignAsset;
 use App\Services\Logging\ActivityLogService;
-use App\Services\OrnamentAmazon\OrnamentAmazonService;
+use App\Services\Suncatcher\SuncatcherService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
@@ -51,7 +51,7 @@ class DeleteIdeaConfirm extends Component
         $assetId = (int) ($arguments['assetId'] ?? 0);
         $productSlug = (string) ($arguments['productSlug'] ?? '');
 
-        if ($assetId < 1 || ! in_array($productSlug, ['sticker', 'ornament', 'ornament-etsy', 'ornament-amazon-2'], true)) {
+        if ($assetId < 1 || ! in_array($productSlug, ['sticker', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'], true)) {
             return;
         }
 
@@ -112,7 +112,7 @@ class DeleteIdeaConfirm extends Component
     {
         return match ($this->productSlug) {
             'sticker' => app(StickerService::class)->deleteAsset(auth()->user(), $this->assetId),
-            'ornament' => app(OrnamentAmazonService::class)->deleteAsset(auth()->user(), $this->assetId),
+            'suncatcher' => app(SuncatcherService::class)->deleteAsset(auth()->user(), $this->assetId),
             'ornament-etsy' => app(OrnamentEtsyService::class)->deleteAsset(auth()->user(), $this->assetId),
             'ornament-amazon-2' => app(OrnamentAmazonTwoService::class)->deleteAsset(auth()->user(), $this->assetId),
             default => throw new RuntimeException('Product khong hop le.'),
@@ -123,7 +123,7 @@ class DeleteIdeaConfirm extends Component
     {
         return match ($productSlug) {
             'sticker' => 'Sticker Workspace',
-            'ornament' => 'Ornament Amazon',
+            'suncatcher' => 'Suncatcher',
             'ornament-etsy' => 'Ornament Etsy',
             'ornament-amazon-2' => 'Ornament Amazon 2',
             default => 'trang hien tai',
@@ -134,7 +134,7 @@ class DeleteIdeaConfirm extends Component
     {
         $event = match ($this->productSlug) {
             'sticker' => 'sticker.item_deleted',
-            'ornament' => 'ornament.item_deleted',
+            'suncatcher' => 'suncatcher.item_deleted',
             'ornament-etsy' => 'ornament_etsy.item_deleted',
             'ornament-amazon-2' => 'ornament_amazon_2.item_deleted',
             default => 'product_design.item_deleted',
@@ -152,7 +152,7 @@ class DeleteIdeaConfirm extends Component
     {
         match ($this->productSlug) {
             'sticker' => $this->dispatchStickerEvents(),
-            'ornament' => $this->dispatchOrnamentEvents(),
+            'suncatcher' => $this->dispatchSuncatcherEvents(),
             'ornament-etsy' => $this->dispatchOrnamentEtsyEvents(),
             'ornament-amazon-2' => $this->dispatchOrnamentAmazonTwoEvents(),
             default => null,
@@ -167,12 +167,12 @@ class DeleteIdeaConfirm extends Component
         $this->dispatch('sticker-counts-updated')->to(StickerStatusPanel::class);
     }
 
-    private function dispatchOrnamentEvents(): void
+    private function dispatchSuncatcherEvents(): void
     {
-        $this->dispatch('ornament-amazon-product-design-workflow-updated')->to(ListOrnamentAmazon::class);
-        $this->dispatch('ornament-amazon-product-design-workflow-updated')->to(OrnamentAmazonStatusPanel::class);
-        $this->dispatch('ornament-amazon-product-design-approval-updated')->to(ListOrnamentAmazon::class);
-        $this->dispatch('ornament-amazon-product-design-approval-updated')->to(OrnamentAmazonStatusPanel::class);
+        $this->dispatch('suncatcher-product-design-workflow-updated')->to(ListSuncatcher::class);
+        $this->dispatch('suncatcher-product-design-workflow-updated')->to(SuncatcherStatusPanel::class);
+        $this->dispatch('suncatcher-product-design-approval-updated')->to(ListSuncatcher::class);
+        $this->dispatch('suncatcher-product-design-approval-updated')->to(SuncatcherStatusPanel::class);
     }
 
     private function dispatchOrnamentEtsyEvents(): void

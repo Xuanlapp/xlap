@@ -142,7 +142,7 @@ class ListUser extends Component
         return [
             [
                 'key' => 'ornament',
-                'label' => 'Ornament Amazon',
+                'label' => 'Suncatcher',
                 'filename' => 'importamaazonxlsx.xlsx',
                 'path' => Storage::disk('public')->path('import-templates/importamaazonxlsx.xlsx'),
             ],

@@ -125,6 +125,17 @@
                             placeholder="Search..."
                         >
                     </label>
+                    @if ($currentUser->is_admin || $currentUser->isManager())
+                        <label class="block w-full sm:w-72">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">User</span>
+                            <select wire:model.live="selectedOwnerUserId" class="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950">
+                                <option value="all">Tat ca user</option>
+                                @foreach ($userOptions as $userOption)
+                                    <option value="{{ $userOption->id }}">{{ $userOption->name }} (#{{ $userOption->id }}) - {{ $userOption->email }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    @endif
                     <label class="block w-full sm:w-36">
                         <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Items / page</span>
                         <select wire:model.live="perPage" class="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950">
@@ -207,7 +218,7 @@
                                 ->map(fn ($field) => ['field' => $field, 'url' => $asset->{$field}])
                                 ->filter(fn ($image) => is_string($image['url']) && str_starts_with($image['url'], 'https://drive.google.com/'))
                                 ->values();
-                            $canExportAsset = ! $currentUser->isManager() || (int) $asset->user_id === (int) $currentUser->id;
+                            $canExportAsset = true;
                         @endphp
                         <tr wire:key="marketplace-export-row-{{ $asset->id }}" class="border-b border-slate-200 text-slate-500 transition hover:bg-slate-50">
                             <td class="px-5 py-5 align-middle">

@@ -17,6 +17,10 @@ class Product extends Model
         'auto_remove_background',
     ];
 
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->slug === 'ornament' ? 'Suncatcher' : (string) $this->name;
+    }
     protected function casts(): array
     {
         return [

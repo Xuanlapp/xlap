@@ -60,7 +60,8 @@ new class extends Component
     $activeClass = 'bg-blue-600 text-white shadow-lg shadow-blue-600/18';
     $inactiveClass = 'text-slate-600 hover:bg-slate-100 hover:text-slate-950';
     $iconClass = 'h-5 w-5 shrink-0';
-    $pageProducts = $products->whereIn('slug', ['ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'proxy', 'camp']);
+    $isAdminUser = auth()->user()?->role === 'admin' || (bool) auth()->user()?->is_admin;
+    $pageProducts = $products->whereIn('slug', $isAdminUser ? ['suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'proxy', 'camp'] : ['suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'proxy', 'camp']);
     $ideaProducts = $products->whereIn('slug', ['ytrends', 'idea-etsy', 'idea-amazon']);
     $avatarPalettes = [
         'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600',
@@ -217,9 +218,10 @@ new class extends Component
                     <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Page</p>
                     <div class="mt-2 space-y-1">
                         @foreach ($pageProducts as $product)
-                            @php($isActive = request()->routeIs('offorest.products.'.$product->slug))
+                            @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
+                            @php($isActive = request()->routeIs('offorest.products.'.$productRouteSlug))
                             <a
-                                href="{{ route('offorest.products.'.$product->slug) }}"
+                                href="{{ route('offorest.products.'.$productRouteSlug) }}"
                                 wire:navigate
                                 class="{{ $navItemClass }} {{ $isActive ? $activeClass : $inactiveClass }}"
                             >
@@ -240,7 +242,7 @@ new class extends Component
                                         <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
                                     @endif
                                 </svg>
-                                <span class="truncate">{{ $product->name }}</span>
+                                <span class="truncate">{{ $product->display_name }}</span>
                             </a>
                         @endforeach
                     </div>
@@ -251,10 +253,10 @@ new class extends Component
                         <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Idea</p>
                         <div class="mt-2 space-y-1">
                             @foreach ($ideaProducts as $product)
-                                @php($isActive = request()->routeIs('offorest.products.'.$product->slug))
+                                @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
+                                @php($isActive = request()->routeIs('offorest.products.'.$productRouteSlug))
                                 <a
-                                    href="{{ route('offorest.products.'.$product->slug) }}"
-                                    wire:navigate
+                                    href="{{ route('offorest.products.'.$productRouteSlug) }}"
                                     class="{{ $navItemClass }} {{ $isActive ? $activeClass : $inactiveClass }}"
                                 >
                                     <svg class="{{ $iconClass }} {{ $isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
@@ -269,13 +271,14 @@ new class extends Component
                                             <path d="m15 18 2 2 4-4" />
                                         @endif
                                     </svg>
-                                    <span class="truncate">{{ $product->name }}</span>
+                                    <span class="truncate">{{ $product->display_name }}</span>
                                 </a>
                             @endforeach
                         </div>
                     </div>
                 @endif
 
+                @if ($isAdminUser)
                 <div class="mt-6">
                     <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Catalog</p>
                     <div class="mt-2 space-y-1">
@@ -288,14 +291,14 @@ new class extends Component
                             </svg>
                             <span>Listing</span>
                         </a>
-                        <a href="{{ route('offorest.ornament-amazon.catalog') }}" class="{{ $navItemClass }} {{ request()->routeIs('offorest.ornament-amazon.catalog') ? $activeClass : $inactiveClass }}">
-                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.ornament-amazon.catalog') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                        <a href="{{ route('offorest.suncatcher.catalog') }}" class="{{ $navItemClass }} {{ request()->routeIs('offorest.suncatcher.catalog') ? $activeClass : $inactiveClass }}">
+                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.suncatcher.catalog') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M4 5h16" />
                                 <path d="M4 10h16" />
                                 <path d="M4 15h10" />
                                 <path d="m16 17 2 2 4-4" />
                             </svg>
-                            <span>Ornament Catalog</span>
+                            <span>Suncatcher Catalog</span>
                         </a>
                         <a href="{{ route('offorest.drive-uploads') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.drive-uploads') ? $activeClass : $inactiveClass }}">
                             <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.drive-uploads') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
@@ -316,6 +319,7 @@ new class extends Component
                         </a>
                     </div>
                 </div>
+                @endif
 
                 @if ($canAccessWali)
                 <div class="mt-6">
@@ -430,8 +434,9 @@ new class extends Component
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Page</p>
                         <div class="mt-3 space-y-3">
                             @foreach ($pageProducts as $product)
-                                <a href="{{ route('offorest.products.'.$product->slug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
-                                    <span>{{ $product->name }}</span>
+                                @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
+                                <a href="{{ route('offorest.products.'.$productRouteSlug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
+                                    <span>{{ $product->display_name }}</span>
                                 </a>
                             @endforeach
                         </div>
@@ -442,19 +447,20 @@ new class extends Component
                             <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Idea</p>
                             <div class="mt-3 space-y-3">
                                 @foreach ($ideaProducts as $product)
-                                    <a href="{{ route('offorest.products.'.$product->slug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
-                                        <span>{{ $product->name }}</span>
+                                    @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
+                                    <a href="{{ route('offorest.products.'.$productRouteSlug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
+                                        <span>{{ $product->display_name }}</span>
                                     </a>
                                 @endforeach
                             </div>
                         </div>
                     @endif
-                    @if (! $isWaliOnly)
+                    @if ($isAdminUser)
                     <div class="mt-6 border-t border-slate-200 pt-3">
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Catalog</p>
                         <div class="mt-3 space-y-3">
                             <a href="{{ route('offorest.listing-metadata') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Listing</a>
-                            <a href="{{ route('offorest.ornament-amazon.catalog') }}" x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Ornament Catalog</a>
+                            <a href="{{ route('offorest.suncatcher.catalog') }}" x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Suncatcher Catalog</a>
                             <a href="{{ route('offorest.drive-uploads') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Uploads</a>
                             <a href="{{ route('offorest.exports') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Export</a>
                         </div>

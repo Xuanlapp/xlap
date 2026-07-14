@@ -67,6 +67,10 @@ class User extends Authenticatable
      */
     public function canAccessProduct(string $slug): bool
     {
+        if ($slug === 'suncatcher') {
+            return (bool) ($this->is_admin || $this->role === 'admin');
+        }
+
         if ($this->isManager()) {
             return Product::query()
                 ->where('slug', $slug)
