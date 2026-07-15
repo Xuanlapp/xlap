@@ -283,7 +283,6 @@ new class extends Component
                 <div class="mt-6">
                     <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Catalog</p>
                     <div class="mt-2 space-y-1">
-                        @if ($isAdminUser)
                         <a href="{{ route('offorest.listing-metadata') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.listing-metadata') ? $activeClass : $inactiveClass }}">
                             <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.listing-metadata') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M4 5h16" />
@@ -293,7 +292,6 @@ new class extends Component
                             </svg>
                             <span>Listing</span>
                         </a>
-                        @endif
                         <a href="{{ route('offorest.suncatcher.catalog') }}" class="{{ $navItemClass }} {{ request()->routeIs('offorest.suncatcher.catalog') ? $activeClass : $inactiveClass }}">
                             <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.suncatcher.catalog') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M4 5h16" />
@@ -303,7 +301,6 @@ new class extends Component
                             </svg>
                             <span>Suncatcher Catalog</span>
                         </a>
-                        @if ($isAdminUser)
                         <a href="{{ route('offorest.drive-uploads') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.drive-uploads') ? $activeClass : $inactiveClass }}">
                             <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.drive-uploads') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M12 3v12" />
@@ -321,7 +318,6 @@ new class extends Component
                             </svg>
                             <span>Export</span>
                         </a>
-                        @endif
                     </div>
                 </div>
                 @endif
@@ -464,14 +460,10 @@ new class extends Component
                     <div class="mt-6 border-t border-slate-200 pt-3">
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Catalog</p>
                         <div class="mt-3 space-y-3">
-                            @if ($isAdminUser)
                             <a href="{{ route('offorest.listing-metadata') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Listing</a>
-                            @endif
                             <a href="{{ route('offorest.suncatcher.catalog') }}" x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Suncatcher Catalog</a>
-                            @if ($isAdminUser)
                             <a href="{{ route('offorest.drive-uploads') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Uploads</a>
                             <a href="{{ route('offorest.exports') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Export</a>
-                            @endif
                         </div>
                     </div>
                     @endif
