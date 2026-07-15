@@ -5,7 +5,7 @@
                 <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 md:px-6">
                     <div>
                         <h2 class="text-lg font-semibold tracking-tight text-slate-900">Import Excel</h2>
-                        <p class="mt-1 text-sm text-slate-500">Upload product rows with Link Product, Link Main Image and optional Keyword Phrase.</p>
+                        <p class="mt-1 text-sm text-slate-500">Upload product rows with SKU, Link Product, Link Main Image, Product, Keyword Phrase, and optional Mockup 1-6.</p>
                         <p class="mt-2 text-sm text-slate-600">
                             Template:
                             <a href="{{ asset('templates/importamaazonxlsx.xlsx') }}" download="importamaazonxlsx.xlsx" class="font-semibold text-emerald-600 underline decoration-emerald-200 underline-offset-4 transition hover:text-emerald-700">
@@ -83,6 +83,7 @@
                                             <th class="min-w-[320px] px-4 py-3">Link Main Image</th>
                                             <th class="min-w-[240px] px-4 py-3">Product</th>
                                             <th class="min-w-[240px] px-4 py-3">Keyword Phrase</th>
+                                            <th class="min-w-[260px] px-4 py-3">Mockup 1-6</th>
                                             <th class="px-4 py-3">Status</th>
                                             <th class="px-4 py-3 text-right">Action</th>
                                         </tr>
@@ -96,26 +97,58 @@
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['product_link']) }" class="max-w-[420px] text-xs text-slate-700">
                                                         <a href="{{ $row['product_link'] }}" target="_blank" class="font-medium text-slate-700 hover:text-slate-900 break-all" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : value)"></a>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃ¡Â»Ân' : 'Xem thÃƒÂªm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['main_image']) }" class="max-w-[420px] text-xs text-slate-700">
                                                         <a href="{{ $row['main_image'] }}" target="_blank" class="font-medium text-slate-700 hover:text-slate-900 break-all" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : value)"></a>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃ¡Â»Ân' : 'Xem thÃƒÂªm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['product'] ?? '') }" class="max-w-[280px] text-xs text-slate-700">
                                                         <span class="font-medium break-words" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : (value || '-'))"></span>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃ¡Â»Ân' : 'Xem thÃƒÂªm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['keyword_phrase'] ?? '') }" class="max-w-[280px] text-xs text-slate-700">
                                                         <span class="font-medium break-words" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : (value || '-'))"></span>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃ¡Â»Ân' : 'Xem thÃƒÂªm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
                                                     </div>
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    @php
+                                                        $mockups = collect($row['mockups'] ?? [])
+                                                            ->map(fn ($url) => is_string($url) ? trim($url) : '')
+                                                            ->filter();
+                                                    @endphp
+
+                                                    @if ($mockups->isNotEmpty())
+                                                        <div class="flex max-w-[280px] flex-wrap gap-1.5">
+                                                            @foreach (range(1, 6) as $mockupNumber)
+                                                                @php $mockupUrl = trim((string) data_get($row, 'mockups.mockup'.$mockupNumber, '')); @endphp
+                                                                @if ($mockupUrl !== '')
+                                                                    <a
+                                                                        href="{{ $mockupUrl }}"
+                                                                        target="_blank"
+                                                                        class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100 hover:bg-emerald-100"
+                                                                        title="{{ $mockupUrl }}"
+                                                                    >
+                                                                        M{{ $mockupNumber }}
+                                                                    </a>
+                                                                @else
+                                                                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-400 ring-1 ring-slate-200">
+                                                                        M{{ $mockupNumber }}
+                                                                    </span>
+                                                                @endif
+                                                            @endforeach
+                                                        </div>
+                                                        <p class="mt-1 text-[11px] font-medium text-slate-500">{{ $mockups->count() }}/6 mockup</p>
+                                                    @else
+                                                        <span class="text-xs text-slate-400">No mockup</span>
+                                                    @endif
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $rowStatus === 'false' ? 'bg-rose-50 text-rose-700' : ($rowStatus === 'running' ? 'bg-amber-50 text-amber-700' : ($rowStatus === 'pending' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600')) }}">

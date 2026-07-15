@@ -107,17 +107,18 @@ class OrnamentAmazonTwoService
         int $perPage,
         string $status = 'all',
         string $pageName = 'page',
+        ?string $search = null,
     ): LengthAwarePaginator
     {
-        return $this->assets->paginateForUserAndProduct($user->id, $this->product()->id, $perPage, $status, $pageName);
+        return $this->assets->paginateForUserAndProduct($user->id, $this->product()->id, $perPage, $status, $pageName, $search);
     }
 
     /**
      * @return array{all: int, unapproved: int, approved: int}
      */
-    public function statusCountsForUser(User $user): array
+    public function statusCountsForUser(User $user, ?string $search = null): array
     {
-        return $this->assets->statusCountsForUserAndProduct($user->id, $this->product()->id);
+        return $this->assets->statusCountsForUserAndProduct($user->id, $this->product()->id, $search);
     }
 
     /**
@@ -1394,6 +1395,37 @@ class OrnamentAmazonTwoService
         return $asset;
     }
 
+    /**
+     * @param  array<string, string>  $mockups
+     */
+    public function applyImportedMockups(User $user, int $assetId, array $mockups): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
+
+        $workflow = $this->workflowData($asset);
+        $workflow['images'] = is_array($workflow['images'] ?? null) ? $workflow['images'] : [];
+
+        foreach ($mockups as $column => $url) {
+            if (! is_string($url) || trim($url) === '') {
+                continue;
+            }
+
+            $slot = $this->workflowSlotFromPreviewTarget($column);
+            $workflow['images'][$slot] = array_merge(
+                is_array($workflow['images'][$slot] ?? null) ? $workflow['images'][$slot] : [],
+                [
+                    'url' => trim($url),
+                    'provider' => 'import',
+                    'model' => 'import',
+                    'generated_at' => now()->toIso8601String(),
+                ],
+            );
+        }
+
+        return $this->saveWorkflowData($asset, $workflow);
+    }
+
     public function editWorkflowImage(
         User $user,
         int $assetId,
@@ -1751,6 +1783,10 @@ class OrnamentAmazonTwoService
     public function confirmApproval(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
+
+        if (! filled($asset->redesign)) {
+            throw new RuntimeException('Can co 2. Main Image truoc khi duyet.');
+        }
 
         if (! $this->hasAllWorkflowMockupImages($asset)) {
             throw new RuntimeException('Can du 6/6 mockup trong database truoc khi duyet.');

@@ -46,7 +46,7 @@ class ExcelImportOrnament extends Component
     public bool $isProcessing = false;
 
     /**
-     * @var array<int, array{row: int, product_link: string, main_image: string, keyword: string, keyword_phrase: string, status: string, competitor_listing?: array<string, mixed>}> 
+     * @var array<int, array{row: int, product_link: string, main_image: string, keyword: string, keyword_phrase: string, status: string, competitor_listing?: array<string, mixed>, mockups?: array<string, string>}> 
      */
     public array $rows = [];
 
@@ -165,6 +165,7 @@ class ExcelImportOrnament extends Component
         $this->showErrors = false;
         $this->showRetry = false;
         $this->isProcessing = true;
+        $this->statusMessage = 'Dang import tung dong...';
 
         foreach ($this->rows as &$row) {
             if (($row['status'] ?? 'ready') !== 'false') {
@@ -241,6 +242,15 @@ class ExcelImportOrnament extends Component
             );
 
             $asset->update(['redesign' => $row['main_image']]);
+
+            if (! empty($row['mockups']) && is_array($row['mockups'])) {
+                $mockupCount = collect($row['mockups'])->filter(fn (mixed $url): bool => is_string($url) && trim($url) !== '')->count();
+
+                if ($mockupCount >= 6) {
+                    $service->applyImportedMockups(auth()->user(), $asset->id, $row['mockups']);
+                }
+            }
+
             unset($this->rows[$nextIndex]);
             $this->rows = array_values($this->rows);
             $this->successRows++;
@@ -258,6 +268,7 @@ class ExcelImportOrnament extends Component
 
         $processed = $this->successRows + $this->failedRows;
         $this->progress = $this->totalRows > 0 ? min(99, 30 + (int) round(($processed / $this->totalRows) * 60)) : 90;
+        usleep(250000);
 
         if (! collect($this->rows)->contains(fn (array $row): bool => in_array(($row['status'] ?? 'ready'), ['pending', 'ready'], true))) {
             $this->finishImportCycle();
@@ -316,6 +327,13 @@ class ExcelImportOrnament extends Component
             $keywordPhrase = isset($headerIndexes['keyword_phrase'])
                 ? trim((string) ($row[$headerIndexes['keyword_phrase']] ?? ''))
                 : '';
+            $mockups = [];
+            for ($mockupNumber = 1; $mockupNumber <= 6; $mockupNumber++) {
+                $columnKey = 'mockup'.$mockupNumber;
+                if (isset($headerIndexes[$columnKey])) {
+                    $mockups[$columnKey] = trim((string) ($row[$headerIndexes[$columnKey]] ?? ''));
+                }
+            }
 
             if ($sku === '' && $productLink === '' && $mainImage === '' && $product === '' && $keywordPhrase === '') {
                 continue;
@@ -363,6 +381,13 @@ class ExcelImportOrnament extends Component
                 continue;
             }
 
+            foreach ($mockups as $mockupKey => $mockupUrl) {
+                if ($mockupUrl !== '' && ! $this->isImageUrl($mockupUrl)) {
+                    $this->rowErrors[] = ['row' => $rowNumber, 'message' => strtoupper($mockupKey).' is invalid.'];
+                    continue 2;
+                }
+            }
+
             $parsedRows[] = [
                 'row' => $rowNumber,
                 'sku' => $sku,
@@ -371,6 +396,7 @@ class ExcelImportOrnament extends Component
                 'product' => $product,
                 'keyword' => $this->keywordFromUrl($productLink),
                 'keyword_phrase' => $keywordPhrase,
+                'mockups' => $mockups,
                 'status' => 'ready',
                 'attempts' => 0,
                 'result_message' => '',
@@ -589,6 +615,25 @@ class ExcelImportOrnament extends Component
             if (in_array($normalized, ['keyword phrase', 'keywordphrase', 'phrase keyword', 'keyword_pharse'], true)) {
                 $indexes['keyword_phrase'] = $index;
             }
+
+            if (in_array($normalized, ['mockup 1', 'mockup1'], true)) {
+                $indexes['mockup1'] = $index;
+            }
+            if (in_array($normalized, ['mockup 2', 'mockup2'], true)) {
+                $indexes['mockup2'] = $index;
+            }
+            if (in_array($normalized, ['mockup 3', 'mockup3'], true)) {
+                $indexes['mockup3'] = $index;
+            }
+            if (in_array($normalized, ['mockup 4', 'mockup4'], true)) {
+                $indexes['mockup4'] = $index;
+            }
+            if (in_array($normalized, ['mockup 5', 'mockup5'], true)) {
+                $indexes['mockup5'] = $index;
+            }
+            if (in_array($normalized, ['mockup 6', 'mockup6'], true)) {
+                $indexes['mockup6'] = $index;
+            }
         }
 
         return isset($indexes['sku'], $indexes['product_link'], $indexes['main_image'], $indexes['product'], $indexes['keyword_phrase']) ? $indexes : [];
@@ -702,5 +747,8 @@ class ExcelImportOrnament extends Component
         $this->setProgress('idle', 0, 'No file selected.');
     }
 }
+
+
+
 
 

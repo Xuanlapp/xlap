@@ -531,7 +531,9 @@ class ProductDesignAssetRepository
     private function applySearch(Builder $query, string $search): Builder
     {
         return $query->where(function (Builder $query) use ($search): void {
-            $query->where('keyword', 'like', '%'.$this->escapeLike($search).'%');
+            $query
+                ->where('keyword', 'like', '%'.$this->escapeLike($search).'%')
+                ->orWhere('sku', 'like', '%'.$this->escapeLike($search).'%');
 
             if (ctype_digit($search)) {
                 $number = (int) $search;

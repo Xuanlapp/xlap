@@ -1,6 +1,7 @@
 <div>
-    <div class="mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex gap-1 overflow-x-auto" role="tablist" aria-label="Loc ornament theo trang thai">
+    <div class="mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex gap-1 overflow-x-auto" role="tablist" aria-label="Loc ornament theo trang thai">
             @foreach ([
                 'all' => 'Tat ca',
                 'unapproved' => 'Chua duyet',
@@ -25,6 +26,18 @@
                     </span>
                 </button>
             @endforeach
+            </div>
+
+            <div class="w-auto lg:max-w-sm">
+                <label class="sr-only" for="ornament-amazon-two-search">Tim theo SKU hoac STT</label>
+                <input
+                    id="ornament-amazon-two-search"
+                    type="text"
+                    wire:model.live.debounce.300ms="search"
+                    placeholder="Nhap SKU hoac STT de loc..."
+                    class="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                >
+            </div>
         </div>
 
         <x-offorest.pagination

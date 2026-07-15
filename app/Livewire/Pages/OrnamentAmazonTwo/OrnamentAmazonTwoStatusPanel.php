@@ -19,6 +19,8 @@ class OrnamentAmazonTwoStatusPanel extends Component
 
     public int $perPage;
 
+    public string $search = '';
+
     public ?string $activePsdTemplateName = null;
 
     public ?string $providerKey = null;
@@ -60,6 +62,11 @@ class OrnamentAmazonTwoStatusPanel extends Component
 
 
     public function updatedPerPage(): void
+    {
+        $this->resetPage($this->pageName());
+    }
+
+    public function updatedSearch(): void
     {
         $this->resetPage($this->pageName());
     }
@@ -123,11 +130,17 @@ class OrnamentAmazonTwoStatusPanel extends Component
 
     public function render(): View
     {
+        $this->statusCounts = app(OrnamentAmazonTwoService::class)->statusCountsForUser(
+            auth()->user(),
+            $this->search,
+        );
+
         $assets = app(OrnamentAmazonTwoService::class)->paginatedAssetsForUser(
             auth()->user(),
             $this->perPage,
             $this->status,
             $this->pageName(),
+            $this->search,
         );
 
         if ($this->hiddenAssetIds !== []) {
