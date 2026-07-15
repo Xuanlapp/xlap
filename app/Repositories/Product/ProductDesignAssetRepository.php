@@ -397,6 +397,8 @@ class ProductDesignAssetRepository
                     return [$field => $this->normalizeListingTitle($value)];
                 }
 
+                $value = $this->removeBlockedListingSymbols($value);
+
                 $limit = match ($field) {
                     'description' => 199,
                     'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5' => 699,
@@ -414,8 +416,17 @@ class ProductDesignAssetRepository
     }
 
 
+    private function removeBlockedListingSymbols(string $value): string
+    {
+        $value = str_replace(["\u{20AC}"], '', $value);
+
+        return preg_replace('/\bperfect\s+gifts?\b/iu', '', $value) ?? $value;
+    }
+
     private function normalizeListingTitle(string $value): string
     {
+        $value = preg_replace('/\b(?:high|premium|top|best)[\s-]+quality\b[\s,;:\-]*/iu', '', $value) ?? $value;
+        $value = $this->removeBlockedListingSymbols($value);
         $tokens = preg_split('/\s+/u', trim($value)) ?: [];
         $counts = [];
         $filtered = [];
