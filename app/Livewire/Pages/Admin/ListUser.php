@@ -141,10 +141,16 @@ class ListUser extends Component
     {
         return [
             [
-                'key' => 'ornament',
+                'key' => 'suncatcher',
                 'label' => 'Suncatcher',
-                'filename' => 'importamaazonxlsx.xlsx',
-                'path' => Storage::disk('public')->path('import-templates/importamaazonxlsx.xlsx'),
+                'filename' => 'suncatcher-import-template.xlsx',
+                'path' => Storage::disk('public')->path('import-templates/suncatcher-import-template.xlsx'),
+            ],
+            [
+                'key' => 'ornament_amazon_two',
+                'label' => 'Ornament Amazon 2',
+                'filename' => 'ornament-amazon-2-import-template.xlsx',
+                'path' => Storage::disk('public')->path('import-templates/ornament-amazon-2-import-template.xlsx'),
             ],
             [
                 'key' => 'sticker',

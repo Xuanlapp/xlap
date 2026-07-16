@@ -1394,6 +1394,38 @@ class SuncatcherService
         return $asset;
     }
 
+
+    /**
+     * @param  array<string, string>  $mockups
+     */
+    public function applyImportedMockups(User $user, int $assetId, array $mockups): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
+
+        $workflow = $this->workflowData($asset);
+        $workflow['images'] = is_array($workflow['images'] ?? null) ? $workflow['images'] : [];
+
+        foreach ($mockups as $column => $url) {
+            if (! is_string($url) || trim($url) === '') {
+                continue;
+            }
+
+            $slot = $this->workflowSlotFromPreviewTarget($column);
+            $workflow['images'][$slot] = array_merge(
+                is_array($workflow['images'][$slot] ?? null) ? $workflow['images'][$slot] : [],
+                [
+                    'url' => trim($url),
+                    'provider' => 'import',
+                    'model' => 'import',
+                    'generated_at' => now()->toIso8601String(),
+                ],
+            );
+        }
+
+        return $this->saveWorkflowData($asset, $workflow);
+    }
+
     public function editWorkflowImage(
         User $user,
         int $assetId,
@@ -2887,13 +2919,13 @@ Required JSON schema:
 
 Prompt rules:
 - Product category: personalized suncatcher / Christmas tree suncatcher / keepsake gift unless competitor data clearly says otherwise.
-- Preserve the source suncatcher shape, material impression, colors, printed artwork, and hanging details.
+- Preserve the source suncatcher shape, material impression, colors, printed artwork.
 - Use a premium Amazon listing style: photoreal product, clean composition, readable English text, no spelling mistakes.
 - USP: lifestyle hero with 3-4 short benefit callouts.
 - BEFORE_AFTER: split transformation, left problem/generic gift, right personalized suncatcher as emotional solution.
 - COMPARISON: compare generic suncatcher vs personalized suncatcher with clear tick/cross rows.
 - FEATURES: show 3-4 concrete features/benefits with clean flat icon callouts.
-- DETAILS: close-up details, material/print/hanging ribbon/size cues.
+- DETAILS: close-up details, material/print/size cues.
 - CUSTOM_GUIDE: 3-panel how-to-customize guide: upload, design/review, receive finished suncatcher.
 - Avoid policy-risk claims: guaranteed, best, #1, lifetime, sale, free shipping, cure, FDA, 100%.
 - Do not mention AI, competitor, prompt, Etsy, Amazon, or policy in the image text.
@@ -3501,7 +3533,7 @@ PROMPT
             $base,
             $sizeRule,
             'TEXT RENDERING RULES: every word must be spelled perfectly. English text only. Use short text, Montserrat or near-identical geometric sans-serif, heavy 700-900, sharp clean corners. No risky claims: guaranteed, #1, best, sale, free shipping, cure, FDA, 100%, lifetime.',
-            'REFERENCE RULES: use the Create Master product lock and Person A/B refs attached at generation time. Preserve product shape, artwork, colors, material, print, hanger, and proportions exactly.',
+            'REFERENCE RULES: use the Create Master product lock and Person A/B refs attached at generation time. Preserve product shape, artwork, colors, material, print,  and proportions exactly.',
             $painColor,
             $style !== '' ? "B1 STYLE TOKENS:\n{$style}" : null,
         ])));
@@ -3766,9 +3798,9 @@ Prompt rules:
 - BEFORE_AFTER: split problem/generic gift versus personalized suncatcher solution.
 - COMPARISON: generic suncatcher vs personalized suncatcher, clear rows with safe wording.
 - FEATURES: 3-4 concrete feature callouts with clean icons.
-- DETAILS: close-up of material, print, hanger, packaging or size cues.
+- DETAILS: close-up of material, print, packaging or size cues.
 - CUSTOM_GUIDE: clean 3-step customization guide: upload, design/review, receive finished suncatcher.
-- Every prompt must say: preserve source suncatcher shape, artwork, colors, material impression, print, hanger, and proportions.
+- Every prompt must say: preserve source suncatcher shape, artwork, colors, material impression, print and proportions.
 - Visible text must be English, short, readable, and typo-resistant.
 - Avoid risky claims and do not mention AI, prompt, competitor, Etsy, Amazon policy, or scraping.
 - Return all 6 prompt keys. Never omit custom_guide.

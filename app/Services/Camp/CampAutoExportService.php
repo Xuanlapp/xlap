@@ -137,7 +137,7 @@ class CampAutoExportService
             foreach ($row as $columnIndex => $value) {
                 $cellRef = $this->columnName($columnIndex + 1).$excelRow;
                 $escaped = htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8');
-                $rowXml .= '<c r="'.$cellRef.'" t="str"><v>'.$escaped.'</v></c>';
+                $rowXml .= '<c r="'.$cellRef.'" t="inlineStr"><is><t>'.$escaped.'</t></is></c>';
             }
             $rowXml .= '</row>';
         }
@@ -176,21 +176,30 @@ class CampAutoExportService
     private function normalizePortfolioId(string $value): string
     {
         $value = trim($value);
+
         if ($value === '') {
             return '';
         }
-        if (! preg_match('/^([+-]?\d+)(?:\.(\d+))?[eE]\+?(\d+)$/', $value, $matches)) {
-            return $value;
+
+        if (preg_match('/^([+-]?\d+)(?:\.(\d+))?[eE]\+?(\d+)$/', $value, $matches)) {
+            $integer = ltrim($matches[1], '+');
+            $fraction = $matches[2] ?? '';
+            $exponent = (int) $matches[3];
+            $digits = ltrim($integer.$fraction, '0');
+
+            if ($digits === '') {
+                return '0';
+            }
+
+            $zeros = $exponent - strlen($fraction);
+            $value = $zeros >= 0
+                ? $digits.str_repeat('0', $zeros)
+                : substr($digits, 0, $zeros).'.'.substr($digits, $zeros);
         }
-        $integer = ltrim($matches[1], '+');
-        $fraction = $matches[2] ?? '';
-        $exponent = (int) $matches[3];
-        $digits = ltrim($integer.$fraction, '0');
-        if ($digits === '') {
-            return '0';
-        }
-        $zeros = $exponent - strlen($fraction);
-        return $zeros >= 0 ? $digits.str_repeat('0', $zeros) : substr($digits, 0, $zeros).'.'.substr($digits, $zeros);
+
+        $digitsOnly = preg_replace('/\D+/', '', $value) ?? '';
+
+        return $digitsOnly === '' ? '' : $digitsOnly;
     }
 
     private function formatPositiveInteger(mixed $value): string

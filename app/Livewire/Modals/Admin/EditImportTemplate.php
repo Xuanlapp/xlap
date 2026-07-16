@@ -125,9 +125,13 @@ class EditImportTemplate extends Component
     private function templateDefinitions(): array
     {
         return [
-            'ornament' => [
+            'suncatcher' => [
                 'label' => 'Suncatcher template',
-                'filename' => 'importamaazonxlsx.xlsx',
+                'filename' => 'suncatcher-import-template.xlsx',
+            ],
+            'ornament_amazon_two' => [
+                'label' => 'Ornament Amazon 2 template',
+                'filename' => 'ornament-amazon-2-import-template.xlsx',
             ],
             'sticker' => [
                 'label' => 'Sticker template',

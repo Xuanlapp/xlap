@@ -249,7 +249,7 @@ class Index extends Component
             'bid' => $this->nullableDecimal($row['bid'] ?? null),
             'sku_target' => $this->nullableString($row['sku_target'] ?? null),
             'portfolio_id' => $this->nullablePortfolioId($row['portfolio_id'] ?? null),
-            'campaign_daily_budget' => $this->nullableInteger($row['campaign_daily_budget'] ?? null),
+            'campaign_daily_budget' => $this->nullableDecimal($row['campaign_daily_budget'] ?? null),
             'start_date' => $this->nullableDate($row['start_date'] ?? null),
         ];
 
@@ -323,7 +323,7 @@ class Index extends Component
 
         return match ($field) {
             'bid' => ['nullable', 'regex:/^\d+(?:\.\d+)?$/'],
-            'campaign_daily_budget' => ['nullable', 'regex:/^[1-9]\d*$/'],
+            'campaign_daily_budget' => ['nullable', 'regex:/^\d+(?:\.\d+)?$/'],
             'start_date' => ['nullable', 'regex:/^\d{2}\/\d{2}\/\d{4}$/'],
             'bidding_strategy' => ['nullable', 'in:'.implode(',', $this->biddingStrategies)],
             'match_type' => ['nullable', 'in:'.implode(',', $this->matchTypes)],
@@ -465,26 +465,25 @@ class Index extends Component
             return '';
         }
 
-        if (! preg_match('/^([+-]?\d+)(?:\.(\d+))?[eE]\+?(\d+)$/', $value, $matches)) {
-            return $value;
+        if (preg_match('/^([+-]?\d+)(?:\.(\d+))?[eE]\+?(\d+)$/', $value, $matches)) {
+            $integer = ltrim($matches[1], '+');
+            $fraction = $matches[2] ?? '';
+            $exponent = (int) $matches[3];
+            $digits = ltrim($integer.$fraction, '0');
+
+            if ($digits === '') {
+                return '0';
+            }
+
+            $zeros = $exponent - strlen($fraction);
+            $value = $zeros >= 0
+                ? $digits.str_repeat('0', $zeros)
+                : substr($digits, 0, $zeros).'.'.substr($digits, $zeros);
         }
 
-        $integer = ltrim($matches[1], '+');
-        $fraction = $matches[2] ?? '';
-        $exponent = (int) $matches[3];
-        $digits = ltrim($integer.$fraction, '0');
+        $digitsOnly = preg_replace('/\D+/', '', $value) ?? '';
 
-        if ($digits === '') {
-            return '0';
-        }
-
-        $zeros = $exponent - strlen($fraction);
-
-        if ($zeros >= 0) {
-            return $digits.str_repeat('0', $zeros);
-        }
-
-        return substr($digits, 0, $zeros).'.'.substr($digits, $zeros);
+        return $digitsOnly === '' ? '' : $digitsOnly;
     }
 
     private function nullableDecimal(mixed $value): ?float
@@ -494,12 +493,7 @@ class Index extends Component
         return $value === '' || ! is_numeric($value) ? null : (float) $value;
     }
 
-    private function nullableInteger(mixed $value): ?int
-    {
-        $value = trim((string) $value);
 
-        return $value === '' || ! preg_match('/^[1-9]\d*$/', $value) ? null : (int) $value;
-    }
 
     private function nullableDate(mixed $value): ?string
     {

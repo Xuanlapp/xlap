@@ -77,6 +77,22 @@ class AddProductDesign extends Component
         ]);
     }
 
+
+    public function updatedSku(): void
+    {
+        $this->validateOnly('sku', [
+            'sku' => [
+                'required',
+                'string',
+                'max:100',
+            ],
+        ]);
+
+        if ($this->sku !== '' && app(SuncatcherService::class)->skuExistsForCurrentProduct(auth()->user(), $this->sku)) {
+            $this->addError('sku', 'Sku da ton tai trong Suncatcher cua user nay.');
+        }
+    }
+
     public function updatedImageLink(): void
     {
         $this->isImageLink = $this->imageLink === ''
@@ -161,7 +177,7 @@ class AddProductDesign extends Component
             }],
             'imageLink' => ['required', 'url', 'max:1000', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! is_string($value) || ! app(ImageLinkPreviewService::class)->looksLikeImageUrl($value)) {
-                    $fail('Link này chưa giống link ảnh.');
+                    $fail('Link nÃƒÂ y chÃ†Â°a giÃ¡Â»â€˜ng link Ã¡ÂºÂ£nh.');
                 }
             }],
         ]);

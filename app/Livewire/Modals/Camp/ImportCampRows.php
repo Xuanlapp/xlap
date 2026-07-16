@@ -216,8 +216,10 @@ class ImportCampRows extends Component
                 continue;
             }
 
-            if ($campaignDailyBudget === '' || ! preg_match('/^[1-9]\d*$/', $campaignDailyBudget)) {
-                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Campaign Daily Budget phai la so nguyen duong.'];
+            $normalizedCampaignDailyBudget = $this->normalizeDecimal($campaignDailyBudget);
+
+            if ($normalizedCampaignDailyBudget === null) {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Campaign Daily Budget khong hop le.'];
                 continue;
             }
 
@@ -246,7 +248,7 @@ class ImportCampRows extends Component
                 'bid' => $normalizedBid,
                 'sku_target' => $skuTarget !== '' ? $skuTarget : null,
                 'portfolio_id' => $portfolioId !== '' ? $portfolioId : null,
-                'campaign_daily_budget' => (int) $campaignDailyBudget,
+                'campaign_daily_budget' => (float) $normalizedCampaignDailyBudget,
                 'start_date' => $normalizedStartDate,
             ];
         }
@@ -605,30 +607,29 @@ class ImportCampRows extends Component
             return '';
         }
 
-        if (! preg_match('/^([+-]?\d+)(?:\.(\d+))?[eE]\+?(\d+)$/', $value, $matches)) {
-            return $value;
+        if (preg_match('/^([+-]?\d+)(?:\.(\d+))?[eE]\+?(\d+)$/', $value, $matches)) {
+            $integer = ltrim($matches[1], '+');
+            $fraction = $matches[2] ?? '';
+            $exponent = (int) $matches[3];
+            $digits = ltrim($integer.$fraction, '0');
+
+            if (strlen($digits) < 12) {
+                return null;
+            }
+
+            if ($digits === '') {
+                return '0';
+            }
+
+            $zeros = $exponent - strlen($fraction);
+            $value = $zeros >= 0
+                ? $digits.str_repeat('0', $zeros)
+                : substr($digits, 0, $zeros).'.'.substr($digits, $zeros);
         }
 
-        $integer = ltrim($matches[1], '+');
-        $fraction = $matches[2] ?? '';
-        $exponent = (int) $matches[3];
-        $digits = ltrim($integer.$fraction, '0');
+        $digitsOnly = preg_replace('/\D+/', '', $value) ?? '';
 
-        if (strlen($digits) < 12) {
-            return null;
-        }
-
-        if ($digits === '') {
-            return '0';
-        }
-
-        $zeros = $exponent - strlen($fraction);
-
-        if ($zeros >= 0) {
-            return $digits.str_repeat('0', $zeros);
-        }
-
-        return substr($digits, 0, $zeros).'.'.substr($digits, $zeros);
+        return $digitsOnly === '' ? null : $digitsOnly;
     }
 
     private function normalizeDecimal(string $value): ?float

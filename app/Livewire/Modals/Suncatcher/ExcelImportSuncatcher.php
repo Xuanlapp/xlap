@@ -46,7 +46,7 @@ class ExcelImportSuncatcher extends Component
     public bool $isProcessing = false;
 
     /**
-     * @var array<int, array{row: int, product_link: string, main_image: string, keyword: string, keyword_phrase: string, status: string, competitor_listing?: array<string, mixed>}> 
+     * @var array<int, array{row: int, sku: string, product_link: string, input_main_image: string, main_image: string, product: string, keyword: string, keyword_phrase: string, status: string, attempts: int, result_message: string, competitor_listing?: array<string, mixed>}> 
      */
     public array $rows = [];
 
@@ -200,17 +200,18 @@ class ExcelImportSuncatcher extends Component
 
         try {
             $competitorListing = $this->scrapeListingForImport($scraper, $row['product_link']);
-            $inputImage = $this->primaryCompetitorImage($competitorListing);
+            $inputImage = trim((string) ($row['input_main_image'] ?? ''));
+            $listingInputImage = $this->primaryCompetitorImage($competitorListing);
             $imageSub = array_values(array_unique(array_filter(
                 $competitorListing['images'] ?? [],
-                fn (mixed $image): bool => is_string($image) && trim($image) !== '' && trim($image) !== $inputImage
+                fn (mixed $image): bool => is_string($image) && trim($image) !== '' && trim($image) !== $inputImage && trim($image) !== $listingInputImage
             )));
             $keyword = filled($competitorListing['productTitle'] ?? null)
                 ? (string) $competitorListing['productTitle']
                 : $this->keywordFromUrl($row['product_link']);
 
             if ($inputImage === '') {
-                throw new RuntimeException('Khong tim thay anh listing tu link nay sau nhieu lan thu.');
+                throw new RuntimeException('Thieu Link Ipnut Main Image.');
             }
 
             if (! filled($keyword)) {
@@ -220,7 +221,8 @@ class ExcelImportSuncatcher extends Component
             $listingPayload = array_merge($competitorListing, [
                 'sku' => $row['sku'] ?? '',
                 'product_link' => $row['product_link'],
-                'main_image_link' => $row['main_image'],
+                'input_main_image' => $row['input_main_image'],
+                'main_image_link' => $row['main_image'] ?: null,
                 'product' => $row['product'] ?? '',
                 'keyword_phrase' => $row['keyword_phrase'] ?? '',
             ]);
@@ -240,7 +242,9 @@ class ExcelImportSuncatcher extends Component
                 $row['sku'],
             );
 
-            $asset->update(['redesign' => $row['main_image']]);
+            if (filled($row['main_image'] ?? null)) {
+                $asset->update(['redesign' => $row['main_image']]);
+            }
             unset($this->rows[$nextIndex]);
             $this->rows = array_values($this->rows);
             $this->successRows++;
@@ -296,7 +300,7 @@ class ExcelImportSuncatcher extends Component
         $headerIndexes = $this->headerIndexes($rows[0] ?? []);
 
         if ($headerIndexes === []) {
-            throw new RuntimeException('Required columns missing: SKU, Link Product, Link Main Image, Product and Keyword Phrase.');
+            throw new RuntimeException('Required columns missing: SKU, Link Product, Link Ipnut Main Image, Product and Keyword Phrase.');
         }
 
         $parsedRows = [];
@@ -311,13 +315,16 @@ class ExcelImportSuncatcher extends Component
             $rowNumber = $index + 1;
             $sku = trim((string) ($row[$headerIndexes['sku']] ?? ''));
             $productLink = trim((string) ($row[$headerIndexes['product_link']] ?? ''));
-            $mainImage = trim((string) ($row[$headerIndexes['main_image']] ?? ''));
+            $inputMainImage = trim((string) ($row[$headerIndexes['input_main_image']] ?? ''));
+            $mainImage = isset($headerIndexes['main_image'])
+                ? trim((string) ($row[$headerIndexes['main_image']] ?? ''))
+                : '';
             $product = trim((string) ($row[$headerIndexes['product']] ?? ''));
             $keywordPhrase = isset($headerIndexes['keyword_phrase'])
                 ? trim((string) ($row[$headerIndexes['keyword_phrase']] ?? ''))
                 : '';
 
-            if ($sku === '' && $productLink === '' && $mainImage === '' && $product === '' && $keywordPhrase === '') {
+            if ($sku === '' && $productLink === '' && $inputMainImage === '' && $mainImage === '' && $product === '' && $keywordPhrase === '') {
                 continue;
             }
 
@@ -338,8 +345,8 @@ class ExcelImportSuncatcher extends Component
             }
             $seenSkus[$skuKey] = true;
 
-            if ($mainImage === '') {
-                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Link Main Image.'];
+            if ($inputMainImage === '') {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Link Ipnut Main Image.'];
                 continue;
             }
 
@@ -358,7 +365,12 @@ class ExcelImportSuncatcher extends Component
                 continue;
             }
 
-            if (! $this->isImageUrl($mainImage)) {
+            if (! $this->isImageUrl($inputMainImage)) {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Link Ipnut Main Image is invalid.'];
+                continue;
+            }
+
+            if ($mainImage !== '' && ! $this->isImageUrl($mainImage)) {
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Link Main Image is invalid.'];
                 continue;
             }
@@ -367,6 +379,7 @@ class ExcelImportSuncatcher extends Component
                 'row' => $rowNumber,
                 'sku' => $sku,
                 'product_link' => $productLink,
+                'input_main_image' => $inputMainImage,
                 'main_image' => $mainImage,
                 'product' => $product,
                 'keyword' => $this->keywordFromUrl($productLink),
@@ -578,6 +591,10 @@ class ExcelImportSuncatcher extends Component
                 $indexes['product_link'] = $index;
             }
 
+            if (in_array($normalized, ['link ipnut main image', 'ipnut main image link', 'ipnut main image', 'link input main image', 'input main image link', 'input main image'], true)) {
+                $indexes['input_main_image'] = $index;
+            }
+
             if (in_array($normalized, ['link main image', 'main image link', 'main image', '2 main image', 'link design'], true)) {
                 $indexes['main_image'] = $index;
             }
@@ -591,7 +608,7 @@ class ExcelImportSuncatcher extends Component
             }
         }
 
-        return isset($indexes['sku'], $indexes['product_link'], $indexes['main_image'], $indexes['product'], $indexes['keyword_phrase']) ? $indexes : [];
+        return isset($indexes['sku'], $indexes['product_link'], $indexes['input_main_image'], $indexes['product'], $indexes['keyword_phrase']) ? $indexes : [];
     }
 
     private function isSupportedProductUrl(string $url): bool
@@ -628,7 +645,7 @@ class ExcelImportSuncatcher extends Component
     }
 
     /**
-     * Pick the first usable competitor image for Input Image.
+     * Scrape listing data for title/images, but Input Image now comes from Link Ipnut Main Image.
      */
     private function scrapeListingForImport(CompetitorListingScraper $scraper, string $productLink): array
     {
@@ -637,11 +654,9 @@ class ExcelImportSuncatcher extends Component
 
         for ($attempt = 1; $attempt <= $attempts; $attempt++) {
             try {
-                $listing = $scraper->scrape($productLink, requireImages: true);
+                $listing = $scraper->scrape($productLink, requireImages: false);
 
-                if ($this->primaryCompetitorImage($listing) !== '') {
-                    return $listing;
-                }
+                return $listing;
             } catch (Throwable $exception) {
                 $lastException = $exception;
             }
@@ -655,7 +670,7 @@ class ExcelImportSuncatcher extends Component
             throw $lastException;
         }
 
-        throw new RuntimeException('Khong tim thay anh listing tu link nay sau nhieu lan thu.');
+        throw new RuntimeException('Khong lay duoc du lieu listing tu link nay sau nhieu lan thu.');
     }
 
     private function primaryCompetitorImage(array $competitorListing): string

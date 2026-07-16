@@ -5,11 +5,11 @@
                 <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 md:px-6">
                     <div>
                         <h2 class="text-lg font-semibold tracking-tight text-slate-900">Import Excel</h2>
-                        <p class="mt-1 text-sm text-slate-500">Upload product rows with Link Product, Link Main Image and optional Keyword Phrase.</p>
+                        <p class="mt-1 text-sm text-slate-500">Upload product rows with Link Product, Link Ipnut Main Image, optional Link Main Image and optional Keyword Phrase.</p>
                         <p class="mt-2 text-sm text-slate-600">
                             Template:
-                            <a href="{{ asset('templates/importamaazonxlsx.xlsx') }}" download="importamaazonxlsx.xlsx" class="font-semibold text-emerald-600 underline decoration-emerald-200 underline-offset-4 transition hover:text-emerald-700">
-                                importamaazonxlsx.xlsx
+                            <a href="{{ asset('storage/import-templates/suncatcher-import-template.xlsx') }}" download="suncatcher-import-template.xlsx" class="font-semibold text-emerald-600 underline decoration-emerald-200 underline-offset-4 transition hover:text-emerald-700">
+                                suncatcher-import-template.xlsx
                             </a>
                         </p>
                     </div>
@@ -80,6 +80,7 @@
                                             <th class="px-4 py-3">Row</th>
                                             <th class="min-w-[180px] px-4 py-3">SKU</th>
                                             <th class="min-w-[320px] px-4 py-3">Link Product</th>
+                                            <th class="min-w-[320px] px-4 py-3">Link Ipnut Main Image</th>
                                             <th class="min-w-[320px] px-4 py-3">Link Main Image</th>
                                             <th class="min-w-[240px] px-4 py-3">Product</th>
                                             <th class="min-w-[240px] px-4 py-3">Keyword Phrase</th>
@@ -96,25 +97,25 @@
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['product_link']) }" class="max-w-[420px] text-xs text-slate-700">
                                                         <a href="{{ $row['product_link'] }}" target="_blank" class="font-medium text-slate-700 hover:text-slate-900 break-all" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : value)"></a>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃƒÂ¡Ã‚Â»Ã‚Ân' : 'Xem thÃƒÆ’Ã‚Âªm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['main_image']) }" class="max-w-[420px] text-xs text-slate-700">
                                                         <a href="{{ $row['main_image'] }}" target="_blank" class="font-medium text-slate-700 hover:text-slate-900 break-all" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : value)"></a>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃƒÂ¡Ã‚Â»Ã‚Ân' : 'Xem thÃƒÆ’Ã‚Âªm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['product'] ?? '') }" class="max-w-[280px] text-xs text-slate-700">
                                                         <span class="font-medium break-words" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : (value || '-'))"></span>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃƒÂ¡Ã‚Â»Ã‚Ân' : 'Xem thÃƒÆ’Ã‚Âªm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <div x-data="{ expanded: false, value: @js($row['keyword_phrase'] ?? '') }" class="max-w-[280px] text-xs text-slate-700">
                                                         <span class="font-medium break-words" x-text="expanded ? value : (value.length > 100 ? value.slice(0, 100) + '...' : (value || '-'))"></span>
-                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gÃƒÂ¡Ã‚Â»Ã‚Ân' : 'Xem thÃƒÆ’Ã‚Âªm'"></button>
+                                                        <button x-show="value.length > 100" type="button" x-on:click="expanded = ! expanded" class="ml-2 text-[11px] font-semibold text-sky-600 hover:text-sky-700" x-text="expanded ? 'Thu gọn' : 'Xem thêm'"></button>
                                                     </div>
                                                 </td>
                                                 <td class="px-4 py-3">

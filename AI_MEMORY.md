@@ -2612,3 +2612,188 @@ Fix Marketplace Export user filter thieu kha nang manager tu xem chinh minh.
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Port cac chuc nang con thieu cua Ornament Amazon 2 sang Suncatcher.
+
+**File da sua/tao:**  
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `app/Livewire/Modals/Suncatcher/AddProductDesign.php`
+- `app/Livewire/Modals/Suncatcher/ImportExcelSuncatcher.php`
+- `resources/views/livewire/modals/suncatcher/import-excel-suncatcher.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- So sanh method-level giua Ornament Amazon 2 va Suncatcher.
+- Them `SuncatcherService::applyImportedMockups()` de import Excel co mockup map vao workflow images nhu Ornament Amazon 2.
+- Them `AddProductDesign::updatedSku()` de validate SKU trung trong Suncatcher nhu Ornament Amazon 2.
+- Tao modal `ImportExcelSuncatcher` va view `import-excel-suncatcher` tu modal import Excel phu cua Ornament Amazon 2, da doi namespace/service/component sang Suncatcher.
+
+**Root cause:**  
+- Sau rename/port ban dau, Suncatcher da co phan lon workflow Amazon 2 nhung con thieu method `applyImportedMockups`, hook validate SKU va mot modal import Excel phu.
+
+**Validation:**  
+- Method diff cac class chinh khong con missing method so voi Ornament Amazon 2.
+- `php -l` pass cho toan bo `app/Livewire/Pages/Suncatcher`, `app/Livewire/Modals/Suncatcher`, `app/Services/Suncatcher`.
+- `php artisan route:list --path=suncatcher --no-ansi` pass.
+- `php artisan route:list --path=ornament-amazon-2 --no-ansi` pass.
+
+**Deploy impact:**  
+- Can clear view/cache va restart worker neu dang co queue workflow Suncatcher.
+
+**Queue impact:**  
+- Khong them queue moi; cac workflow Suncatcher tiep tuc dung queue/prefix hien tai.
+
+**Follow-up:**  
+- Neu user muon UI co nut rieng cho modal `ImportExcelSuncatcher`, can xac nhan vi hien page dang dung modal `ExcelImportSuncatcher` giong Amazon 2 dang mount.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Tach rieng template import Excel cua Suncatcher va Ornament Amazon 2 de admin thay doi doc lap.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Admin/ListUser.php`
+- `app/Livewire/Modals/Admin/EditImportTemplate.php`
+- `resources/views/livewire/modals/suncatcher/excel-import-suncatcher.blade.php`
+- `resources/views/livewire/modals/ornament-amazon-two/excel-import-ornament.blade.php`
+- `storage/app/public/import-templates/suncatcher-import-template.xlsx`
+- `storage/app/public/import-templates/ornament-amazon-2-import-template.xlsx`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi `importTemplates()` thanh 2 key rieng: `suncatcher` va `ornament_amazon_two`.
+- Admin modal `EditImportTemplate` co 2 template doc lap de upload/sua rieng.
+- Modal import cua Suncatcher tai file `suncatcher-import-template.xlsx`.
+- Modal import cua Ornament Amazon 2 tai file `ornament-amazon-2-import-template.xlsx`.
+- Seed 2 file moi tu file cu `importamaazonxlsx.xlsx` de khong bi mat template hien co.
+
+**Root cause:**  
+- Truoc do ca Suncatcher va Ornament Amazon 2 dang dung chung mot file `importamaazonxlsx.xlsx`, khong phu hop khi user muon xu ly logic import rieng cho tung trang.
+
+**Validation:**  
+- `php -l app/Livewire/Pages/Admin/ListUser.php` pass.
+- `php -l app/Livewire/Modals/Admin/EditImportTemplate.php` pass.
+- `php artisan view:cache --no-ansi` pass.
+- Da xac nhan ton tai 2 file: `suncatcher-import-template.xlsx`, `ornament-amazon-2-import-template.xlsx`.
+
+**Deploy impact:**  
+- Can dam bao symlink `public/storage` hoat dong de link download template moi truy cap duoc.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Cap nhat import Suncatcher them cot `Link Ipnut Main Image` bat buoc, con `Link Main Image` la tuy chon.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Suncatcher/ExcelImportSuncatcher.php`
+- `app/Livewire/Modals/Suncatcher/ImportExcelSuncatcher.php`
+- `resources/views/livewire/modals/suncatcher/excel-import-suncatcher.blade.php`
+- `resources/views/livewire/modals/suncatcher/import-excel-suncatcher.blade.php`
+- `storage/app/public/import-templates/suncatcher-import-template.xlsx`
+
+**Thay doi chinh:**  
+- Cot `Link Ipnut Main Image` duoc them vao template va parse/import cua Suncatcher.
+- `Link Main Image` van duoc ho tro nhung khong con bat buoc.
+- Preview modal da hien thi ro 2 cot anh de user kiem tra truoc khi import.
+
+**Validation:**  
+- `php -l` pass cho 2 file Livewire Suncatcher.
+- `php artisan view:clear --no-ansi` pass.
+
+**Deploy impact:**  
+- Can deploy code va file template xlsx de UI/luong import dong bo.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Noi validation `Campaign Daily Budget` cua Camp de chi can la so, khong bat buoc so nguyen duong.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Camp/Index.php`
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+
+**Thay doi chinh:**  
+- Import Camp dung parse so cho `Campaign Daily Budget`, cho phep so thap phan.
+- Validate nhap tay tren page Camp doi sang rule so, khong con bat buoc regex so nguyen duong.
+- Luu gia tri budget bang decimal/float.
+
+**Validation:**  
+- `php -l app/Livewire/Pages/Camp/Index.php` pass.
+- `php -l app/Livewire/Modals/Camp/ImportCampRows.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Fix `Portfolio Id` cua Camp import/export bi them dau cham, dau phay do Excel format locale.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Camp/Index.php`
+- `app/Livewire/Modals/Camp/ImportCampRows.php`
+- `app/Services/Camp/CampKeywordExportService.php`
+- `app/Services/Camp/CampAutoExportService.php`
+
+**Thay doi chinh:**  
+- `normalizePortfolioId()` gio dua `Portfolio Id` ve chuoi chi gom chu so.
+- Export Camp Keyword/Auto doi XML cell sang `inlineStr` de Excel giu dang text.
+- Import Camp cung loai bo ky tu phan cach locale khi doc `ID portfolio`.
+
+**Validation:**  
+- `php -l` pass cho 4 file Camp lien quan.
+- `php artisan view:clear --no-ansi` pass.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Doi Suncatcher import de `1. Input Image` lay tu `Link Ipnut Main Image`, khong lay anh dau tien cua `Link Product` nua.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Suncatcher/ExcelImportSuncatcher.php`
+
+**Thay doi chinh:**  
+- `scrapeListingForImport()` khong con bat buoc listing phai co anh.
+- `createAsset()` van nhan `input_main_image` tu dong import.
+- `Link Product` chi dung lay metadata/phu tro, khong con quyet dinh `Input Image`.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Suncatcher/ExcelImportSuncatcher.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Fix loi Suncatcher import `Unknown named parameter $requireImages`.
+
+**File da sua/tao:**  
+- `app/Services/Suncatcher/CompetitorListingScraper.php`
+- `app/Livewire/Modals/Suncatcher/ExcelImportSuncatcher.php`
+
+**Thay doi chinh:**  
+- Them tham so `bool $requireImages = true` vao `scrape()` cua Suncatcher scraper.
+- Import Suncatcher goi `scrape(..., requireImages: false)` de khong bat buoc `Link Product` phai co anh.
+
+**Validation:**  
+- `php -l app/Services/Suncatcher/CompetitorListingScraper.php` pass.
+- `php -l app/Livewire/Modals/Suncatcher/ExcelImportSuncatcher.php` pass.
+- `php artisan view:clear --no-ansi` pass.
+
+**Queue impact:**  
+- Khong co.
