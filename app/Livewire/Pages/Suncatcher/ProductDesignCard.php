@@ -663,6 +663,28 @@ class ProductDesignCard extends Component
         }
     }
 
+    public function startAutomation(): void
+    {
+        try {
+            $asset = app(SuncatcherService::class)->startAutomation(auth()->user(), $this->assetId, $this->providerKey, $this->imageModel, $this->textModel);
+            app(ActivityLogService::class)->record(
+                event: 'suncatcher.item_automation_started',
+                description: 'User started Suncatcher automation.',
+                subject: $asset,
+                properties: ['item_number' => $asset->item_number],
+            );
+
+            $this->dispatchCardUpdated($asset->id);
+            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da bat dau automation.');
+        } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'suncatcher.start_automation', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'suncatcher.start_automation', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi bat dau automation.');
+        }
+    }
+
     public function toggleApproval(): void
     {
         try {

@@ -111,14 +111,14 @@
                     variant="solid"
                     size="xs"
                     type="button"
-                    wire:click="toggleApproval"
+                    wire:click="startAutomation"
                     wire:loading.attr="disabled"
-                    wire:target="toggleApproval"
+                    wire:target="startAutomation"
                 >
-                    <span wire:loading.remove wire:target="toggleApproval">
+                    <span wire:loading.remove wire:target="startAutomation">
                         Auto
                     </span>
-                    <span wire:loading wire:target="toggleApproval">Saving...</span>
+                    <span wire:loading wire:target="startAutomation">Saving...</span>
                 </x-button>
             @endif
 

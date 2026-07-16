@@ -3060,3 +3060,37 @@ Cho phep Suncatcher chay Auto du chua co `2. Main Image`, va tu tao `2. Main Ima
 
 **Follow-up notes:**  
 - Neu user muon badge/step hien ro `2. Main Image` la buoc 2 trong auto timeline, can them mot workflow step moi vao UI va record thay vi chi tu generate ngam truoc buoc `3. Script`.
+
+### 2026-07-16 16:xx +07:00
+
+**Muc tieu:**  
+Fix nut `Auto` cua Suncatcher dang goi nham luong approve/toggleApproval.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Suncatcher/ProductDesignCard.php`
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them method `startAutomation()` rieng trong card Suncatcher.
+- Doi nut `Auto` tu `wire:click="toggleApproval"` sang `wire:click="startAutomation"`.
+- Luong approve van giu rieng qua `confirmApproval()` / `toggleApproval()`.
+
+**Root cause:**  
+- UI ghi nhan nut la `Auto` nhung thuc te dang goi `toggleApproval()`, nen bam Auto lai chay vao luong duyet/approval va phat sinh loi `Can co it nhat mot anh mockup hoac lifestyle truoc khi duyet.`
+
+**Affected modules:**  
+- Suncatcher card header action buttons
+- Suncatcher automation start action
+
+**Deploy impact:**  
+- Khong can migrate.
+- Neu production cache Blade/opcache thi clear/reload sau deploy.
+
+**Queue impact:**  
+- Nut Auto gio se queue dung luong automation thay vi di nham qua approval.
+
+**Kiem tra da chay:**  
+- `php -l app/Livewire/Pages/Suncatcher/ProductDesignCard.php`
+- `php -l resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `php artisan view:cache --no-ansi`
