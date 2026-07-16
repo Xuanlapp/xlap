@@ -3,6 +3,7 @@
         $automationRunning = (($automation?->workflow_status ?? null) === 'running');
         $automationFailed = (($automation?->workflow_status ?? null) === 'failed');
         $automationSteps = [
+            'main' => '2. Main Image',
             'script' => '3. Script',
             'person_a' => '4. Person A',
             'person_b' => '4. Person B',

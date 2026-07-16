@@ -1820,18 +1820,15 @@ class SuncatcherService
             throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
         }
 
-        if (! filled($asset->redesign)) {
-            $asset = $this->generateRedesign($user, $asset->id, $providerKey, $imageModel);
-        }
-
         $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
         $sourceLink = is_string($sourceData['link'] ?? null) ? $sourceData['link'] : null;
+        $firstStep = filled($asset->redesign) ? 'script' : 'main';
 
         $record = $this->upsertAutomationRecord($asset, [
             'workflow_status' => 'running',
-            'workflow_step_key' => 'script',
-            'workflow_step_label' => '3. Script',
-            'workflow_step_number' => 3,
+            'workflow_step_key' => $firstStep,
+            'workflow_step_label' => $this->automationStepLabel($firstStep),
+            'workflow_step_number' => $this->automationStepNumber($firstStep),
             'workflow_total_steps' => 6,
             'source_platform' => 'suncatcher',
             'source_link' => $sourceLink,
@@ -1912,10 +1909,11 @@ class SuncatcherService
         foreach ($this->automationPipelineSteps() as $step) {
             $this->markAutomationStepRunning($asset, $step, $record->step_data ?? []);
 
-            try {
-                match ($step) {
-                    'script' => $asset = $this->generateWorkflowScript($user, $asset->id, $providerKey, $textModel),
-                    'person_a' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'a', $providerKey, $imageModel),
+        try {
+            match ($step) {
+                'main' => $asset = $this->generateRedesign($user, $asset->id, $providerKey, $imageModel),
+                'script' => $asset = $this->generateWorkflowScript($user, $asset->id, $providerKey, $textModel),
+                'person_a' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'a', $providerKey, $imageModel),
                     'person_b' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'b', $providerKey, $imageModel),
                     'prompt' => $asset = $this->generateWorkflowPrompts($user, $asset->id, $providerKey, $textModel),
                     'mockup' => $asset = $this->generateAllWorkflowImages($user, $asset->id, $providerKey, $imageModel),
@@ -2010,7 +2008,7 @@ class SuncatcherService
 
     public function automationPipelineSteps(): array
     {
-        return ['script', 'person_a', 'person_b', 'prompt', 'mockup'];
+        return ['main', 'script', 'person_a', 'person_b', 'prompt', 'mockup'];
     }
 
     public function automationDefaultSteps(): array
@@ -2026,6 +2024,7 @@ class SuncatcherService
     public function automationStepLabel(string $step): string
     {
         return match ($step) {
+            'main' => '2. Main Image',
             'script' => '3. Script',
             'person_a' => '4. Person A',
             'person_b' => '4. Person B',
@@ -2038,6 +2037,7 @@ class SuncatcherService
     public function automationStepNumber(string $step): int
     {
         return match ($step) {
+            'main' => 2,
             'script' => 3,
             'person_a', 'person_b' => 4,
             'prompt' => 5,
@@ -2289,8 +2289,9 @@ class SuncatcherService
         $this->markAutomationStepRunning($asset, $step, $automation->step_data ?? []);
 
         try {
-            match ($step) {
-                'script' => $asset = $this->generateWorkflowScript($user, $asset->id, $providerKey, $textModel),
+                match ($step) {
+                    'main' => $asset = $this->generateRedesign($user, $asset->id, $providerKey, $imageModel),
+                    'script' => $asset = $this->generateWorkflowScript($user, $asset->id, $providerKey, $textModel),
                 'person_a' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'a', $providerKey, $imageModel),
                 'person_b' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'b', $providerKey, $imageModel),
                 'prompt' => $asset = $this->generateWorkflowPrompts($user, $asset->id, $providerKey, $textModel),
@@ -2362,6 +2363,7 @@ class SuncatcherService
     private function nextAutomationStep(string $step): ?string
     {
         return match ($step) {
+            'main' => 'script',
             'script' => 'person_a',
             'person_a' => 'person_b',
             'person_b' => 'prompt',
@@ -2412,6 +2414,7 @@ class SuncatcherService
         $workflow = $this->workflowData($freshAsset);
 
         return match ($step) {
+            'main' => filled($freshAsset->redesign),
             'script' => ! empty($workflow['script']) && is_array($workflow['script']),
             'person_a' => filled($workflow['b2']['person_a_ref'] ?? null),
             'person_b' => filled($workflow['b2']['person_b_ref'] ?? null),

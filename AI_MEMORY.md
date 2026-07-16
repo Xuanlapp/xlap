@@ -3094,3 +3094,41 @@ Fix nut `Auto` cua Suncatcher dang goi nham luong approve/toggleApproval.
 - `php -l app/Livewire/Pages/Suncatcher/ProductDesignCard.php`
 - `php -l resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
 - `php artisan view:cache --no-ansi`
+
+### 2026-07-16 16:xx +07:00
+
+**Muc tieu:**  
+Cho Suncatcher Auto bat dau tu buoc `2. Main Image` thay vi nhay thang vao `3. Script`.
+
+**File da sua/tao:**  
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them workflow step `main` vao pipeline de dai dien `2. Main Image`.
+- Khi chua co `redesign`, Auto se di qua step `main` truoc, roi moi sang `script`.
+- UI badge/timeline cua card hien them `2. Main Image` trong workflow Auto.
+- `automationStepHasOutput('main')` check theo `filled($asset->redesign)`.
+
+**Root cause:**  
+- Auto dang nhay thang vao `3. Script`, nen user bam Auto thay vi vao trang thai dang tao `2. Main Image`. Dieu nay gay cam giac delay va khong ro workflow.
+
+**Affected modules:**  
+- Suncatcher automation pipeline
+- Suncatcher product design card auto timeline
+
+**Deploy impact:**  
+- Khong can migrate.
+- Can clear/reload view cache neu production dang cache Blade cu.
+
+**Queue impact:**  
+- Workflow Auto se co them step `main` dau tien neu item chua co `redesign`, nhung neu da co anh 2 thi step nay se bo qua nhanh.
+
+**Kiem tra da chay:**  
+- `php -l app/Services/Suncatcher/SuncatcherService.php`
+- `php -l resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `php artisan view:cache --no-ansi`
+
+**Follow-up notes:**  
+- Neu can, co the tinh tiep de UI hien `Auto: 2. Main Image` ro hon va current step chuyen sang `3. Script` sau khi anh 2 xong.
