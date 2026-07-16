@@ -29,7 +29,7 @@
         $scriptGenerating = $automationRunning && $currentAutomationStep === 'script';
         $promptGenerating = $automationRunning && $currentAutomationStep === 'prompt';
         $workflowLocked = in_array(($automation?->workflow_status ?? null), ['running', 'failed', 'completed'], true) || $hasAllDbMockups;
-        $canShowAuto = ! $asset->is_approved && $asset->redesign && ! $scriptReady && ! $automationRunning && ! $automationFailed && (($automation?->workflow_status ?? null) !== 'completed');
+        $canShowAuto = ! $asset->is_approved && ! $scriptReady && ! $automationRunning && ! $automationFailed && (($automation?->workflow_status ?? null) !== 'completed');
         $canShowContinue = false;
         $canShowRetry = ! $asset->is_approved && $asset->redesign && $automationFailed && $currentAutomationStep === 'mockup' && $dbMockupCount < 6;
         $canShowApprove = ! $asset->is_approved && filled($asset->redesign) && $hasAllDbMockups;

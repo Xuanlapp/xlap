@@ -717,7 +717,7 @@ class ImportSheet extends Component
      */
     private function scrapeListingForImport(CompetitorListingScraper $scraper, string $url): array
     {
-        $listing = $scraper->scrape($url);
+        $listing = $scraper->scrape($url, requireImages: false);
 
         if (! is_array($listing) || $listing === []) {
             throw new RuntimeException('Khong scrape duoc thong tin tu link product.');

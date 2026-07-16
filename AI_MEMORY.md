@@ -2991,3 +2991,72 @@ Dong bo `Import Sheet` cua Ornament Amazon 2 voi logic `Import Excel`, tach rien
 
 **Follow-up notes:**  
 - Neu user muon table import sheet giong import excel hon nua (them expand/collapse tung cot mockup, duplicate badge, done badge), co the chinh tiep tren view ma khong anh huong logic import.
+
+### 2026-07-16 15:xx +07:00
+
+**Muc tieu:**  
+Fix loi Suncatcher Import Sheet bao `Could not import row: Khong tim thay anh listing tu link nay.`
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Suncatcher/ImportSheet.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi `scrapeListingForImport()` cua Suncatcher Import Sheet tu `$scraper->scrape($url)` sang `$scraper->scrape($url, requireImages: false)`.
+- Giu logic Suncatcher: `1. Input Image` va tao anh chinh lay tu `Link Ipnut Main Image`, nen khong bat buoc link product scrape ra anh listing.
+
+**Root cause:**  
+- `CompetitorListingScraper::scrape()` mac dinh `requireImages=true`, nen Import Sheet van fail neu trang Amazon/Etsy khong scrape duoc anh listing, du sheet da co `Link Ipnut Main Image` bat buoc.
+
+**Affected modules:**  
+- Suncatcher Google Sheet import.
+
+**Deploy impact:**  
+- Khong can migrate.
+- Chi can deploy code; neu cache class/opcache tren VPS thi reload PHP-FPM/clear optimize neu can.
+
+**Queue impact:**  
+- Khong doi queue.
+
+**Kiem tra da chay:**  
+- `php -l app/Livewire/Modals/Suncatcher/ImportSheet.php`
+
+**Follow-up notes:**  
+- Neu link product khong scrape duoc title/metadata thi van co the fail bang loi `Khong scrape duoc thong tin tu link product`; loi hien tai rieng ve thieu anh listing da duoc bo bat buoc cho Suncatcher sheet.
+
+### 2026-07-16 15:xx +07:00
+
+**Muc tieu:**  
+Cho phep Suncatcher chay Auto du chua co `2. Main Image`, va tu tao `2. Main Image` o dau luong.
+
+**File da sua/tao:**  
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Bo dieu kien bat buoc `$asset->redesign` khi hien nut Auto tren card Suncatcher.
+- Trong `startAutomation()`, neu item chua co `redesign` thi goi `generateRedesign()` truoc, sau do moi tao record automation va chay workflow.
+- Giu check provider/quota truoc khi tu generate `2. Main Image`.
+
+**Root cause:**  
+- UI va service deu dang khoa Auto khi item chua co `2. Main Image`, trong khi user muon Auto tu chay buoc nay truoc roi moi sang Script/Person/Prompt/Mockup.
+
+**Affected modules:**  
+- Suncatcher automation start flow
+- Suncatcher product card Auto button visibility
+
+**Deploy impact:**  
+- Khong can migrate.
+- Neu production dang cache Blade/opcache thi clear/reload sau deploy.
+
+**Queue impact:**  
+- Auto Suncatcher se co them mot lan generate `2. Main Image` ngay dau workflow neu item chua co `redesign`.
+
+**Kiem tra da chay:**  
+- `php -l app/Services/Suncatcher/SuncatcherService.php`
+- `php -l resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `php artisan view:cache --no-ansi`
+
+**Follow-up notes:**  
+- Neu user muon badge/step hien ro `2. Main Image` la buoc 2 trong auto timeline, can them mot workflow step moi vao UI va record thay vi chi tu generate ngam truoc buoc `3. Script`.

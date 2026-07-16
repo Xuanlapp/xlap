@@ -1814,14 +1814,14 @@ class SuncatcherService
             throw new RuntimeException('Automation dang chay cho item nay.');
         }
 
-        if (! filled($asset->redesign)) {
-            throw new RuntimeException('Can co 2. Main Image truoc khi chay automation.');
-        }
-
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
 
         if ($this->isProviderPausedForUser($user, $providerKey)) {
             throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
+        }
+
+        if (! filled($asset->redesign)) {
+            $asset = $this->generateRedesign($user, $asset->id, $providerKey, $imageModel);
         }
 
         $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
