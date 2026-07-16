@@ -27,6 +27,7 @@
         }
 
         $currentAutomationLabel = $currentAutomationStep ? ($automationSteps[$currentAutomationStep] ?? $automation?->workflow_step_label) : ($automation?->workflow_step_label ?: 'Dang chay');
+        $mainGenerating = $automationRunning && $currentAutomationStep === 'main';
         $scriptGenerating = $automationRunning && $currentAutomationStep === 'script';
         $promptGenerating = $automationRunning && $currentAutomationStep === 'prompt';
         $workflowLocked = in_array(($automation?->workflow_status ?? null), ['running', 'failed', 'completed'], true) || $hasAllDbMockups;
@@ -341,6 +342,15 @@
             </div>
 
             <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                @if ($mainGenerating)
+                    <div class="absolute inset-0 z-20 flex items-center justify-center bg-white/92 backdrop-blur-sm">
+                        <div class="flex flex-col items-center gap-2 text-center text-blue-700">
+                            <span class="h-9 w-9 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700"></span>
+                            <span class="text-xs font-bold text-slate-700">Creating main image...</span>
+                        </div>
+                    </div>
+                @endif
+
                 <div wire:loading.flex wire:target="mainImageUpload,updatedMainImageUpload" class="absolute inset-0 z-20 items-center justify-center bg-white/82 backdrop-blur-sm">
                     <div class="flex h-14 w-14 items-center justify-center rounded-full border border-blue-200 bg-blue-50 shadow-lg">
                         <span class="h-7 w-7 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700"></span>
@@ -680,6 +690,15 @@
                                     <span class="h-6 w-6 animate-spin rounded-full border-4 border-sky-200 border-t-sky-700"></span>
                                 </div>
                             </div>
+
+                            @if ($automationRunning && $currentAutomationStep === 'person_'.$personKey)
+                                <div class="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/82 backdrop-blur-sm">
+                                    <div class="flex flex-col items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-center shadow-lg">
+                                        <span class="h-6 w-6 animate-spin rounded-full border-4 border-sky-200 border-t-sky-700"></span>
+                                        <span class="text-[11px] font-bold text-slate-700">Creating {{ $personLabel }}...</span>
+                                    </div>
+                                </div>
+                            @endif
 
                             <button
                                 type="button"

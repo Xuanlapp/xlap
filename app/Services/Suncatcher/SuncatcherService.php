@@ -1907,13 +1907,21 @@ class SuncatcherService
         }
 
         foreach ($this->automationPipelineSteps() as $step) {
-            $this->markAutomationStepRunning($asset, $step, $record->step_data ?? []);
+            $asset = $asset->fresh();
 
-        try {
-            match ($step) {
-                'main' => $asset = $this->generateRedesign($user, $asset->id, $providerKey, $imageModel),
-                'script' => $asset = $this->generateWorkflowScript($user, $asset->id, $providerKey, $textModel),
-                'person_a' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'a', $providerKey, $imageModel),
+            if ($this->automationStepHasOutput($asset, $step)) {
+                $this->markAutomationStepFinished($asset, $step);
+                continue;
+            }
+
+            $currentRecord = $this->automationForAsset($asset);
+            $this->markAutomationStepRunning($asset, $step, is_array($currentRecord?->step_data) ? $currentRecord->step_data : []);
+
+            try {
+                match ($step) {
+                    'main' => $asset = $this->generateRedesign($user, $asset->id, $providerKey, $imageModel),
+                    'script' => $asset = $this->generateWorkflowScript($user, $asset->id, $providerKey, $textModel),
+                    'person_a' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'a', $providerKey, $imageModel),
                     'person_b' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'b', $providerKey, $imageModel),
                     'prompt' => $asset = $this->generateWorkflowPrompts($user, $asset->id, $providerKey, $textModel),
                     'mockup' => $asset = $this->generateAllWorkflowImages($user, $asset->id, $providerKey, $imageModel),
@@ -3323,8 +3331,8 @@ TEXT;
         return <<<'PROMPT'
 Based on this target audience analysis, suggest TWO DIFFERENT person descriptions for Amazon listing images.
 
-PERSON A - GIFT RECEIVER, the person who receives/wears/keeps/uses the customized product.
-PERSON B - GIFT GIVER, the person who presents the gift or smiles beside the receiver.
+PERSON A - A person representing the gift receiver.
+PERSON B - A person representing the gift giver.
 
 CRITICAL REQUIREMENTS:
 1. Person A and Person B must be clearly different people.
@@ -3346,6 +3354,8 @@ CRITICAL REQUIREMENTS:
    - pose
    - setting
 4. Use the demographics from the audience analysis to pick realistic personas.
+5. Describe only the person. Do NOT mention any product, gift, object, accessory, prop, pet, phone, flower, box, or background item.
+6. Both Person A and Person B must have empty hands. Do NOT describe them holding, carrying, presenting, receiving, wearing, using, touching, or interacting with anything. Focus only on their appearance, expression, clothing, pose, and setting.
 
 Output EXACTLY in this format, nothing else:
 
