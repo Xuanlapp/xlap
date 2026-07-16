@@ -49,7 +49,7 @@ class ImportSheet extends Component
     public bool $isProcessing = false;
 
     /**
-     * @var array<int, array{row:int,sku:string,product_link:string,main_image:string,product:string,keyword:string,keyword_phrase:string,status:string,attempts:int,result_message:string}>
+     * @var array<int, array{row:int,sku:string,product_link:string,input_main_image:string,main_image:string,product:string,keyword:string,keyword_phrase:string,status:string,attempts:int,result_message:string}>
      */
     public array $rows = [];
 
@@ -275,6 +275,7 @@ class ImportSheet extends Component
         $this->isProcessing = false;
         $this->showRetry = $this->rows !== [];
         $completed = $this->rows === [];
+        $this->showErrors = ! $completed && $this->rowErrors !== [];
         $this->setProgress($completed ? 'completed' : 'failed', $completed ? 100 : 95, $completed ? 'Import completed.' : 'Import finished with errors.');
         $this->dispatch(
             'toast',
@@ -397,17 +398,18 @@ class ImportSheet extends Component
     private function importRow(SuncatcherService $service, CompetitorListingScraper $scraper, array $row): ProductDesignAsset
     {
         $competitorListing = $this->scrapeListingForImport($scraper, $row['product_link']);
-        $inputImage = $this->primaryCompetitorImage($competitorListing);
+        $inputImage = trim((string) ($row['input_main_image'] ?? ''));
+        $listingInputImage = $this->primaryCompetitorImage($competitorListing);
         $imageSub = array_values(array_unique(array_filter(
             $competitorListing['images'] ?? [],
-            fn (mixed $image): bool => is_string($image) && trim($image) !== '' && trim($image) !== $inputImage
+            fn (mixed $image): bool => is_string($image) && trim($image) !== '' && trim($image) !== $inputImage && trim($image) !== $listingInputImage
         )));
         $keyword = filled($competitorListing['productTitle'] ?? null)
             ? (string) $competitorListing['productTitle']
             : $this->keywordFromUrl($row['product_link']);
 
         if ($inputImage === '') {
-            throw new RuntimeException('Khong tim thay anh listing tu link nay sau nhieu lan thu.');
+            throw new RuntimeException('Thieu Link Ipnut Main Image.');
         }
 
         if (! filled($keyword)) {
@@ -417,7 +419,8 @@ class ImportSheet extends Component
         $listingPayload = array_merge($competitorListing, [
             'sku' => $row['sku'] ?? '',
             'product_link' => $row['product_link'],
-            'main_image_link' => $row['main_image'],
+            'input_main_image' => $row['input_main_image'],
+            'main_image_link' => $row['main_image'] ?: null,
             'product' => $row['product'] ?? '',
             'keyword_phrase' => $row['keyword_phrase'] ?? '',
         ]);
@@ -437,7 +440,9 @@ class ImportSheet extends Component
             $row['sku'],
         );
 
-        $asset->update(['redesign' => $row['main_image']]);
+        if (filled($row['main_image'] ?? null)) {
+            $asset->update(['redesign' => $row['main_image']]);
+        }
 
         return $asset;
     }
@@ -493,7 +498,7 @@ class ImportSheet extends Component
         $headerIndexes = $this->headerIndexes($rows[0] ?? []);
 
         if ($headerIndexes === []) {
-            throw new RuntimeException('Required columns missing: SKU, Link Product, Link Main Image, Product and Keyword Phrase.');
+            throw new RuntimeException('Required columns missing: SKU, Link Product, Link Ipnut Main Image, Product and Keyword Phrase.');
         }
 
         $parsedRows = [];
@@ -509,14 +514,15 @@ class ImportSheet extends Component
             $rowNumber = $index + 1;
             $sku = trim((string) ($row[$headerIndexes['sku']] ?? ''));
             $productLink = trim((string) ($row[$headerIndexes['product_link']] ?? ''));
-            $mainImage = trim((string) ($row[$headerIndexes['main_image']] ?? ''));
+            $inputMainImage = trim((string) ($row[$headerIndexes['input_main_image']] ?? ''));
+            $mainImage = isset($headerIndexes['main_image']) ? trim((string) ($row[$headerIndexes['main_image']] ?? '')) : '';
             $product = trim((string) ($row[$headerIndexes['product']] ?? ''));
             $keywordPhrase = trim((string) ($row[$headerIndexes['keyword_phrase']] ?? ''));
             $sheetStatus = isset($headerIndexes['status'])
                 ? trim((string) ($row[$headerIndexes['status']] ?? ''))
                 : '';
 
-            if ($sku === '' && $productLink === '' && $mainImage === '' && $product === '' && $keywordPhrase === '') {
+            if ($sku === '' && $productLink === '' && $inputMainImage === '' && $mainImage === '' && $product === '' && $keywordPhrase === '') {
                 continue;
             }
 
@@ -547,8 +553,8 @@ class ImportSheet extends Component
             }
             $seenSkus[$skuKey] = true;
 
-            if ($mainImage === '') {
-                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Link Main Image.'];
+            if ($inputMainImage === '') {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Link Ipnut Main Image.'];
                 continue;
             }
 
@@ -567,7 +573,12 @@ class ImportSheet extends Component
                 continue;
             }
 
-            if (! $this->isImageUrl($mainImage)) {
+            if (! $this->isImageUrl($inputMainImage)) {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Link Ipnut Main Image is invalid.'];
+                continue;
+            }
+
+            if ($mainImage !== '' && ! $this->isImageUrl($mainImage)) {
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Link Main Image is invalid.'];
                 continue;
             }
@@ -576,6 +587,7 @@ class ImportSheet extends Component
                 'row' => $rowNumber,
                 'sku' => $sku,
                 'product_link' => $productLink,
+                'input_main_image' => $inputMainImage,
                 'main_image' => $mainImage,
                 'product' => $product,
                 'keyword' => $this->keywordFromUrl($productLink),
@@ -631,6 +643,10 @@ class ImportSheet extends Component
                 $indexes['product_link'] = $index;
             }
 
+            if (in_array($normalized, ['link ipnut main image', 'ipnut main image link', 'ipnut main image', 'link input main image', 'input main image link', 'input main image'], true)) {
+                $indexes['input_main_image'] = $index;
+            }
+
             if (in_array($normalized, ['link main image', 'main image link', 'main image', '2 main image', 'link design'], true)) {
                 $indexes['main_image'] = $index;
             }
@@ -648,7 +664,7 @@ class ImportSheet extends Component
             }
         }
 
-        return isset($indexes['sku'], $indexes['product_link'], $indexes['main_image'], $indexes['product'], $indexes['keyword_phrase']) ? $indexes : [];
+        return isset($indexes['sku'], $indexes['product_link'], $indexes['input_main_image'], $indexes['product'], $indexes['keyword_phrase']) ? $indexes : [];
     }
 
     private function extractSheetId(string $url): ?string

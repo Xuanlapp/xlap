@@ -2844,3 +2844,150 @@ Them fallback cho Suncatcher neu DB/pivot tren VPS van con slug cu `ornament`, t
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Fix admin bi 403 khi vao Suncatcher.
+
+**File da sua/tao:**  
+- `app/Models/User.php`
+
+**Thay doi chinh:**  
+- `User::canAccessProduct()` cho admin/role admin `return true` truc tiep.
+- User thuong van theo product pivot `suncatcher`/`ornament` nhu da sua.
+
+**Root cause:**  
+- Admin branch truoc do van check `products.slug = suncatcher` va active. Neu DB VPS con slug cu `ornament` hoac product row bi lech thi admin bi middleware `product:suncatcher` abort 403.
+
+**Validation:**  
+- `php -l app/Models/User.php` pass.
+- `php artisan optimize:clear` pass.
+- `php artisan view:cache --no-ansi` pass.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Dong bo `Import Sheet` cua Suncatcher voi `Import Excel`: them `Link Ipnut Main Image` bat buoc va `Link Main Image` optional.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Suncatcher/ImportSheet.php`
+- `resources/views/livewire/modals/suncatcher/import-sheet.blade.php`
+
+**Thay doi chinh:**  
+- `Import Sheet` parse cot `Link Ipnut Main Image` va dung cot nay cho `1. Input Image`.
+- `Link Main Image` chi validate/luu redesign khi co du lieu.
+- Preview modal hien ca `Link Ipnut Main Image` va `Link Main Image`.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Suncatcher/ImportSheet.php` pass.
+- `php -l resources/views/livewire/modals/suncatcher/import-sheet.blade.php` pass.
+- `php artisan view:cache --no-ansi` pass.
+- `php artisan optimize:clear` pass.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+An nut `Add Suncatcher` tam thoi va rut gon `Keyword Phrase` trong Import Sheet.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/suncatcher/list-suncatcher.blade.php`
+- `resources/views/livewire/modals/suncatcher/import-sheet.blade.php`
+
+**Thay doi chinh:**  
+- Button mo modal add Suncatcher da duoc an/comment, modal van mount de co the bat lai sau.
+- Cot `Keyword Phrase` trong preview Import Sheet hien ngan 80 ky tu, co nut `Xem thêm` / `Thu gọn` khi dai.
+
+**Validation:**  
+- `php -l resources/views/livewire/pages/suncatcher/list-suncatcher.blade.php` pass.
+- `php -l resources/views/livewire/modals/suncatcher/import-sheet.blade.php` pass.
+- `php artisan view:cache --no-ansi` pass.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Doi nguon tao `2. Main Image` cua Suncatcher sang `Link Ipnut Main Image`.
+
+**File da sua/tao:**  
+- `app/Services/Suncatcher/SuncatcherService.php`
+
+**Thay doi chinh:**  
+- `generateRedesign()` uu tien lay anh tu `data_item_add.input_main_image`.
+- Chi fallback ve `asset->image_link` neu khong co `input_main_image`.
+
+**Validation:**  
+- `php -l app/Services/Suncatcher/SuncatcherService.php` pass.
+- `php artisan optimize:clear` pass.
+- `php artisan view:cache --no-ansi` pass.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Hien chi tiet loi khi `Import Sheet` Suncatcher ket thuc voi loi.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Suncatcher/ImportSheet.php`
+- `resources/views/livewire/modals/suncatcher/import-sheet.blade.php`
+
+**Thay doi chinh:**  
+- Khi import fail, `showErrors` tu dong bat neu co `rowErrors`.
+- Modal them panel loi ben duoi bang, hien `Row ...: message` de user biet loi gi.
+
+**Validation:**  
+- `php -l app/Livewire/Modals/Suncatcher/ImportSheet.php` pass.
+- `php -l resources/views/livewire/modals/suncatcher/import-sheet.blade.php` pass.
+- `php artisan view:cache --no-ansi` pass.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16 15:xx +07:00
+
+**Muc tieu:**  
+Dong bo `Import Sheet` cua Ornament Amazon 2 voi logic `Import Excel`, tach rieng voi Suncatcher.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/OrnamentAmazonTwo/ImportSheet.php`
+- `resources/views/livewire/modals/ornament-amazon-two/import-sheet.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them parse va validate `Mockup 1` -> `Mockup 6` cho luong import sheet, giong import excel.
+- Them `ImageLinkPreviewService` de validate `Link Main Image` va mockup link giong luong import excel, khong dung logic rieng cua Suncatcher.
+- Sau khi tao asset tu sheet, neu du 6 mockup hop le thi goi `applyImportedMockups()` giong import excel.
+- Cap nhat modal preview import sheet de hien thi day du cot `SKU`, `Product`, `Keyword Phrase`, `Link Product`, `Link Main Image`, `Mockups`, `Status` va danh sach loi chi tiet.
+
+**Root cause:**  
+- `ImportSheet` cua Ornament Amazon 2 dang la luong cu, chua parse/mockup/apply mockup, validate link hinh qua long va preview table thieu cot nen khac han `Import Excel`.
+
+**Affected modules:**  
+- Ornament Amazon 2 import sheet UI
+- Ornament Amazon 2 import sheet parser/validator
+- Ornament Amazon 2 imported mockup application flow
+
+**Deploy impact:**  
+- Khong can migrate.
+- Can clear/refresh view cache neu production dang cache Blade cu.
+
+**Queue impact:**  
+- Khong doi queue.
+
+**Kiem tra da chay:**  
+- `php -l app/Livewire/Modals/OrnamentAmazonTwo/ImportSheet.php`
+- `php -l resources/views/livewire/modals/ornament-amazon-two/import-sheet.blade.php`
+- `php artisan view:cache --no-ansi`
+
+**Follow-up notes:**  
+- Neu user muon table import sheet giong import excel hon nua (them expand/collapse tung cot mockup, duplicate badge, done badge), co the chinh tiep tren view ma khong anh huong logic import.

@@ -176,16 +176,7 @@
                         Prompt
                     </button>
 
-                    <button
-                        type="button"
-                        wire:click="$dispatch('openModal', { component: 'modals.suncatcher.add-product-design' })"
-                        class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-cyan-500 px-3 text-xs font-bold text-white shadow-sm transition hover:bg-cyan-600 focus:outline-none focus:ring-4 focus:ring-cyan-200"
-                    >
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path stroke-linecap="round" d="M12 5v14M5 12h14" />
-                        </svg>
-                        {{ $addButtonLabel }}
-                    </button>
+                    {{-- Add Suncatcher is intentionally hidden for now. Keep the modal mounted below so it can be re-enabled later. --}}
 
                     <button
                         type="button"

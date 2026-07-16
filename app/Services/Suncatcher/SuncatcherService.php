@@ -337,8 +337,11 @@ class SuncatcherService
         $asset = $this->assetForUser($user, $assetId);
         $this->ensureNotApproved($asset);
 
-        if (! $asset->image_link) {
-            throw new RuntimeException('Dong nay chua co image_link.');
+        $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
+        $mainImageSource = $this->stringOrNull($sourceData['input_main_image'] ?? null) ?: $asset->image_link;
+
+        if (! $mainImageSource) {
+            throw new RuntimeException('Dong nay chua co Link Ipnut Main Image hoac image_link.');
         }
 
         return $this->assets->updateRedesign(
@@ -346,7 +349,7 @@ class SuncatcherService
             $this->generateImage(
                 user: $user,
                 providerKey: $providerKey,
-                imageUri: $asset->image_link,
+                imageUri: $mainImageSource,
                 prompt: $this->promptContent($user),
                 folder: 'generated/suncatcher/redesign',
                 removeBackground: $this->backgroundRemoval->enabledFor($this->product()),

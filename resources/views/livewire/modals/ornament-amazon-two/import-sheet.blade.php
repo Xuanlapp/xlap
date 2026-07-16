@@ -3,13 +3,17 @@
         <div @if($isProcessing) wire:poll.800ms="processNextRow" @endif x-on:keydown.escape.window="$wire.close()" tabindex="-1" aria-modal="true" role="dialog" class="fixed inset-0 z-50 flex h-[calc(100%-1rem)] max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900/50 p-4 md:inset-0">
             <button type="button" class="fixed inset-0 cursor-default" wire:click="close" aria-label="Close import sheet modal"></button>
 
-            <div class="relative overflow-y-auto z-10 w-full max-w-7xl">
+            <div class="relative z-10 w-full max-w-7xl overflow-y-auto">
                 <div class="rounded-2xl bg-white shadow-sm">
                     <div class="flex items-center justify-between rounded-t-2xl border-b border-slate-200 p-5 md:p-6">
                         <div class="min-w-0">
                             <h3 class="text-xl font-semibold text-slate-900">Import Sheet</h3>
                             @if (filled($sheetUrl))
-                                <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">Link dang luu: <a href="{{ $sheetUrl }}" target="_blank" rel="noopener noreferrer" class="break-all font-medium text-indigo-600 hover:underline">{{ $sheetUrl }}</a><button type="button" wire:click="$dispatch('openModal', { component: 'modals.ornament-amazon-two.edit-import-sheet' })" class="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">Edit</button></div>
+                                <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                                    <span>Link dang luu:</span>
+                                    <a href="{{ $sheetUrl }}" target="_blank" rel="noopener noreferrer" class="break-all font-medium text-indigo-600 hover:underline">{{ $sheetUrl }}</a>
+                                    <button type="button" wire:click="$dispatch('openModal', { component: 'modals.ornament-amazon-two.edit-import-sheet' })" class="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">Edit</button>
+                                </div>
                             @else
                                 <p class="mt-1 text-sm text-slate-500">Nhap link Google Sheet cho Ornament Amazon 2 de luu cau hinh sync sau nay.</p>
                             @endif
@@ -31,8 +35,6 @@
                                 <x-button color="blue" type="submit" wire:loading.attr="disabled">Luu</x-button>
                             </form>
                         @else
-
-
                             @if ($status !== 'idle')
                                 <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                                     <div class="rounded-xl border border-blue-200 bg-blue-50 p-3 shadow-sm">
@@ -52,42 +54,98 @@
                                         <div class="mt-1 text-2xl font-bold text-amber-900">{{ $duplicationRows }}</div>
                                     </div>
                                 </div>
+
+                                <div>
+                                    <div class="mb-2 flex items-center justify-between text-sm text-slate-500">
+                                        <span>{{ $statusMessage }}</span>
+                                        <span>{{ $progress }}%</span>
+                                    </div>
+                                    <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div class="h-full rounded-full bg-indigo-600 transition-all duration-300" style="width: {{ $progress }}%"></div>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if ($rowErrors !== [])
+                                <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div>
+                                            <div class="font-semibold">Danh sach loi</div>
+                                            <div class="mt-1 text-red-600">Import sheet dang loi o cac dong ben duoi.</div>
+                                        </div>
+                                        <button type="button" wire:click="toggleErrors" class="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100">
+                                            {{ $showErrors ? 'An loi' : 'Xem loi' }}
+                                        </button>
+                                    </div>
+
+                                    @if ($showErrors)
+                                        <div class="mt-3 max-h-56 space-y-2 overflow-y-auto rounded-xl border border-red-100 bg-white p-3">
+                                            @foreach ($rowErrors as $error)
+                                                <div class="rounded-lg border border-red-100 bg-red-50 px-3 py-2">
+                                                    <div class="font-medium">Row {{ $error['row'] ?? '-' }}</div>
+                                                    <div class="mt-1 text-red-600">{{ $error['message'] ?? 'Unknown error.' }}</div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
                             @endif
 
                             @if ($rows !== [])
-                                <div class="rounded-2xl border border-slate-200 bg-white">
-                                    <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-                                        <div>
-                                            <p class="text-sm font-semibold text-slate-900">Preview data tu sheet</p>
-                                            <p class="mt-1 text-xs text-slate-500">Cac SKU da ton tai trong database da duoc loc bo.</p>
-                                        </div>
-                                        <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">{{ count($rows) }} rows</span>
-                                    </div>
-                                    <div class="max-h-96 overflow-auto">
-                                        <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
-                                            <thead class="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                                <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                                                 <tr>
-                                                    <th class="px-4 py-3">Row</th>
-                                                    <th class="px-4 py-3">SKU</th>
-                                                    <th class="px-4 py-3">Product</th>
-                                                    <th class="px-4 py-3">Keyword Phrase</th>
-                                                    <th class="px-4 py-3">Link Product</th>
-                                                    <th class="px-4 py-3">Main Image</th>
-                                                    <th class="px-4 py-3">Status</th>
+                                                    <th class="whitespace-nowrap px-4 py-3">Row</th>
+                                                    <th class="whitespace-nowrap px-4 py-3">SKU</th>
+                                                    <th class="whitespace-nowrap px-4 py-3">Product</th>
+                                                    <th class="whitespace-nowrap px-4 py-3">Keyword Phrase</th>
+                                                    <th class="whitespace-nowrap px-4 py-3">Link Product</th>
+                                                    <th class="whitespace-nowrap px-4 py-3">Link Main Image</th>
+                                                    <th class="whitespace-nowrap px-4 py-3">Mockups</th>
+                                                    <th class="whitespace-nowrap px-4 py-3">Status</th>
                                                     <th class="px-4 py-3"></th>
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-slate-100 text-slate-700">
                                                 @foreach ($rows as $index => $row)
-                                                    <tr wire:key="ornament-sheet-row-{{ $row['row'] ?? $index }}-{{ $row['sku'] ?? $index }}">
+                                                    <tr wire:key="ornament-sheet-row-{{ $row['row'] ?? $index }}-{{ $row['sku'] ?? $index }}" class="align-top">
                                                         <td class="whitespace-nowrap px-4 py-3 font-medium text-slate-900">{{ $row['row'] }}</td>
                                                         <td class="whitespace-nowrap px-4 py-3">{{ $row['sku'] }}</td>
-                                                        <td class="min-w-48 px-4 py-3">{{ $row['product'] }}</td>
-                                                        <td class="min-w-48 px-4 py-3">{{ $row['keyword_phrase'] }}</td>
-                                                        <td class="max-w-56 truncate px-4 py-3"><a href="{{ $row['product_link'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">{{ $row['product_link'] }}</a></td>
-                                                        <td class="max-w-56 truncate px-4 py-3"><a href="{{ $row['main_image'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">{{ $row['main_image'] }}</a></td>
-                                                        <td class="whitespace-nowrap px-4 py-3"><span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{{ $row['status'] ?? 'ready' }}</span></td>
-                                                        <td class="px-4 py-3 text-right"><button type="button" wire:click="removeRow({{ $index }})" wire:loading.attr="disabled" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40" @disabled($isProcessing) title="Remove row"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 0 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg></button></td>
+                                                        <td class="min-w-40 px-4 py-3">{{ $row['product'] }}</td>
+                                                        <td class="min-w-56 px-4 py-3">
+                                                            <div class="max-w-72 break-words">{{ $row['keyword_phrase'] }}</div>
+                                                        </td>
+                                                        <td class="max-w-64 px-4 py-3">
+                                                            <a href="{{ $row['product_link'] }}" target="_blank" rel="noopener noreferrer" class="line-clamp-2 break-all text-indigo-600 hover:underline">{{ $row['product_link'] }}</a>
+                                                        </td>
+                                                        <td class="max-w-64 px-4 py-3">
+                                                            <a href="{{ $row['main_image'] }}" target="_blank" rel="noopener noreferrer" class="line-clamp-2 break-all text-indigo-600 hover:underline">{{ $row['main_image'] }}</a>
+                                                        </td>
+                                                        <td class="min-w-48 px-4 py-3">
+                                                            @php($mockups = collect($row['mockups'] ?? [])->filter()->values())
+                                                            @if ($mockups->isEmpty())
+                                                                <span class="text-slate-400">-</span>
+                                                            @else
+                                                                <div class="space-y-1">
+                                                                    @foreach ($mockups as $mockupIndex => $mockupUrl)
+                                                                        <a href="{{ $mockupUrl }}" target="_blank" rel="noopener noreferrer" class="block break-all text-xs text-indigo-600 hover:underline">Mockup {{ $mockupIndex + 1 }}</a>
+                                                                    @endforeach
+                                                                </div>
+                                                            @endif
+                                                        </td>
+                                                        <td class="whitespace-nowrap px-4 py-3">
+                                                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{{ $row['status'] ?? 'ready' }}</span>
+                                                            @if (filled($row['result_message'] ?? ''))
+                                                                <div class="mt-2 max-w-52 break-words text-xs text-red-600">{{ $row['result_message'] }}</div>
+                                                            @endif
+                                                        </td>
+                                                        <td class="px-4 py-3 text-right">
+                                                            <button type="button" wire:click="removeRow({{ $index }})" wire:loading.attr="disabled" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40" @disabled($isProcessing) title="Remove row">
+                                                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 0 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 @endforeach
                                             </tbody>

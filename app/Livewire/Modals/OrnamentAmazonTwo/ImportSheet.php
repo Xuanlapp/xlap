@@ -6,6 +6,7 @@ use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentAmazonTwo\OrnamentAmazonTwoStatusPanel;
 use App\Models\DataImportUser;
 use App\Models\ProductDesignAsset;
+use App\Services\Image\ImageLinkPreviewService;
 use App\Services\OrnamentAmazonTwo\CompetitorListingScraper;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use Illuminate\Contracts\View\View;
@@ -439,6 +440,16 @@ class ImportSheet extends Component
 
         $asset->update(['redesign' => $row['main_image']]);
 
+        if (! empty($row['mockups']) && is_array($row['mockups'])) {
+            $mockupCount = collect($row['mockups'])
+                ->filter(fn (mixed $url): bool => is_string($url) && trim($url) !== '')
+                ->count();
+
+            if ($mockupCount >= 6) {
+                $service->applyImportedMockups(auth()->user(), $asset->id, $row['mockups']);
+            }
+        }
+
         return $asset;
     }
 
@@ -481,7 +492,7 @@ class ImportSheet extends Component
 
     /**
      * @param  array<int, array<int, string>>  $rows
-     * @return array<int, array{row:int,sku:string,product_link:string,main_image:string,product:string,keyword:string,keyword_phrase:string,status:string,attempts:int,result_message:string}>
+     * @return array<int, array{row:int,sku:string,product_link:string,main_image:string,product:string,keyword:string,keyword_phrase:string,mockups:array<string,string>,status:string,attempts:int,result_message:string}>
      */
     private function parseRows(array $rows): array
     {
@@ -512,6 +523,13 @@ class ImportSheet extends Component
             $mainImage = trim((string) ($row[$headerIndexes['main_image']] ?? ''));
             $product = trim((string) ($row[$headerIndexes['product']] ?? ''));
             $keywordPhrase = trim((string) ($row[$headerIndexes['keyword_phrase']] ?? ''));
+            $mockups = [];
+            for ($mockupNumber = 1; $mockupNumber <= 6; $mockupNumber++) {
+                $columnKey = 'mockup'.$mockupNumber;
+                if (isset($headerIndexes[$columnKey])) {
+                    $mockups[$columnKey] = trim((string) ($row[$headerIndexes[$columnKey]] ?? ''));
+                }
+            }
             $sheetStatus = isset($headerIndexes['status'])
                 ? trim((string) ($row[$headerIndexes['status']] ?? ''))
                 : '';
@@ -572,6 +590,13 @@ class ImportSheet extends Component
                 continue;
             }
 
+            foreach ($mockups as $mockupKey => $mockupUrl) {
+                if ($mockupUrl !== '' && ! $this->isImageUrl($mockupUrl)) {
+                    $this->rowErrors[] = ['row' => $rowNumber, 'message' => strtoupper($mockupKey).' is invalid.'];
+                    continue 2;
+                }
+            }
+
             $parsedRows[] = [
                 'row' => $rowNumber,
                 'sku' => $sku,
@@ -580,6 +605,7 @@ class ImportSheet extends Component
                 'product' => $product,
                 'keyword' => $this->keywordFromUrl($productLink),
                 'keyword_phrase' => $keywordPhrase,
+                'mockups' => $mockups,
                 'status' => 'ready',
                 'attempts' => 0,
                 'result_message' => '',
@@ -643,6 +669,25 @@ class ImportSheet extends Component
                 $indexes['keyword_phrase'] = $index;
             }
 
+            if (in_array($normalized, ['mockup 1', 'mockup1'], true)) {
+                $indexes['mockup1'] = $index;
+            }
+            if (in_array($normalized, ['mockup 2', 'mockup2'], true)) {
+                $indexes['mockup2'] = $index;
+            }
+            if (in_array($normalized, ['mockup 3', 'mockup3'], true)) {
+                $indexes['mockup3'] = $index;
+            }
+            if (in_array($normalized, ['mockup 4', 'mockup4'], true)) {
+                $indexes['mockup4'] = $index;
+            }
+            if (in_array($normalized, ['mockup 5', 'mockup5'], true)) {
+                $indexes['mockup5'] = $index;
+            }
+            if (in_array($normalized, ['mockup 6', 'mockup6'], true)) {
+                $indexes['mockup6'] = $index;
+            }
+
             if (in_array($normalized, ['status', 'trang thai'], true)) {
                 $indexes['status'] = $index;
             }
@@ -682,7 +727,7 @@ class ImportSheet extends Component
 
     private function isImageUrl(string $url): bool
     {
-        return filter_var($url, FILTER_VALIDATE_URL) !== false;
+        return filter_var($url, FILTER_VALIDATE_URL) && app(ImageLinkPreviewService::class)->looksLikeImageUrl($url);
     }
 
     private function keywordFromUrl(string $url): string

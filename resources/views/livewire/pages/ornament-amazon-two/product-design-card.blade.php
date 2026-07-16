@@ -154,7 +154,7 @@
                         </span>
                     </div>
                     <p class="mt-1 text-xs font-medium leading-5 text-cyan-900/80">
-                        Vui lÃ²ng khÃ´ng táº¯t trang. Há»‡ thá»‘ng Ä‘ang cháº¡y tá»«ng bÆ°á»›c vÃ  sáº½ tá»± cáº­p nháº­t khi xong.
+                        Đang auto!
                     </p>
 
                     <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
