@@ -37,11 +37,22 @@ new class extends Component
     public function with(): array
     {
         $user = auth()->user();
-        $products = $user
-            ? ($user->isManager()
-                ? \App\Models\Product::query()->where('is_active', true)->orderBy('name')->get()
-                : $user->products()->where('is_active', true)->orderBy('name')->get())
-            : collect();
+        $products = collect();
+
+        if ($user) {
+            if ($user->isManager()) {
+                $managerProducts = \App\Models\Product::query()->where('is_active', true)->orderBy('name')->get();
+                $assignedSuncatcher = $user->products()->where('slug', 'suncatcher')->where('is_active', true)->first();
+
+                $products = $managerProducts
+                    ->reject(fn ($product): bool => $product->slug === 'suncatcher')
+                    ->when($assignedSuncatcher, fn ($items) => $items->push($assignedSuncatcher))
+                    ->sortBy('name')
+                    ->values();
+            } else {
+                $products = $user->products()->where('is_active', true)->orderBy('name')->get();
+            }
+        }
         $canAccessWali = (bool) ($user && ((bool) $user->can_access_wali));
         $isWaliOnly = (bool) ($user && (bool) $user->can_access_wali && ! ((bool) $user->is_admin || $user->role === 'admin') && $products->isEmpty());
 

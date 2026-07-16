@@ -2797,3 +2797,50 @@ Fix loi Suncatcher import `Unknown named parameter $requireImages`.
 
 **Queue impact:**  
 - Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Fix user da duoc cap quyen Suncatcher nhung vao trang van bi 403.
+
+**File da sua/tao:**  
+- `app/Models/User.php`
+- `resources/views/livewire/layout/navigation.blade.php`
+
+**Thay doi chinh:**  
+- Bo logic hard-code `suncatcher` chi admin moi vao trong `User::canAccessProduct()`.
+- User thuong vao Suncatcher khi co product pivot `suncatcher` trong `product_user`.
+- Manager van co full product active, nhung rieng Suncatcher chi hien neu admin gan quyen.
+
+**Root cause:**  
+- Middleware `product:suncatcher` goi `canAccessProduct('suncatcher')`, nhung ham nay dang return true chi khi admin/role admin.
+
+**Validation:**  
+- `php -l app/Models/User.php` pass.
+- `php -l resources/views/livewire/layout/navigation.blade.php` pass.
+- `php artisan view:cache --no-ansi` pass sau khi bo read-only cho `bootstrap/cache` local.
+
+**Queue impact:**  
+- Khong co.
+
+### 2026-07-16
+
+**Muc tieu:**  
+Them fallback cho Suncatcher neu DB/pivot tren VPS van con slug cu `ornament`, tranh bi 403 du da cap quyen.
+
+**File da sua/tao:**  
+- `app/Models/User.php`
+- `resources/views/livewire/layout/navigation.blade.php`
+
+**Thay doi chinh:**  
+- `canAccessProduct('suncatcher')` gio chap nhan ca product slug `suncatcher` va `ornament`.
+- Navigation manager cung fallback `ornament` de hien Suncatcher dung voi quyen da cap.
+
+**Validation:**  
+- `php -l app/Models/User.php` pass.
+- `php -l resources/views/livewire/layout/navigation.blade.php` pass.
+- `php artisan optimize:clear` pass.
+- `php artisan view:cache --no-ansi` pass.
+
+**Queue impact:**  
+- Khong co.
