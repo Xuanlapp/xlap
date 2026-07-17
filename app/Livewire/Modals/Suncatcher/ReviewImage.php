@@ -83,12 +83,14 @@ class ReviewImage extends Component
         ?string $editTarget = null,
         ?string $providerKey = null,
         ?string $imageModel = null,
+        ?string $imagePrompt = null,
     ): void
     {
         $this->gallery = $gallery ?: [[
             'src' => $src,
             'original' => $original ?: $src,
             'title' => $title ?: 'Review image',
+            'prompt' => $imagePrompt,
         ]];
         $this->currentIndex = max(0, min($currentIndex, count($this->gallery) - 1));
         $this->action = $action;
@@ -98,6 +100,7 @@ class ReviewImage extends Component
         $this->editTarget = $editTarget;
         $this->modalProviderKey = $providerKey;
         $this->modalImageModel = $imageModel;
+        $this->imagePrompt = is_string($imagePrompt) && trim($imagePrompt) !== '' ? trim($imagePrompt) : null;
         $this->assetApproved = false;
         $this->customPrompt = '';
         $this->setCurrentFromGallery();
@@ -522,4 +525,5 @@ class ReviewImage extends Component
         }
     }
 }
+
 

@@ -3476,3 +3476,35 @@ Bo phu thuoc vao preview status khi render mockup Suncatcher de user test anh th
 
 **Follow-up notes:**  
 - Neu card van spin, can check worker da ghi anh vao `mockup1..6` chua.
+
+### 2026-07-17 +07:00
+
+**Muc tieu:**  
+Hien prompt Person A/B trong modal preview anh Suncatcher.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Suncatcher/ReviewImage.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them tham so `imagePrompt` vao listener `review-image-suncatcher`.
+- Dua `imagePrompt` vao gallery item va set `$this->imagePrompt` khi mo modal.
+- Modal da co UI `Prompt Create Image`, nay Person A/B preview se hien prompt neu card truyen len.
+
+**Root cause:**  
+- Card Person A/B da dispatch `imagePrompt`, nhung modal Suncatcher `open()` chua khai bao/thiet lap tham so nay nen prompt bi mat.
+
+**Affected modules:**  
+- Suncatcher ReviewImage modal
+- Suncatcher Person A/B preview flow
+
+**Deploy impact:**  
+- Khong can migrate.
+- Clear/rebuild Blade cache sau deploy.
+
+**Queue impact:**  
+- Khong doi queue.
+
+**Kiem tra da chay:**  
+- `php -l app/Livewire/Modals/Suncatcher/ReviewImage.php`
+- `php artisan view:cache --no-ansi`
