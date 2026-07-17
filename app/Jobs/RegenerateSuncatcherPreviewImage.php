@@ -35,13 +35,19 @@ class RegenerateSuncatcherPreviewImage implements ShouldQueue
 
     public function handle(SuncatcherService $service): void
     {
-        $service->markWorkflowImageBatchSlotGenerating($this->assetId, $this->slot, $this->attempts());
+        $isRedesignTarget = $this->target === 'redesign' || $this->slot === 'redesign';
+
+        if (! $isRedesignTarget) {
+            $service->markWorkflowImageBatchSlotGenerating($this->assetId, $this->slot, $this->attempts());
+        }
 
         $user = User::findOrFail($this->userId);
-        $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
-            'status' => 'generating',
-            'started_at' => now()->toIso8601String(),
-        ]);
+        if (! $isRedesignTarget) {
+            $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
+                'status' => 'generating',
+                'started_at' => now()->toIso8601String(),
+            ]);
+        }
 
         try {
             $service->customizePreviewImage(
@@ -54,18 +60,22 @@ class RegenerateSuncatcherPreviewImage implements ShouldQueue
                 imageModel: $this->imageModel,
             );
 
-            $service->markWorkflowImageBatchSlotFinished($this->assetId, $this->slot);
-            $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
-                'status' => 'done',
-                'error' => null,
-                'finished_at' => now()->toIso8601String(),
-            ]);
+            if (! $isRedesignTarget) {
+                $service->markWorkflowImageBatchSlotFinished($this->assetId, $this->slot);
+                $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
+                    'status' => 'done',
+                    'error' => null,
+                    'finished_at' => now()->toIso8601String(),
+                ]);
+            }
         } catch (Throwable $exception) {
-            $service->markWorkflowImageBatchSlotFinished($this->assetId, $this->slot, mb_substr($exception->getMessage(), 0, 500));
-            $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
-                'status' => 'error',
-                'error' => mb_substr($exception->getMessage(), 0, 500),
-            ]);
+            if (! $isRedesignTarget) {
+                $service->markWorkflowImageBatchSlotFinished($this->assetId, $this->slot, mb_substr($exception->getMessage(), 0, 500));
+                $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
+                    'status' => 'error',
+                    'error' => mb_substr($exception->getMessage(), 0, 500),
+                ]);
+            }
 
             throw $exception;
         }
@@ -73,13 +83,16 @@ class RegenerateSuncatcherPreviewImage implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
+        $isRedesignTarget = $this->target === 'redesign' || $this->slot === 'redesign';
         $service = app(SuncatcherService::class);
 
-        $service->markWorkflowImageBatchSlotFinished(
-            $this->assetId,
-            $this->slot,
-            mb_substr($exception->getMessage(), 0, 500),
-        );
+        if (! $isRedesignTarget) {
+            $service->markWorkflowImageBatchSlotFinished(
+                $this->assetId,
+                $this->slot,
+                mb_substr($exception->getMessage(), 0, 500),
+            );
+        }
 
         $user = User::find($this->userId);
 
@@ -87,10 +100,13 @@ class RegenerateSuncatcherPreviewImage implements ShouldQueue
             return;
         }
 
-        $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
-            'status' => 'error',
-            'error' => mb_substr($exception->getMessage(), 0, 500),
-            'finished_at' => now()->toIso8601String(),
-        ]);
+        if (! $isRedesignTarget) {
+            $service->updatePreviewState($service->assetForUser($user, $this->assetId), $this->slot, [
+                'status' => 'error',
+                'error' => mb_substr($exception->getMessage(), 0, 500),
+                'finished_at' => now()->toIso8601String(),
+            ]);
+        }
     }
 }
+

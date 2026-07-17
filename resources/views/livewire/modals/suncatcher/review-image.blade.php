@@ -470,7 +470,11 @@
                                     </div>
 
                                     @if ($original)
-                                        <form wire:submit.prevent="customizeSuncatcherImage" class="space-y-3">
+                                        <form
+                                            wire:submit.prevent="customizeSuncatcherImage"
+                                            x-on:submit="window.dispatchEvent(new CustomEvent('suncatcher-generation-started')); if (@js($activePreviewMockupSlot)) { window.dispatchEvent(new CustomEvent('suncatcher-preview-mockup-generation-started', { detail: { assetId: @js($assetId), slot: @js($activePreviewMockupSlot) } })); }"
+                                            class="space-y-3"
+                                        >
                                             <textarea
                                                 x-ref="suncatcherCustomPromptInput"
                                                 wire:model.defer="customPrompt"
@@ -641,3 +645,4 @@
         </div>
     @endif
 </div>
+

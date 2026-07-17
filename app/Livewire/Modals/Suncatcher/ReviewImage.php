@@ -314,36 +314,22 @@ class ReviewImage extends Component
                 'asset_id' => $this->assetId,
                 'target' => $this->editTarget,
             ]);
-            Log::error('Suncatcher preview image customization failed unexpectedly.', [
+            Log::error('Suncatcher preview redesign queue failed unexpectedly.', [
                 'asset_id' => $this->assetId,
                 'target' => $this->editTarget,
                 'message' => $exception->getMessage(),
             ]);
 
-            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi custom anh. Hay xem log de biet chi tiet.');
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi dua anh vao worker.');
 
             return;
-        }
-
-        $updatedUrl = $this->editTarget === 'redesign'
-            ? $asset->redesign
-            : $asset->getAttribute($this->editTarget);
-
-        if (is_string($updatedUrl) && trim($updatedUrl) !== '') {
-            $this->original = $updatedUrl;
-            $this->src = $updatedUrl;
-
-            if (isset($this->gallery[$this->currentIndex])) {
-                $this->gallery[$this->currentIndex]['original'] = $this->original;
-                $this->gallery[$this->currentIndex]['src'] = $this->src;
-            }
         }
 
         $this->customPrompt = '';
         $this->dispatch('suncatcher-product-design-updated', assetId: $asset->id);
         $this->dispatch('suncatcher-product-design-workflow-updated')->to(ListSuncatcher::class);
         $this->dispatch('suncatcher-product-design-workflow-updated')->to(SuncatcherStatusPanel::class);
-        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da custom lai anh dang mo.');
+        $this->dispatch('toast', type: 'success', title: 'Queued!', message: 'Da dua yeu cau redesign vao worker. Theo doi card ben ngoai.');
     }
 
     public function next(): void
@@ -536,3 +522,4 @@ class ReviewImage extends Component
         }
     }
 }
+
