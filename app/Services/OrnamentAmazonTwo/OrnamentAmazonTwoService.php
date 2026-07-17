@@ -3640,18 +3640,24 @@ Analyze the TARGET AUDIENCE for this product:
 - Why they want a personalized version.
 
 ===SECTION:PERSON_A===
-Describe GIFT RECEIVER / Person A for reference image generation.
-- 2-3 sentences.
-- Include age, gender, body type, hair color/texture, eye color, expression, clothing, pose, and setting.
-- Person A is the one who receives, wears, keeps, or uses the customized product.
+Describe Person A for reference image generation.
+- 2–3 sentences.
+- Include age, gender, body type, hair color/texture, eye color, facial expression, clothing, natural standing pose, and general setting.
+- Person A represents the target gift recipient described in the audience analysis.
+- Describe only the person's appearance and identity.
+- Both hands must remain empty and relaxed.
+- Do NOT describe the person holding, carrying, presenting, receiving, wearing, using, touching, or interacting with any product, gift, object, accessory, or prop.
 - Must fit the target audience analysis.
 
 ===SECTION:PERSON_B===
-Describe GIFT GIVER / Person B for reference image generation.
-- 2-3 sentences.
-- Must be clearly different from Person A on at least 2 traits: age, gender, body type, hair color/style, clothing style, role in scene.
-- Include age, gender, body type, hair color/texture, eye color, expression, clothing, pose, and setting.
-- Person B presents the gift, stands next to the receiver, hands it over, or smiles alongside.
+Describe Person B for reference image generation.
+- 2–3 sentences.
+- Must be clearly different from Person A in at least two visual traits.
+- Include age, gender, body type, hair color/texture, eye color, facial expression, clothing, natural standing pose, and general setting.
+- Person B represents the target gift giver described in the audience analysis.
+- Describe only the person's appearance and identity.
+- Both hands must remain empty and relaxed.
+- Do NOT describe the person holding, carrying, presenting, receiving, wearing, using, touching, or interacting with any product, gift, object, accessory, or prop.
 
 ===SECTION:STYLE===
 Color tone for the listing set:
