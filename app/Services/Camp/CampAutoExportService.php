@@ -69,8 +69,8 @@ class CampAutoExportService
         $rows = [];
 
         foreach ($targetTypes as $targetType) {
-            $campaignName = trim($sku.' - Auto '.$targetType.' - '.$startDate);
-            $adGroupName = trim($sku.' - Auto - '.$targetType.' - '.$startDate);
+            $campaignName = $this->withBidSuffix(trim($sku.' - Auto '.$targetType.' - '.$startDate), $bid);
+            $adGroupName = $this->withBidSuffix(trim($sku.' - Auto - '.$targetType.' - '.$startDate), $bid);
             $campaignState = 'enabled';
             $adGroupState = 'enabled';
 
@@ -207,6 +207,14 @@ class CampAutoExportService
         return ($value === null || $value === '') ? '' : (string) ((int) $value);
     }
 
+    private function withBidSuffix(string $value, string $bid): string
+    {
+        $value = trim($value);
+        $bid = trim($bid);
+
+        return $bid === '' ? $value : trim($value.' - '.$bid);
+    }
+
     private function contentTypesXml(): string
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>';
@@ -242,3 +250,5 @@ class CampAutoExportService
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>XLAP</dc:creator></cp:coreProperties>';
     }
 }
+
+

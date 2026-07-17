@@ -881,11 +881,7 @@
             $mockupCreateDisabled = (bool) $generateDisabledReason;
             $mockupBatch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
             $mockupBatchStates = is_array($mockupBatch['slot_states'] ?? null) ? $mockupBatch['slot_states'] : [];
-            $previewPayloadStates = collect(is_array($automation?->payload['preview_state'] ?? null) ? $automation->payload['preview_state'] : [])
-                ->mapWithKeys(fn (array $state, string $slot): array => [$slot => $state['status'] ?? null])
-                ->filter(fn (mixed $state): bool => is_string($state) && $state !== '')
-                ->all();
-            $mockupBatchStates = array_merge($mockupBatchStates, $previewPayloadStates);
+            $previewPayloadStates = [];
             if ($automationRunning && $currentAutomationStep === 'mockup') {
                 foreach ($mockupB5PromptSlots as $slotKey) {
                     $slotImage = $mockupB5Images[$slotKey] ?? [];
@@ -895,8 +891,7 @@
                 }
             }
             $mockupBatchRunning = ($mockupBatch['running'] ?? false) === true
-                || ($automationRunning && $currentAutomationStep === 'mockup')
-                || collect($previewPayloadStates)->contains(fn (mixed $state): bool => in_array($state, ['queued', 'generating'], true));
+                || ($automationRunning && $currentAutomationStep === 'mockup');
             $mockupBatchErrors = is_array($workflow['images_errors'] ?? null) ? $workflow['images_errors'] : [];
             foreach (is_array($automation?->payload['preview_state'] ?? null) ? $automation->payload['preview_state'] : [] as $slot => $state) {
                 if (is_string($state['error'] ?? null) && trim($state['error']) !== '') {
@@ -907,10 +902,7 @@
                 ->filter(fn (array $image): bool => filled($image['original'] ?? null) || filled($image['preview'] ?? null))
                 ->count();
 
-            $hasPreviewQueuedOrGenerating = collect($previewPayloadStates)
-                ->contains(fn (mixed $state): bool => in_array($state, ['queued', 'generating'], true));
-
-            if ($mockupDoneCount >= max(count($mockupB5PromptSlots), 1) && $mockupDoneCount > 0 && ! $hasPreviewQueuedOrGenerating) {
+            if ($mockupDoneCount >= max(count($mockupB5PromptSlots), 1) && $mockupDoneCount > 0) {
                 $mockupBatchRunning = false;
                 $mockupBatchStates = collect($mockupBatchStates)
                     ->map(fn (mixed $state): string => in_array($state, ['queued', 'waiting', 'generating'], true) ? 'done' : (is_string($state) ? $state : 'done'))
@@ -1319,6 +1311,9 @@
     </div>
 
 </article>
+
+
+
 
 
 

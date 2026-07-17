@@ -65,11 +65,11 @@ class CampKeywordExportService
      */
     private function rowsForCampRow(CampRow $campRow): array
     {
-        $campaignName = (string) $campRow->campaign_name;
-        $adGroupName = $campaignName;
         $startDate = optional($campRow->start_date)?->format('Ymd') ?? '';
         $budget = $this->formatPositiveInteger($campRow->campaign_daily_budget);
         $bid = $campRow->bid !== null ? rtrim(rtrim(number_format((float) $campRow->bid, 2, '.', ''), '0'), '.') : '';
+        $campaignName = $this->withBidSuffix((string) $campRow->campaign_name, $bid);
+        $adGroupName = $campaignName;
         $portfolioId = $this->normalizePortfolioId((string) ($campRow->portfolio_id ?? ''));
         $sku = (string) ($campRow->sku_target ?? '');
         $matchType = (string) ($campRow->match_type ?: 'exact');
@@ -144,6 +144,14 @@ class CampKeywordExportService
         }
 
         return (string) ((int) $value);
+    }
+
+    private function withBidSuffix(string $value, string $bid): string
+    {
+        $value = trim($value);
+        $bid = trim($bid);
+
+        return $bid === '' ? $value : trim($value.' - '.$bid);
     }
 
     /**
@@ -249,4 +257,5 @@ class CampKeywordExportService
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>XLAP</dc:creator></cp:coreProperties>';
     }
 }
+
 

@@ -3366,3 +3366,113 @@ Fix loi bam Generate/Custom trong preview mockup Suncatcher bi bao Action failed
 **Follow-up notes:**  
 - Neu worker suncatcher-priority tren VPS chua chay, nut Generate/Custom se queue xong nhung khong co ket qua.
 - Can dam bao queue worker va quyen ghi storage cua user web deu on dinh.
+
+### 2026-07-17 +07:00
+
+**Muc tieu:**  
+Them bid vao ten export Camp cho cac cot Campaign Id, Campaign Name, Ad Group Id va Ad Group Name.
+
+**File da sua/tao:**  
+- `app/Services/Camp/CampKeywordExportService.php`
+- `app/Services/Camp/CampAutoExportService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them helper `withBidSuffix()` de noi ` - {bid}` vao ten campaign/ad group khi export.
+- Camp Keyword: `Campaign Name` va `Ad Group Name` gio de xuat theo format ten + bid.
+- Camp Auto: `Campaign Name` va `Ad Group Name` trong tung target type cung duoc them bid suffix.
+- `bid` duoc format gon khong du thua so 0 cuoi.
+
+**Root cause:**  
+- Export cu giu ten campaign/ad group ngan, khong the hien bid nen ban muon doi format de de nhan biet ngay gia tri bid trong file xuat.
+
+**Affected modules:**  
+- Camp keyword export service
+- Camp auto export service
+
+**Deploy impact:**  
+- Khong can migrate.
+- Chi can deploy code va neu co cache view hoac opcache thi clear sau deploy.
+
+**Queue impact:**  
+- Khong doi queue.
+
+**Kiem tra da chay:**  
+- `php -l app/Services/Camp/CampKeywordExportService.php`
+- `php -l app/Services/Camp/CampAutoExportService.php`
+
+**Follow-up notes:**  
+- Neu user muon, co the noi tiep bid vao `Campaign Id`/`Ad Group Id` dung ki tu goc hon (vi hien tai helper noi vao ten text).
+
+### 2026-07-17 +07:00
+
+**Muc tieu:**  
+Fix preview mockup Suncatcher bi treo trang thai queued/dang quay mai du anh da co roi tren DB.
+
+**File da sua/tao:**  
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- `markWorkflowImageBatchSlotGenerating()` va `markWorkflowImageBatchSlotFinished()` gio cap nhat them `payload.preview_state` de UI biet slot dang `generating/done/error`.
+- UI mockup card khi doc `preview_state` se uu tien `done` neu anh da ton tai, ke ca khi payload cu con `queued`.
+- Vi vay truong hop queued cu trong DB khong con lam card quay mai neu mockup da co URL.
+
+**Root cause:**  
+- `payload.preview_state` co the con giu `queued` sau khi anh da duoc tao xong, trong khi card lai doc trang thai nay truoc, dan den spinner/queued bi treo sai.
+
+**Affected modules:**  
+- Suncatcher automation preview state
+- Suncatcher product design card mockup status rendering
+
+**Deploy impact:**  
+- Khong can migrate.
+- Deploy code moi va clear/rebuild Blade cache neu production dang cache.
+
+**Queue impact:**  
+- Khong doi queue.
+- Chi dong bo lai trang thai preview de UI khop voi ket qua queue/DB.
+
+**Kiem tra da chay:**  
+- `php -l app/Services/Suncatcher/SuncatcherService.php`
+- `php -l resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+
+**Follow-up notes:**  
+- Neu job da tao xong anh nhung UI van quay, refresh trang sau deploy se het.
+- Neu worker khong chay thi preview_state se con queued; khi do can check queue worker `suncatcher-priority`.
+
+### 2026-07-17 +07:00
+
+**Muc tieu:**  
+Bo phu thuoc vao preview status khi render mockup Suncatcher de user test anh theo DB thu.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Bo doc `automation.payload.preview_state.status` lam nguon trang thai cho mockup slot.
+- Mockup card nay chi con dua vao co/khong co anh va trang thai batch trong `images_batch`.
+- Neu da co du anh mockup, UI se khong giu spinner/queued do payload cu nua.
+
+**Root cause:**  
+- Preview state co the con luu status cu lam UI spin mai du anh da duoc tao xong.
+- User can mot che do test thu DB/anh thuan, khong bi status cu chen vao.
+
+**Affected modules:**  
+- Suncatcher product design card mockup rendering
+
+**Deploy impact:**  
+- Khong can migrate.
+- Clear/rebuild Blade cache sau deploy.
+
+**Queue impact:**  
+- Khong doi queue.
+
+**Kiem tra da chay:**  
+- `php -l resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `php artisan view:cache --no-ansi`
+
+**Follow-up notes:**  
+- Neu card van spin, can check worker da ghi anh vao `mockup1..6` chua.
