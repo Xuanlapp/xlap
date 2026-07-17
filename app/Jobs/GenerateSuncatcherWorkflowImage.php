@@ -46,6 +46,10 @@ class GenerateSuncatcherWorkflowImage implements ShouldQueue
             return;
         }
 
+        if (! $service->workflowImageBatchSlotShouldRun($this->assetId, $this->slot)) {
+            return;
+        }
+
         $service->markWorkflowImageBatchSlotGenerating($this->assetId, $this->slot, $this->attempts());
 
         $user = User::findOrFail($this->userId);

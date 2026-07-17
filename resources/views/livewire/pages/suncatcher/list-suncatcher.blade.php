@@ -1,6 +1,7 @@
 <div
     x-data="{
         activeTab: @js($activeStatus),
+        showScrollTop: false,
         setTab(tab) {
             if (this.activeTab === tab) {
                 return;
@@ -10,6 +11,9 @@
             localStorage.setItem('suncatcher.status-filter', tab);
             window.Livewire.dispatch('suncatcher-active-status-changed', { status: tab });
             window.dispatchEvent(new CustomEvent('suncatcher-tab-changed', { detail: { tab } }));
+        },
+        scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }"
     x-init="
@@ -225,5 +229,26 @@
     <livewire:modals.suncatcher.psd-mockup-template />
     <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
+
+    <button
+        type="button"
+        x-cloak
+        x-show="showScrollTop"
+        x-on:scroll.window="showScrollTop = window.scrollY > 500"
+        x-on:click="scrollToTop()"
+        x-transition:enter="transition duration-200 ease-out"
+        x-transition:enter-start="translate-y-2 opacity-0"
+        x-transition:enter-end="translate-y-0 opacity-100"
+        x-transition:leave="transition duration-150 ease-in"
+        x-transition:leave-start="translate-y-0 opacity-100"
+        x-transition:leave-end="translate-y-2 opacity-0"
+        aria-label="Len dau trang"
+        title="Len dau trang"
+        class="fixed bottom-6 right-6 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full bg-cyan-600 text-white shadow-lg shadow-cyan-950/20 ring-1 ring-cyan-700/20 transition hover:-translate-y-0.5 hover:bg-cyan-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600"
+    >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m5 15 7-7 7 7" />
+        </svg>
+    </button>
 
 </div>

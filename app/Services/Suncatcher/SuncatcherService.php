@@ -3,9 +3,8 @@
 namespace App\Services\Suncatcher;
 
 use App\Jobs\GenerateSuncatcherWorkflowImage;
-use App\Jobs\RunSuncatcherAutomation;
-use App\Jobs\RunSuncatcherItemPipeline;
 use App\Jobs\RegenerateSuncatcherPreviewImage;
+use App\Jobs\RunSuncatcherItemPipeline;
 use App\Models\DataSuncatcher;
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
@@ -33,8 +32,8 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 use JsonException;
 use RuntimeException;
-use Throwable;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Throwable;
 use ZipArchive;
 
 class SuncatcherService
@@ -107,8 +106,7 @@ class SuncatcherService
         int $perPage,
         string $status = 'all',
         string $pageName = 'page',
-    ): LengthAwarePaginator
-    {
+    ): LengthAwarePaginator {
         return $this->assets->paginateForUserAndProduct($user->id, $this->product()->id, $perPage, $status, $pageName);
     }
 
@@ -187,7 +185,7 @@ class SuncatcherService
                 now()->addSeconds(15),
                 fn (): array => array_merge($this->fetchV98StoreBalance($credential), ['credential_id' => $credential->id]),
             );
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return array_merge($this->fetchV98StoreBalance($credential), ['credential_id' => $credential->id]);
         }
     }
@@ -205,7 +203,7 @@ class SuncatcherService
 
         try {
             $apiKey = $credential->key_api;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return ['ok' => false, 'message' => 'Key decrypt error'];
         }
 
@@ -217,7 +215,7 @@ class SuncatcherService
             $response = Http::timeout(10)->get(trim($endpoint), [
                 'key' => $apiKey,
             ]);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return ['ok' => false, 'message' => 'Balance unavailable'];
         }
 
@@ -398,31 +396,31 @@ class SuncatcherService
         }
 
         $lifestyle1 = $this->generateImage(
-                user: $user,
-                providerKey: $providerKey,
-                imageUri: $asset->redesign,
-                prompt: $this->promptContent($user),
-                folder: 'generated/suncatcher/final',
-                imageModel: $imageModel,
-            );
+            user: $user,
+            providerKey: $providerKey,
+            imageUri: $asset->redesign,
+            prompt: $this->promptContent($user),
+            folder: 'generated/suncatcher/final',
+            imageModel: $imageModel,
+        );
 
         $lifestyle2 = $this->generateImage(
-                user: $user,
-                providerKey: $providerKey,
-                imageUri: $asset->redesign,
-                prompt: $this->promptContent($user),
-                folder: 'generated/suncatcher/final',
-                imageModel: $imageModel,
-            );
+            user: $user,
+            providerKey: $providerKey,
+            imageUri: $asset->redesign,
+            prompt: $this->promptContent($user),
+            folder: 'generated/suncatcher/final',
+            imageModel: $imageModel,
+        );
 
         $lifestyle3 = $this->generateImage(
-                user: $user,
-                providerKey: $providerKey,
-                imageUri: $asset->redesign,
-                prompt: $this->promptContent($user),
-                folder: 'generated/suncatcher/final',
-                imageModel: $imageModel,
-            );
+            user: $user,
+            providerKey: $providerKey,
+            imageUri: $asset->redesign,
+            prompt: $this->promptContent($user),
+            folder: 'generated/suncatcher/final',
+            imageModel: $imageModel,
+        );
 
         return $this->assets->updateLifestyleImages($asset, $lifestyle1, $lifestyle2, $lifestyle3);
     }
@@ -501,6 +499,7 @@ class SuncatcherService
         }
 
         $slot = $this->workflowSlotFromPreviewTarget($target);
+
         return $this->persistPreviewMockupImage($asset, $slot, $imageUrl, $editPrompt, $providerKey, $imageModel);
     }
 
@@ -930,6 +929,7 @@ class SuncatcherService
             optional($saveLock)->release();
         }
     }
+
     public function queueWorkflowImageGeneration(
         User $user,
         int $assetId,
@@ -1054,7 +1054,6 @@ class SuncatcherService
         return $asset->refresh();
     }
 
-
     public function prepareAllWorkflowImagesForGeneration(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
@@ -1176,6 +1175,32 @@ class SuncatcherService
             ->all();
     }
 
+    /**
+     * Reject stale mockup jobs after the batch/workflow has already failed or stopped.
+     */
+    public function workflowImageBatchSlotShouldRun(int $assetId, string $slot): bool
+    {
+        $asset = ProductDesignAsset::query()->find($assetId);
+
+        if (! $asset) {
+            return false;
+        }
+
+        $automation = $this->automationForAsset($asset);
+
+        if (! $automation || ! in_array(($automation->workflow_status ?? null), ['waiting', 'running'], true)) {
+            return false;
+        }
+
+        $workflow = $this->workflowData($asset);
+        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+        $slots = is_array($batch['slots'] ?? null) ? $batch['slots'] : [];
+
+        return ($batch['running'] ?? false) === true
+            && in_array($slot, $slots, true)
+            && ! filled($workflow['images'][$slot]['url'] ?? null);
+    }
+
     public function markWorkflowImageBatchSlotGenerating(int $assetId, string $slot, int $attempt): ProductDesignAsset
     {
         $asset = ProductDesignAsset::query()->findOrFail($assetId);
@@ -1222,6 +1247,18 @@ class SuncatcherService
         if ($error) {
             $workflow['images_errors'][$slot] = $error;
             $workflow['images_errors_at'] = now()->toIso8601String();
+            $batch['running'] = false;
+            $batch['finished_at'] = now()->toIso8601String();
+            $batch['slot_states'] = collect($slotStates)
+                ->map(fn (mixed $state): mixed => in_array($state, ['queued', 'generating'], true) ? 'cancelled' : $state)
+                ->all();
+            $batch['slot_states'][$slot] = 'error';
+            $workflow['images_batch'] = $batch;
+
+            $asset = $this->saveWorkflowData($asset, $workflow);
+            $this->markAutomationStepFinished($asset, 'mockup', mb_substr($error, 0, 1000));
+
+            return $asset->fresh();
         } else {
             unset($workflow['images_errors'][$slot]);
         }
@@ -1307,7 +1344,7 @@ class SuncatcherService
                 $batch['updated_at'] = now()->toIso8601String();
                 $workflow['images_batch'] = $batch;
                 unset($workflow['images_errors'][$slot]);
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 $workflow = $this->workflowData($asset->refresh());
                 $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
                 $batch['current_slot'] = null;
@@ -1396,7 +1433,6 @@ class SuncatcherService
 
         return $asset;
     }
-
 
     /**
      * @param  array<string, string>  $mockups
@@ -1577,7 +1613,7 @@ class SuncatcherService
             mkdir(dirname($zipPath), 0755, true);
         }
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
 
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             throw new RuntimeException('Khong tao duoc file ZIP.');
@@ -1654,7 +1690,7 @@ class SuncatcherService
                 try {
                     $asset = $this->generateWorkflowImage($user, $asset->id, $slot, $providerKey, $imageModel);
                     unset($errors[$slot]);
-                } catch (\Throwable $exception) {
+                } catch (Throwable $exception) {
                     $errors[$slot] = 'Round '.$round.': '.mb_substr($exception->getMessage(), 0, 500);
                 } finally {
                     $this->pauseBetweenImageGenerations();
@@ -1878,7 +1914,7 @@ class SuncatcherService
         $assetLock = Cache::lock("suncatcher:item-pipeline:{$assetId}", 3600);
 
         if (! $assetLock->get()) {
-            throw new RuntimeException('Item dang duoc worker khac xu ly. Hay doi ket qua truoc khi chay lai.');
+            return;
         }
 
         try {
@@ -1903,18 +1939,33 @@ class SuncatcherService
             $this->ensureProviderHasBalance($user, $providerKey);
         } catch (Throwable $exception) {
             $this->markAutomationStepFinished($asset, is_string($record->workflow_step_key) && $record->workflow_step_key !== '' ? $record->workflow_step_key : 'script', mb_substr($exception->getMessage(), 0, 1000));
+
             return;
         }
 
-        foreach ($this->automationPipelineSteps() as $step) {
+        if (! in_array(($record->workflow_status ?? null), ['waiting', 'running'], true)) {
+            return;
+        }
+
+        $pipelineSteps = $this->automationStepsFrom(
+            is_string($record->workflow_step_key) ? $record->workflow_step_key : null,
+        );
+
+        foreach ($pipelineSteps as $step) {
             $asset = $asset->fresh();
+
+            $currentRecord = $this->automationForAsset($asset);
+
+            if (! $currentRecord || ! in_array(($currentRecord->workflow_status ?? null), ['waiting', 'running'], true)) {
+                return;
+            }
 
             if ($this->automationStepHasOutput($asset, $step)) {
                 $this->markAutomationStepFinished($asset, $step);
+
                 continue;
             }
 
-            $currentRecord = $this->automationForAsset($asset);
             $this->markAutomationStepRunning($asset, $step, is_array($currentRecord?->step_data) ? $currentRecord->step_data : []);
 
             try {
@@ -1931,11 +1982,16 @@ class SuncatcherService
                 $this->markAutomationStepFinished($asset, $step);
             } catch (Throwable $exception) {
                 $this->markAutomationStepFinished($asset, $step, mb_substr($exception->getMessage(), 0, 1000));
+
                 return;
             }
         }
 
-        $this->completeAutomation($asset->fresh());
+        $finalRecord = $this->automationForAsset($asset->fresh());
+
+        if (($finalRecord?->workflow_status ?? null) === 'running') {
+            $this->completeAutomation($asset->fresh());
+        }
     }
 
     public function automationForUser(User $user, int $assetId): ?DataSuncatcher
@@ -1966,6 +2022,30 @@ class SuncatcherService
         }
 
         return $automation;
+    }
+
+    /**
+     * Persist failures that happen outside the per-step try/catch in a queue job.
+     */
+    public function failAutomationJob(int $assetId, string $message): void
+    {
+        $asset = ProductDesignAsset::query()->find($assetId);
+
+        if (! $asset) {
+            return;
+        }
+
+        $record = $this->automationForAsset($asset);
+
+        if (! $record || in_array(($record->workflow_status ?? null), ['failed', 'completed'], true)) {
+            return;
+        }
+
+        $step = is_string($record->workflow_step_key) && $record->workflow_step_key !== ''
+            ? $record->workflow_step_key
+            : 'script';
+
+        $this->markAutomationStepFinished($asset, $step, mb_substr($message, 0, 1000));
     }
 
     public function retryAutomation(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): DataSuncatcher
@@ -2028,6 +2108,19 @@ class SuncatcherService
     public function automationPipelineSteps(): array
     {
         return ['main', 'script', 'person_a', 'person_b', 'prompt', 'mockup'];
+    }
+
+    /**
+     * Resume at the persisted current/failed step instead of replaying the whole pipeline.
+     *
+     * @return array<int, string>
+     */
+    private function automationStepsFrom(?string $step): array
+    {
+        $steps = $this->automationPipelineSteps();
+        $index = is_string($step) ? array_search($step, $steps, true) : false;
+
+        return $index === false ? $steps : array_slice($steps, $index);
     }
 
     public function automationDefaultSteps(): array
@@ -2269,6 +2362,14 @@ class SuncatcherService
             return;
         }
 
+        if (($record->workflow_status ?? null) === 'completed') {
+            return;
+        }
+
+        if (in_array(($record->workflow_status ?? null), ['waiting', 'running'], true)) {
+            throw new RuntimeException('Automation dang chay cho item nay. Khong the Continue trung job.');
+        }
+
         $step = is_string($record->workflow_step_key) && $record->workflow_step_key !== ''
             ? $record->workflow_step_key
             : 'script';
@@ -2308,6 +2409,10 @@ class SuncatcherService
             return;
         }
 
+        if (! in_array(($automation->workflow_status ?? null), ['waiting', 'running'], true)) {
+            return;
+        }
+
         if ($this->automationStepHasOutput($asset, $step)) {
             $this->markAutomationStepFinished($asset, $step);
             $this->dispatchNextAutomationStep($user, $asset, $step, $providerKey, $imageModel, $textModel);
@@ -2318,9 +2423,9 @@ class SuncatcherService
         $this->markAutomationStepRunning($asset, $step, $automation->step_data ?? []);
 
         try {
-                match ($step) {
-                    'main' => $asset = $this->generateRedesign($user, $asset->id, $providerKey, $imageModel),
-                    'script' => $asset = $this->generateWorkflowScript($user, $asset->id, $providerKey, $textModel),
+            match ($step) {
+                'main' => $asset = $this->generateRedesign($user, $asset->id, $providerKey, $imageModel),
+                'script' => $asset = $this->generateWorkflowScript($user, $asset->id, $providerKey, $textModel),
                 'person_a' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'a', $providerKey, $imageModel),
                 'person_b' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'b', $providerKey, $imageModel),
                 'prompt' => $asset = $this->generateWorkflowPrompts($user, $asset->id, $providerKey, $textModel),
@@ -2329,6 +2434,7 @@ class SuncatcherService
             };
         } catch (Throwable $exception) {
             $this->markAutomationStepFinished($asset, $step, mb_substr($exception->getMessage(), 0, 1000));
+
             return;
         }
 
@@ -2605,8 +2711,8 @@ PROMPT;
         $used = is_numeric($balance['used_quota'] ?? null) ? (float) $balance['used_quota'] : null;
         $accountName = is_string($balance['name'] ?? null) ? $balance['name'] : 'v98Store';
         $subject = 'v98Store het tien/quota - automation da tam dung';
-        $body = implode("
-", array_filter([
+        $body = implode('
+', array_filter([
             'v98Store het tien/quota nen automation da tam dung.',
             '',
             'User: #'.$user->id.' '.$user->name.' <'.$user->email.'>',
@@ -2912,7 +3018,7 @@ PROMPT;
 
         try {
             return Carbon::parse($value);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
@@ -3077,8 +3183,8 @@ TEXT;
     private function workflowConfigSuffix(): string
     {
         return "\n\nIMPORTANT OUTPUT REQUIREMENTS: Square format (1:1 aspect ratio). High realism DSLR photo quality. "
-            ."PHOTOREALISM REQUIREMENTS: every person looks like a real DSLR photo, not 3D-rendered, not AI-smoothed; subtly visible skin pores, natural skin texture, real hair strands, natural eye reflections, real fabric folds, slight natural facial asymmetry. "
-            ."TEXT RENDERING: Every word perfectly spelled, zero typos. Use short text only, 2-4 words per label. Font family Montserrat or near-identical geometric sans-serif, bold 700-900, sharp clean letterforms. "
+            .'PHOTOREALISM REQUIREMENTS: every person looks like a real DSLR photo, not 3D-rendered, not AI-smoothed; subtly visible skin pores, natural skin texture, real hair strands, natural eye reflections, real fabric folds, slight natural facial asymmetry. '
+            .'TEXT RENDERING: Every word perfectly spelled, zero typos. Use short text only, 2-4 words per label. Font family Montserrat or near-identical geometric sans-serif, bold 700-900, sharp clean letterforms. '
             ."FORBIDDEN ON-IMAGE TEXT: Guaranteed, 100%, Lifetime guarantee, #1, Best, Top-rated, World's best, Always, Perfect, Fast shipping, Free shipping, Sale, % Off, Lowest price, Cure, FDA approved, or rival brand names. Use safe descriptive alternatives.";
     }
 
@@ -3101,7 +3207,7 @@ TEXT;
             ."- The set must look like it was designed by one designer in one sitting.\n"
             ."- Text and icons are flat 2D modern UI overlays: no 3D bevel, no emboss, no chrome, no glossy 3D icons.\n"
             ."- POD minimalism: 40-50% breathing room, one focal point, at most one headline and one supporting sub-line.\n"
-            ."- USP uses 3-4 icons; Features uses 2-3 icons; Comparison uses 2-3 criterion rows; Details uses exactly 3 zoom circles; Before-After uses no callout chaos; Custom Guide uses one small icon per step."
+            .'- USP uses 3-4 icons; Features uses 2-3 icons; Comparison uses 2-3 criterion rows; Details uses exactly 3 zoom circles; Before-After uses no callout chaos; Custom Guide uses one small icon per step.'
             .($style !== '' ? "\n\nB1 STYLE TOKENS:\n{$style}" : '');
     }
 
@@ -3132,7 +3238,6 @@ TEXT;
     }
 
     /**
-     * @param  mixed  $analysis
      * @return array<string, mixed>
      */
     private function normalizeWorkflowAnalysis(mixed $analysis): array
@@ -3143,7 +3248,6 @@ TEXT;
     }
 
     /**
-     * @param  mixed  $script
      * @return array<string, mixed>
      */
     private function normalizeWorkflowScript(mixed $script): array
@@ -3463,7 +3567,6 @@ PROMPT
     }
 
     /**
-     * @param  mixed  $prompts
      * @return array<string, string>
      */
     private function normalizeWorkflowPrompts(mixed $prompts): array
@@ -3499,7 +3602,6 @@ PROMPT
     }
 
     /**
-     * @param  mixed  $prompts
      * @return array<string, array{desktop: string, mobile: string}>
      */
     private function normalizeAplusPrompts(mixed $prompts): array
@@ -3892,7 +3994,7 @@ PROMPT
             ."Never profile, side-view, 3-quarter looking away, looking down, eyes closed, or glancing off-frame.\n"
             ."This is a hero portrait composition with the person facing the camera.\n\n"
             ."Raw unretouched RAW photo. NOT AI-generated, NOT stock photo, NOT CGI.\n\n"
-            ."Create a reusable Person ".strtoupper($person)." identity reference for the suncatcher listing workflow.\n\n"
+            .'Create a reusable Person '.strtoupper($person)." identity reference for the suncatcher listing workflow.\n\n"
             ."Subject:\n{$prompt}\n\n"
             ."The subject is looking straight at the camera.\n\n"
             ."CAMERA / LIGHTING:\n"
@@ -3911,7 +4013,7 @@ PROMPT
             ."ABSOLUTELY AVOID:\n"
             ."- Smooth waxy skin, glowing teeth, airbrushed look, CGI, rendered, doll-like, uncanny valley, Instagram filter.\n"
             ."- Visible acne, pimples, red blotches, heavy under-eye bags, sickly tone.\n\n"
-            ."Output: single subject photo, no text overlays, no graphics, no watermarks.";
+            .'Output: single subject photo, no text overlays, no graphics, no watermarks.';
     }
 
     private function pauseBetweenImageGenerations(): void
@@ -4038,7 +4140,3 @@ PROMPT
         return $content;
     }
 }
-
-
-
-

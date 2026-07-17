@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -50,6 +51,11 @@ return new class extends Migration
 
     private function hasIndex(string $table, string $index): bool
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return collect(DB::select("PRAGMA index_list('{$table}')"))
+                ->contains(fn (object $row): bool => ($row->name ?? null) === $index);
+        }
+
         $connection = Schema::getConnection();
         $database = $connection->getDatabaseName();
 

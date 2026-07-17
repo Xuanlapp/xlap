@@ -7,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         DB::statement('ALTER TABLE data_ornament_amazon MODIFY source_link TEXT NULL');
         DB::statement('ALTER TABLE data_ornament_amazon MODIFY source_image_link TEXT NULL');
         DB::statement('ALTER TABLE data_ornament_amazon MODIFY main_image_link TEXT NULL');
@@ -14,6 +18,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         DB::statement('ALTER TABLE data_ornament_amazon MODIFY source_link VARCHAR(255) NULL');
         DB::statement('ALTER TABLE data_ornament_amazon MODIFY source_image_link VARCHAR(255) NULL');
         DB::statement('ALTER TABLE data_ornament_amazon MODIFY main_image_link VARCHAR(255) NULL');

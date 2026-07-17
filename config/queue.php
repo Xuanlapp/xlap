@@ -40,7 +40,9 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Must stay above the longest queue worker timeout (Suncatcher: 3600s)
+            // so a slow image job is not released and executed by another worker.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 3900),
             'after_commit' => false,
         ],
 
