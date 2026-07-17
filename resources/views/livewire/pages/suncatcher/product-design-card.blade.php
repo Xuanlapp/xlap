@@ -1,4 +1,4 @@
-<article @if(($automation?->workflow_status ?? null) === 'running') wire:poll.5s="refreshWhenUpdated" @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+<article @if(in_array(($automation?->workflow_status ?? null), ['running', 'waiting'], true)) wire:poll.5s="refreshWhenUpdated" @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     @php
         $automationRunning = (($automation?->workflow_status ?? null) === 'running');
         $automationFailed = (($automation?->workflow_status ?? null) === 'failed');
@@ -463,6 +463,7 @@
 
                         <div
                             wire:key="suncatcher-person-{{ $asset->id }}-{{ $personKey }}"
+                            x-effect="refUrl = @js($refValue); refPreviewUrl = @js($refPreviewValue); personGenerating = @js($automationRunning && $currentAutomationStep === ('person_'.$personKey));"
                                 x-data="{
                                     showUrl: false,
                                 personGenerating: @js($automationRunning && $currentAutomationStep === ('person_'.$personKey)),
@@ -875,7 +876,16 @@
                 ->filter(fn (mixed $state): bool => is_string($state) && $state !== '')
                 ->all();
             $mockupBatchStates = array_merge($mockupBatchStates, $previewPayloadStates);
+            if ($automationRunning && $currentAutomationStep === 'mockup') {
+                foreach ($mockupB5PromptSlots as $slotKey) {
+                    $slotImage = $mockupB5Images[$slotKey] ?? [];
+                    if (! filled($slotImage['original'] ?? null) && ! filled($slotImage['preview'] ?? null)) {
+                        $mockupBatchStates[$slotKey] = $mockupBatchStates[$slotKey] ?? 'generating';
+                    }
+                }
+            }
             $mockupBatchRunning = ($mockupBatch['running'] ?? false) === true
+                || ($automationRunning && $currentAutomationStep === 'mockup')
                 || collect($previewPayloadStates)->contains(fn (mixed $state): bool => in_array($state, ['queued', 'generating'], true));
             $mockupBatchErrors = is_array($workflow['images_errors'] ?? null) ? $workflow['images_errors'] : [];
             foreach (is_array($automation?->payload['preview_state'] ?? null) ? $automation->payload['preview_state'] : [] as $slot => $state) {

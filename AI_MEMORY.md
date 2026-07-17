@@ -3208,3 +3208,49 @@ Fix Suncatcher de anh tra ve tu worker/API hien ngay tren card trong luc Auto da
 
 **Follow-up notes:**  
 - Neu tren VPS van thay cham, can check them thoi gian poll va worker co dang ghi file/DB thanh cong hay khong.
+
+### 2026-07-17 +07:00
+
+**Muc tieu:**  
+Fix Suncatcher person prompt de khong bat nguoi cam/holding object, dong thoi lam card auto refresh va spinner mockup ro hon.
+
+**File da sua/tao:**  
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `resources/views/components/image-preview.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them `sanitizePersonReferenceDescription()` de loai bo cac cum tu cam/holding/presenting/receiving liên quan den san pham trong prompt Person A/B truoc khi gui sang AI.
+- Sua fallback prompt Person A/B thanh tay trong, khong cam do.
+- Cho `article` poll 5 giay trong ca trang thai `running` va `waiting`.
+- Dong bo lai `refUrl`, `refPreviewUrl`, `personGenerating` trong khu person card bang `x-effect` de anh/ref cap nhat ngay khi worker tra ve.
+- O mockup 1->6, khi automation dang o step `mockup` thi cac slot chua co anh se duoc set state `generating` de spinner hien ro hon trong luc chay.
+- Sua shared image preview component de dung `currentSrc` thay vi src tinh, tranh UI giu URL cu.
+
+**Root cause:**  
+- Prompt person cua workflow con bi len nham tu script/fallback cu nen AI van tao nguoi cam/hanh dong voi san pham.
+- UI Livewire/Alpine giu state cu nen khi worker/API ghi xong anh moi khong hien ngay.
+- Mockup slot state chi duoc sync mot phan tu server, nen co luc slot 6 khong co spinner khi batch dang chay.
+
+**Affected modules:**  
+- Suncatcher prompt generation
+- Suncatcher Livewire product design card
+- Shared image preview component
+
+**Deploy impact:**  
+- Khong can migrate.
+- Nen deploy code moi va clear view cache/opcache neu production dang cache.
+
+**Queue impact:**  
+- Khong doi queue logic.
+- UI se nhan thay ket qua queue nhanh hon va spinner mockup ro hon khi worker dang xu ly.
+
+**Kiem tra da chay:**  
+- `php -l app/Services/Suncatcher/SuncatcherService.php`
+- `php -l resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `php -l resources/views/components/image-preview.blade.php`
+- `php artisan view:cache --no-ansi`
+
+**Follow-up notes:**  
+- Neu van con prompt cam san pham sau deploy, can kiem tra provider prompt cache/record workflow cu tren DB.

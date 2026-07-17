@@ -747,7 +747,7 @@ class SuncatcherService
         $imageUrl = $this->apiKeyGenerator->generateFromPrompt(
             user: $user,
             providerKey: $providerKey,
-            prompt: $this->personReferencePrompt($person, $prompt),
+            prompt: $this->personReferencePrompt($person, $this->sanitizePersonReferenceDescription($prompt)),
             folder: 'generated/suncatcher/workflow/refs',
             model: $imageModel,
         );
@@ -3406,9 +3406,27 @@ PROMPT
         $audienceHint = mb_substr(trim(preg_replace('/\s+/', ' ', $audience) ?? $audience), 0, 500);
 
         return [
-            'person_a' => 'Gift receiver / Person A: a warm, sentimental adult from the target audience, natural smile, realistic casual holiday clothing, holding or receiving the personalized product in a cozy home setting. Audience cue: '.$audienceHint,
-            'person_b' => 'Gift giver / Person B: a clearly different adult from Person A, different age and hairstyle, friendly gifting expression, standing beside the receiver or presenting the personalized product in a cozy holiday setting. Audience cue: '.$audienceHint,
+            'person_a' => 'Gift receiver / Person A: a warm, sentimental adult from the target audience, natural smile, realistic casual holiday clothing, empty hands, relaxed pose in a cozy home setting. Audience cue: '.$audienceHint,
+            'person_b' => 'Gift giver / Person B: a clearly different adult from Person A, different age and hairstyle, friendly warm expression, empty hands, standing naturally in a cozy holiday setting. Audience cue: '.$audienceHint,
         ];
+    }
+
+    private function sanitizePersonReferenceDescription(string $prompt): string
+    {
+        $prompt = trim($prompt);
+
+        $patterns = [
+            '/\b(gently\s+)?holding\s+(?:or\s+hanging\s+)?(?:the\s+)?(?:customized\s+|personalized\s+)?suncatcher[^.]*\.?/i',
+            '/\b(?:holding|carrying|presenting|receiving|wearing|using|touching|hanging)\s+(?:the\s+)?(?:customized\s+|personalized\s+)?(?:suncatcher|product|gift|package|packaging|box)[^.]*\.?/i',
+            '/\b(?:as\s+he\s+|as\s+she\s+)?(?:presents|hands)\s+(?:the\s+)?(?:customized\s+|personalized\s+)?(?:suncatcher|product|gift|package|packaging|box)[^.]*\.?/i',
+            '/\bmade\s+from\s+\[SUPPLIER SPEC PLACEHOLDER - material\/size\][^.]*\.?/i',
+            '/\bin\s+\[SUPPLIER SPEC PLACEHOLDER - material\/size\]\s+(?:packaging|package|box)[^.]*\.?/i',
+        ];
+
+        $cleaned = preg_replace($patterns, '', $prompt) ?? $prompt;
+        $cleaned = trim(preg_replace('/\s+/', ' ', $cleaned) ?? $cleaned);
+
+        return $cleaned !== '' ? $cleaned : $prompt;
     }
 
     /**
