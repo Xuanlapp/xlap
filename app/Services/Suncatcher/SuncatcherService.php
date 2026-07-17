@@ -1944,12 +1944,22 @@ class SuncatcherService
         $automation = $this->automationForAsset($asset);
 
         if ($automation && ($automation->workflow_status ?? null) === 'running') {
-            $updatedAt = $automation->updated_at;
+            $step = is_string($automation->workflow_step_key) && $automation->workflow_step_key !== ''
+                ? $automation->workflow_step_key
+                : null;
+            $steps = is_array($automation->step_data) ? $automation->step_data : [];
+            $stepState = $step ? ($steps[$step] ?? []) : [];
+            $stepStartedAt = $stepState['started_at'] ?? null;
 
-            if ($updatedAt && $updatedAt->lt(now()->subMinutes(10))) {
+            // A queued item can have workflow_status=running before a worker gets it.
+            // Only start stale detection after the worker marks the current step running.
+            if ($step
+                && ($stepState['status'] ?? null) === 'running'
+                && filled($stepStartedAt)
+                && Carbon::parse($stepStartedAt)->lt(now()->subMinutes(10))) {
                 return $this->markAutomationStepFinished(
                     $asset,
-                    is_string($automation->workflow_step_key) && $automation->workflow_step_key !== '' ? $automation->workflow_step_key : 'script',
+                    $step,
                     'Automation bi ket qua lau khong cap nhat. Hay bam Retry/Continue de chay lai.'
                 );
             }
@@ -1989,19 +1999,20 @@ class SuncatcherService
 
         if (isset($steps[$step])) {
             $steps[$step]['status'] = 'waiting';
+            $steps[$step]['started_at'] = null;
             $steps[$step]['finished_at'] = null;
             $steps[$step]['error_message'] = null;
         }
 
         $updated = $this->upsertAutomationRecord($asset, [
-            'workflow_status' => 'running',
+            'workflow_status' => 'waiting',
             'workflow_step_key' => $step,
             'workflow_step_label' => $this->automationStepLabel($step),
             'workflow_step_number' => $this->automationStepNumber($step),
             'step_data' => $steps,
             'step_errors' => null,
             'last_error' => null,
-            'status' => 'running',
+            'status' => 'waiting',
             'current_step' => $step,
             'current_step_number' => $this->automationStepNumber($step),
             'paused_at' => null,
@@ -2262,12 +2273,22 @@ class SuncatcherService
             ? $record->workflow_step_key
             : 'script';
 
+        $steps = is_array($record->step_data) ? $record->step_data : $this->automationDefaultSteps();
+
+        if (isset($steps[$step])) {
+            $steps[$step]['status'] = 'waiting';
+            $steps[$step]['started_at'] = null;
+            $steps[$step]['finished_at'] = null;
+            $steps[$step]['error_message'] = null;
+        }
+
         $this->upsertAutomationRecord($asset, [
-            'workflow_status' => 'running',
+            'workflow_status' => 'waiting',
             'workflow_step_key' => $step,
             'workflow_step_label' => $this->automationStepLabel($step),
             'workflow_step_number' => $this->automationStepNumber($step),
-            'status' => 'running',
+            'step_data' => $steps,
+            'status' => 'waiting',
             'current_step' => $step,
             'current_step_number' => $this->automationStepNumber($step),
             'paused_at' => null,

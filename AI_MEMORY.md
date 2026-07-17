@@ -3508,3 +3508,29 @@ Hien prompt Person A/B trong modal preview anh Suncatcher.
 **Kiem tra da chay:**  
 - `php -l app/Livewire/Modals/Suncatcher/ReviewImage.php`
 - `php artisan view:cache --no-ansi`
+
+### 2026-07-17
+
+**Muc tieu:**  
+Fix timeout sai o Suncatcher automation khi item con dang cho queue.
+
+**File da sua/tao:**  
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi stale check tu `updated_at` sang chi tinh khi step hien tai co `status = running` va co `started_at`.
+- Item `waiting/queued` khong bi tinh timeout truoc luc worker bat dau xu ly.
+- Khi retry/continue, step duoc reset ve `waiting` va xoa `started_at` de cho den luot worker.
+
+**Loi da gap va cach xu ly:**  
+- Nguyen nhan cu la queue waiting bi do `updated_at` cham sau khi bam Auto, nen he thong hieu nham la step bi tre.
+- Da giu nguong 10 phut nhung chi ap dung sau khi worker mark step dang chay.
+
+**Logic can nho:**  
+- Timeout chi tinh tren `step_data[step].started_at`, khong tinh thoi gian cho queue.
+- `workflow_status = waiting` khong duoc nem stale error.
+
+**Viec can lam tiep:**  
+- Deploy lai va test truong hop bam Auto nhieu item cung luc.
+- Neu can, canh them heartbeat cap nhat progress cho step chay lau.
