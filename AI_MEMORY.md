@@ -3534,3 +3534,53 @@ Fix timeout sai o Suncatcher automation khi item con dang cho queue.
 **Viec can lam tiep:**  
 - Deploy lai va test truong hop bam Auto nhieu item cung luc.
 - Neu can, canh them heartbeat cap nhat progress cho step chay lau.
+
+### 2026-07-17
+
+**Muc tieu:**  
+Fix UI Suncatcher sau khi bam Continue/Retry hien lai nut Auto trong luc job dang cho queue.
+
+**File da sua/tao:**  
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `app/Livewire/Pages/Suncatcher/WorkflowActionButton.php`
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- UI coi ca `workflow_status = waiting` va `running` la dang auto de hien badge/spinner/polling thay vi hien nut Auto.
+- Chan start/generate action khi automation dang `waiting` hoac `running` de tranh tao job trung.
+- Retry/Continue van dua job vao queue `waiting`, nhung card se hien dang xu ly/cho chay.
+
+**Loi da gap va cach xu ly:**  
+- Sau khi sua timeout queue, status waiting dung ve logic backend nhung frontend chi check running nen hien lai Auto.
+- Da dong bo dieu kien waiting/running o service, workflow action button va blade card.
+
+**Deploy impact:**  
+- Can `php artisan optimize:clear` va `php artisan view:cache` tren VPS.
+
+**Queue impact:**  
+- Khong doi queue name; chi doi cach UI va service nhan dien job dang cho/chay.
+
+### 2026-07-17
+
+**Muc tieu:**  
+Kiem tra SKU SP2 sau Continue va dong bo UI/backend cho trang thai waiting.
+
+**Ket qua kiem tra:**  
+- Asset SP2 local: `product_design_assets.id = 1821`, automation record `data_ornament_amazon.id = 249` dang `workflow_status = waiting`, step `script`.
+- Co job `suncatcher-priority` cho asset 1821 voi `attempts = 0`, nghia la worker chua nhan job.
+
+**File da sua/tao:**  
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Start Auto tao record `waiting` ngay tu dau, khong ghi workflow start time truoc khi worker bat dau.
+- Card normalize workflow status va coi `waiting` la active/locked nhu `running`, nen khong hien nut Auto khi job dang xep hang.
+
+**Deploy impact:**  
+- Can deploy code moi va clear cache/view cache; neu VPS van hien Auto voi DB waiting thi dang chay blade/code cu.
+
+**Queue impact:**  
+- SP2 co job queue chua duoc worker lay; can worker lang nghe `suncatcher-priority,suncatcher-pipeline` de chuyen sang running.

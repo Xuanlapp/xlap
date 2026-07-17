@@ -43,7 +43,7 @@ class WorkflowActionButton extends Component
             $asset = $service->assetForUser(auth()->user(), $this->assetId);
             $automation = $service->automationForUser(auth()->user(), $this->assetId);
 
-            if (($automation?->workflow_status ?? null) === 'running') {
+            if (in_array(($automation?->workflow_status ?? null), ['waiting', 'running'], true)) {
                 $this->dispatch('toast', type: 'error', title: 'Action blocked!', message: 'Workflow auto dang chay. Hay doi workflow dung xong roi tao lai.');
 
                 return;

@@ -1,7 +1,8 @@
 <article @if(in_array(($automation?->workflow_status ?? null), ['running', 'waiting'], true)) wire:poll.5s="refreshWhenUpdated" @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     @php
-        $automationRunning = (($automation?->workflow_status ?? null) === 'running');
-        $automationFailed = (($automation?->workflow_status ?? null) === 'failed');
+        $automationStatus = strtolower(trim((string) ($automation?->workflow_status ?? '')));
+        $automationRunning = in_array($automationStatus, ['waiting', 'running'], true);
+        $automationFailed = ($automationStatus === 'failed');
         $automationSteps = [
             'main' => '2. Main Image',
             'script' => '3. Script',
@@ -30,8 +31,8 @@
         $mainGenerating = $automationRunning && $currentAutomationStep === 'main';
         $scriptGenerating = $automationRunning && $currentAutomationStep === 'script';
         $promptGenerating = $automationRunning && $currentAutomationStep === 'prompt';
-        $workflowLocked = in_array(($automation?->workflow_status ?? null), ['running', 'failed', 'completed'], true) || $hasAllDbMockups;
-        $canShowAuto = ! $asset->is_approved && ! $scriptReady && ! $automationRunning && ! $automationFailed && (($automation?->workflow_status ?? null) !== 'completed');
+        $workflowLocked = in_array($automationStatus, ['waiting', 'running', 'failed', 'completed'], true) || $hasAllDbMockups;
+        $canShowAuto = ! $asset->is_approved && ! $scriptReady && ! $automationRunning && ! $automationFailed && $automationStatus !== 'completed';
         $canShowContinue = false;
         $canShowRetry = ! $asset->is_approved && $asset->redesign && $automationFailed && $currentAutomationStep === 'mockup' && $dbMockupCount < 6;
         $canShowApprove = ! $asset->is_approved && filled($asset->redesign) && $hasAllDbMockups;

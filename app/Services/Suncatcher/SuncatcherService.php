@@ -1806,7 +1806,7 @@ class SuncatcherService
         $asset = $this->assetForUser($user, $assetId);
         $currentAutomation = $this->automationForAsset($asset);
 
-        if (($currentAutomation?->workflow_status ?? null) === 'running') {
+        if (in_array(($currentAutomation?->workflow_status ?? null), ['waiting', 'running'], true)) {
             if ($this->hasAllWorkflowMockupImages($asset)) {
                 return $this->completeAutomation($asset);
             }
@@ -1825,7 +1825,7 @@ class SuncatcherService
         $firstStep = filled($asset->redesign) ? 'script' : 'main';
 
         $record = $this->upsertAutomationRecord($asset, [
-            'workflow_status' => 'running',
+            'workflow_status' => 'waiting',
             'workflow_step_key' => $firstStep,
             'workflow_step_label' => $this->automationStepLabel($firstStep),
             'workflow_step_number' => $this->automationStepNumber($firstStep),
@@ -1842,7 +1842,7 @@ class SuncatcherService
             'step_data' => $this->automationDefaultSteps(),
             'step_errors' => null,
             'last_error' => null,
-            'workflow_started_at' => now(),
+            'workflow_started_at' => null,
             'workflow_paused_at' => null,
             'workflow_completed_at' => null,
         ]);
@@ -1983,7 +1983,7 @@ class SuncatcherService
             return $record;
         }
 
-        if (($record->workflow_status ?? null) === 'running') {
+        if (in_array(($record->workflow_status ?? null), ['waiting', 'running'], true)) {
             throw new RuntimeException('Automation dang chay cho item nay.');
         }
 
