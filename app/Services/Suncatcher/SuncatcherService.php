@@ -3685,7 +3685,7 @@ Analyze the TARGET AUDIENCE for this product:
 Describe GIFT RECEIVER / Person A for reference image generation.
 - 2-3 sentences.
 - Include age, gender, body type, hair color/texture, eye color, expression, clothing, pose, and setting.
-- Person A is the one who receives, wears, keeps, or uses the customized product.
+
 - Must fit the target audience analysis.
 
 ===SECTION:PERSON_B===
@@ -3693,7 +3693,7 @@ Describe GIFT GIVER / Person B for reference image generation.
 - 2-3 sentences.
 - Must be clearly different from Person A on at least 2 traits: age, gender, body type, hair color/style, clothing style, role in scene.
 - Include age, gender, body type, hair color/texture, eye color, expression, clothing, pose, and setting.
-- Person B presents the gift, stands next to the receiver, hands it over, or smiles alongside.
+
 
 ===SECTION:STYLE===
 Color tone for the listing set:
