@@ -162,17 +162,18 @@ class ReviewImage extends Component
         }
 
         try {
-            $asset = app(SuncatcherService::class)->generateWorkflowImage(
+            $asset = app(SuncatcherService::class)->queueWorkflowImageGeneration(
                 user: auth()->user(),
                 assetId: $this->assetId,
                 slot: $slot,
                 providerKey: $this->modalProviderKey,
                 imageModel: $this->modalImageModel,
+                queue: 'suncatcher-priority',
             );
 
             app(ActivityLogService::class)->record(
-                event: 'suncatcher.preview_mockup_generated',
-                description: 'User generated one Suncatcher mockup from preview.',
+                event: 'suncatcher.preview_mockup_queued',
+                description: 'User queued one Suncatcher mockup from preview.',
                 subject: $asset,
                 properties: ['item_number' => $asset->item_number, 'target' => $this->editTarget, 'slot' => $slot, 'provider' => $this->modalProviderKey],
             );
@@ -198,33 +199,24 @@ class ReviewImage extends Component
                 'target' => $this->editTarget,
                 'slot' => $slot,
                 'message' => $exception->getMessage(),
+                'exception' => $exception,
             ]);
 
+            $message = trim((string) $exception->getMessage()) !== ''
+                ? $exception->getMessage()
+                : 'Loi he thong khi dua mockup vao hang doi.';
+
             $this->dispatch('suncatcher-generation-finished');
-            $this->dispatch('suncatcher-preview-mockup-generation-finished', assetId: $this->assetId, slot: $slot, ok: false, message: 'Loi he thong khi tao anh mockup.');
-            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao anh mockup. Hay xem log de biet chi tiet.');
+            $this->dispatch('suncatcher-preview-mockup-generation-finished', assetId: $this->assetId, slot: $slot, ok: false, message: $message);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $message);
 
             return;
         }
 
-        $updatedUrl = $asset->getAttribute($this->editTarget);
-
-        if (is_string($updatedUrl) && trim($updatedUrl) !== '') {
-            $this->original = $updatedUrl;
-            $this->src = $updatedUrl;
-
-            if (isset($this->gallery[$this->currentIndex])) {
-                $this->gallery[$this->currentIndex]['original'] = $updatedUrl;
-                $this->gallery[$this->currentIndex]['src'] = $updatedUrl;
-            }
-        }
-
         $this->dispatch('suncatcher-product-design-updated', assetId: $asset->id);
-        $this->dispatch('suncatcher-generation-finished');
-        $this->dispatch('suncatcher-preview-mockup-generation-finished', assetId: $asset->id, slot: $slot, ok: true, url: $updatedUrl);
         $this->dispatch('suncatcher-product-design-workflow-updated')->to(ListSuncatcher::class);
         $this->dispatch('suncatcher-product-design-workflow-updated')->to(SuncatcherStatusPanel::class);
-        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh mockup.');
+        $this->dispatch('toast', type: 'success', title: 'Queued!', message: 'Da dua mockup vao worker. Ban co the dong preview va theo doi spinner tren card.');
     }
 
     /**
@@ -233,6 +225,62 @@ class ReviewImage extends Component
     public function customizeSuncatcherImage(): void
     {
         if ($this->action !== 'suncatcher-custom-image' || ! $this->assetId || ! $this->original || ! $this->editTarget) {
+            return;
+        }
+
+        $slot = $this->workflowSlotFromMockupTarget($this->editTarget);
+
+        if ($slot) {
+            try {
+                $asset = app(SuncatcherService::class)->queuePreviewWorkflowImageEdit(
+                    user: auth()->user(),
+                    assetId: $this->assetId,
+                    slot: $slot,
+                    target: $this->editTarget,
+                    currentImageUri: $this->original,
+                    editPrompt: $this->customPrompt,
+                    providerKey: $this->modalProviderKey,
+                    imageModel: $this->modalImageModel,
+                    queue: 'suncatcher-priority',
+                );
+
+                app(ActivityLogService::class)->record(
+                    event: 'suncatcher.preview_image_edit_queued',
+                    description: 'User queued a Suncatcher preview mockup edit.',
+                    subject: $asset,
+                    properties: ['item_number' => $asset->item_number, 'target' => $this->editTarget, 'slot' => $slot, 'provider' => $this->modalProviderKey],
+                );
+            } catch (RuntimeException $exception) {
+                $this->reportUserActionError($exception, 'suncatcher.customize_preview_image', [
+                    'asset_id' => $this->assetId,
+                    'target' => $this->editTarget,
+                ]);
+                $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+
+                return;
+            } catch (Throwable $exception) {
+                $this->reportUserActionError($exception, 'suncatcher.customize_preview_image', [
+                    'asset_id' => $this->assetId,
+                    'target' => $this->editTarget,
+                ]);
+                Log::error('Suncatcher preview image edit queue failed unexpectedly.', [
+                    'asset_id' => $this->assetId,
+                    'target' => $this->editTarget,
+                    'slot' => $slot,
+                    'message' => $exception->getMessage(),
+                ]);
+
+                $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi dua anh vao worker.');
+
+                return;
+            }
+
+            $this->customPrompt = '';
+            $this->dispatch('suncatcher-product-design-updated', assetId: $asset->id);
+            $this->dispatch('suncatcher-product-design-workflow-updated')->to(ListSuncatcher::class);
+            $this->dispatch('suncatcher-product-design-workflow-updated')->to(SuncatcherStatusPanel::class);
+            $this->dispatch('toast', type: 'success', title: 'Queued!', message: 'Da dua yeu cau edit mockup vao worker. Theo doi spinner tren card.');
+
             return;
         }
 

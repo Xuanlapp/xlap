@@ -52,10 +52,6 @@
             <span class="h-3 w-3 animate-spin rounded-full border-2 border-current/25 border-t-current"></span>
             <span>{{ $loadingLabel }}</span>
         </span>
-        <span wire:loading wire:target="run" class="inline-flex items-center gap-1.5">
-            <span class="h-3 w-3 animate-spin rounded-full border-2 border-current/25 border-t-current"></span>
-            <span>{{ $loadingLabel }}</span>
-        </span>
     </button>
 </div>
 

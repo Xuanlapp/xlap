@@ -3328,3 +3328,41 @@ Cho panel Suncatcher tu doc database va refresh dung card dang auto (running/wai
 **Follow-up notes:**  
 - Neu worker da ghi DB sang `completed/failed` thi poll se dung.
 - Neu user muon refresh nhanh hon 5s, co the giam poll interval xuong 3s nhung se nang tai hon.
+
+### 2026-07-17 +07:00
+
+**Muc tieu:**  
+Fix loi bam Generate/Custom trong preview mockup Suncatcher bi bao Action failed do goi luong dong bo trong Livewire request.
+
+**File da sua/tao:**  
+- `app/Livewire/Modals/Suncatcher/ReviewImage.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi `generateSuncatcherMockupImage()` tu goi `generateWorkflowImage()` sang `queueWorkflowImageGeneration()` voi queue `suncatcher-priority`.
+- Doi `customizeSuncatcherImage()` cho slot mockup sang `queuePreviewWorkflowImageEdit()` voi queue `suncatcher-priority`.
+- Toast nay gio bao `Queued!` thay vi `Successfully saved!` de khop voi luong worker.
+- Loi he thong/generic error trong preview mockup duoc tra ra ro hon khi queue fail.
+
+**Root cause:**  
+- Preview mockup Suncatcher dang render anh dong bo ngay trong Livewire request, trong khi Ornament Amazon 2 da dung queue worker. Dieu nay de gap timeout/lock/exception va bi toast generic `Action failed!`.
+
+**Affected modules:**  
+- Suncatcher preview review modal
+- Suncatcher workflow image generation/edit queue flow
+
+**Deploy impact:**  
+- Khong can migrate.
+- Can deploy code moi va clear/rebuild Blade cache neu production dang cache.
+
+**Queue impact:**  
+- Preview mockup Generate/Custom nay day vao `suncatcher-priority` de worker xu ly.
+- UI se nhan spinner/queued state, khong phai cho request Livewire xong anh ngay lap tuc.
+
+**Kiem tra da chay:**  
+- `php -l app/Livewire/Modals/Suncatcher/ReviewImage.php`
+- `php artisan view:cache --no-ansi`
+
+**Follow-up notes:**  
+- Neu worker suncatcher-priority tren VPS chua chay, nut Generate/Custom se queue xong nhung khong co ket qua.
+- Can dam bao queue worker va quyen ghi storage cua user web deu on dinh.
