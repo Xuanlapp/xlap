@@ -3132,3 +3132,79 @@ Cho Suncatcher Auto bat dau tu buoc `2. Main Image` thay vi nhay thang vao `3. S
 
 **Follow-up notes:**  
 - Neu can, co the tinh tiep de UI hien `Auto: 2. Main Image` ro hon va current step chuyen sang `3. Script` sau khi anh 2 xong.
+
+### 2026-07-17 +07:00
+
+**Muc tieu:**  
+Kiem tra vi sao `2. Main Image` luu duoc nhung `4. Person A/B` va `6. Mockup` khong luu duoc tren VPS.
+
+**File da sua/tao:**  
+- `app/Jobs/GenerateSuncatcherWorkflowImage.php`
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Phat hien luong Suncatcher workflow chay qua job `GenerateSuncatcherWorkflowImage` va luu file vao `storage/app/public/generated/suncatcher/...`.
+- Fix bug job: `GenerateSuncatcherWorkflowImage` phai lay `User` roi moi goi `runAutomationStep($user, ...)` thay vi truyen sai gia tri.
+- Xac minh person refs luu vao `generated/suncatcher/workflow/refs` va mockup render luu vao `generated/suncatcher/mockups/{assetId}`.
+
+**Root cause:**  
+- Job Suncatcher workflow co bug tham so o pipeline, lam person/mockup co the khong vao dung route xu ly tren queue.
+- Tren VPS, worker/permission `storage/app/public` con la diem can duoc dong bo theo user web.
+
+**Affected modules:**  
+- Suncatcher queue job processing
+- Suncatcher person reference generation
+- Suncatcher mockup rendering/output paths
+
+**Deploy impact:**  
+- Khong can migrate.
+- Can deploy code va chay lai worker Suncatcher.
+
+**Queue impact:**  
+- Job `GenerateSuncatcherWorkflowImage` da duoc sua de chay dung pipeline user, giam nguy co step person/mockup bi fail tren queue.
+
+**Kiem tra da chay:**  
+- `php -l app/Jobs/GenerateSuncatcherWorkflowImage.php`
+- `php -l app/Services/Suncatcher/SuncatcherService.php`
+- `rg` kiem tra path `generated/suncatcher/workflow/refs` va `generated/suncatcher/mockups`.
+
+**Follow-up notes:**  
+- Neu tren VPS van khong ghi duoc person/mockup thi can xem tiep quyen `storage/app/public`, worker user, va log queue step `person_a/person_b/mockup`.
+
+### 2026-07-17 +07:00
+
+**Muc tieu:**  
+Fix Suncatcher de anh tra ve tu worker/API hien ngay tren card trong luc Auto dang chay.
+
+**File da sua/tao:**  
+- esources/views/components/image-preview.blade.php
+- esources/views/livewire/pages/suncatcher/product-design-card.blade.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**  
+- Sua component image-preview de dung x-bind:src="currentSrc" thay vi src tinh, giup Livewire poll + Alpine cap nhat URL anh moi ngay khi server tra ve.
+- Sua action review image de mo theo currentSrc hien tai thay vi URL cu.
+- Them x-effect vao block mockup B5 cua Suncatcher de moi lan Livewire re-render/poll se dong bo lai images, slotStates, slotErrors, unning, doneCount, statusMessage tu server vao Alpine state.
+
+**Root cause:**  
+- Card co poll, DB da duoc worker cap nhat, nhung UI preview van giu src HTML cu va mockup grid giu state Alpine cu, nen anh moi khong hien ngay cho den khi reload man hinh.
+
+**Affected modules:**  
+- Shared image preview component
+- Suncatcher mockup/live automation card
+
+**Deploy impact:**  
+- Khong can migrate.
+- Can deploy code moi va clear view cache/opcache tren server neu dang cache.
+
+**Queue impact:**  
+- Khong doi queue logic; chi sua client-side/live-render de ket qua queue hien ngay khi worker ghi xong.
+
+**Kiem tra da chay:**  
+- php -l resources/views/components/image-preview.blade.php
+- php -l resources/views/livewire/pages/suncatcher/product-design-card.blade.php
+- php artisan view:cache --no-ansi
+
+**Follow-up notes:**  
+- Neu tren VPS van thay cham, can check them thoi gian poll va worker co dang ghi file/DB thanh cong hay khong.

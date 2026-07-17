@@ -922,6 +922,7 @@
             data-asset-id="{{ $asset->id }}"
             x-on:suncatcher-preview-mockup-generation-started.window="if (($event.detail?.assetId ?? null) === assetId && ($event.detail?.slot ?? null)) { running = true; setSlotState($event.detail.slot, 'generating'); statusMessage = `Generating ${doneCount}/${targetCount || promptSlots.length}...`; }"
             x-on:suncatcher-preview-mockup-generation-finished.window="if (($event.detail?.assetId ?? null) === assetId && ($event.detail?.slot ?? null)) { if ($event.detail.ok === false) { setSlotState($event.detail.slot, 'error'); slotErrors = { ...slotErrors, [$event.detail.slot]: $event.detail.message || 'Generate failed' }; running = Object.values(slotStates).includes('generating'); } }"
+            x-effect="images = @js($mockupB5Images); slotStates = @js($mockupBatchStates); slotErrors = @js($mockupBatchErrors); running = @js($mockupBatchRunning); doneCount = @js($mockupDoneCount); targetCount = @js(count($mockupB5PromptSlots)); errorCount = @js($mockupErrorCount); statusMessage = @js($mockupStatusMessage);"
             x-data="{
                 assetId: {{ $asset->id }},
                 keyword: @js($asset->keyword),

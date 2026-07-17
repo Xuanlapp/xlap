@@ -39,7 +39,9 @@ class GenerateSuncatcherWorkflowImage implements ShouldQueue
     public function handle(SuncatcherService $service): void
     {
         if (in_array($this->slot, ['main', 'script', 'person_a', 'person_b', 'prompt', 'mockup'], true)) {
-            $service->runAutomationStep($this->userId, $this->assetId, $this->slot, $this->providerKey, $this->imageModel);
+            $user = User::findOrFail($this->userId);
+
+            $service->runAutomationStep($user, $this->assetId, $this->slot, $this->providerKey, $this->imageModel);
 
             return;
         }
