@@ -549,8 +549,8 @@ class SuncatcherService
         $workflow['b1']['supplier_url'] = $this->stringOrNull($input['supplier_url'] ?? null) ?? ($workflow['b1']['supplier_url'] ?? null);
         $workflow['b1']['supplier_notes'] = $this->stringOrNull($input['supplier_notes'] ?? null) ?? ($workflow['b1']['supplier_notes'] ?? null);
         $workflow['b1']['reviews_raw'] = $this->linesFromText($input['reviews_raw'] ?? null);
-        $workflow['b2']['person_a_prompt'] = $this->stringOrNull($input['person_a_prompt'] ?? null) ?? ($workflow['b2']['person_a_prompt'] ?? null);
-        $workflow['b2']['person_b_prompt'] = $this->stringOrNull($input['person_b_prompt'] ?? null) ?? ($workflow['b2']['person_b_prompt'] ?? null);
+        $workflow['b2']['person_a_prompt'] = $this->cleanPersonPromptValue($this->stringOrNull($input['person_a_prompt'] ?? null) ?? ($workflow['b2']['person_a_prompt'] ?? null));
+        $workflow['b2']['person_b_prompt'] = $this->cleanPersonPromptValue($this->stringOrNull($input['person_b_prompt'] ?? null) ?? ($workflow['b2']['person_b_prompt'] ?? null));
         $personARef = $this->nullableUrl($input['person_a_ref'] ?? null) ?? ($workflow['b2']['person_a_ref'] ?? null);
         $personBRef = $this->nullableUrl($input['person_b_ref'] ?? null) ?? ($workflow['b2']['person_b_ref'] ?? null);
         if (($workflow['b2']['person_a_ref'] ?? null) !== $personARef) {
@@ -3298,11 +3298,11 @@ TEXT;
         $scriptPersonB = $workflow['script']['person_b'] ?? null;
 
         if ($needsPersonA && is_string($scriptPersonA) && trim($scriptPersonA) !== '') {
-            $workflow['b2']['person_a_prompt'] = trim($scriptPersonA);
+            $workflow['b2']['person_a_prompt'] = $this->sanitizePersonReferenceDescription($scriptPersonA);
         }
 
         if ($needsPersonB && is_string($scriptPersonB) && trim($scriptPersonB) !== '') {
-            $workflow['b2']['person_b_prompt'] = trim($scriptPersonB);
+            $workflow['b2']['person_b_prompt'] = $this->sanitizePersonReferenceDescription($scriptPersonB);
         }
 
         if (
@@ -3316,11 +3316,11 @@ TEXT;
         $fallbacks = $this->fallbackWorkflowPersonPrompts($audience);
 
         if ($needsPersonA && (! is_string($workflow['b2']['person_a_prompt'] ?? null) || trim($workflow['b2']['person_a_prompt']) === '')) {
-            $workflow['b2']['person_a_prompt'] = $fallbacks['person_a'];
+            $workflow['b2']['person_a_prompt'] = $this->sanitizePersonReferenceDescription($fallbacks['person_a']);
         }
 
         if ($needsPersonB && (! is_string($workflow['b2']['person_b_prompt'] ?? null) || trim($workflow['b2']['person_b_prompt']) === '')) {
-            $workflow['b2']['person_b_prompt'] = $fallbacks['person_b'];
+            $workflow['b2']['person_b_prompt'] = $this->sanitizePersonReferenceDescription($fallbacks['person_b']);
         }
 
         return $workflow;
@@ -3421,12 +3421,24 @@ PROMPT
             '/\b(?:as\s+he\s+|as\s+she\s+)?(?:presents|hands)\s+(?:the\s+)?(?:customized\s+|personalized\s+)?(?:suncatcher|product|gift|package|packaging|box)[^.]*\.?/i',
             '/\bmade\s+from\s+\[SUPPLIER SPEC PLACEHOLDER - material\/size\][^.]*\.?/i',
             '/\bin\s+\[SUPPLIER SPEC PLACEHOLDER - material\/size\]\s+(?:packaging|package|box)[^.]*\.?/i',
+            '/\bso\s+the\s+product[^.]*\.?/i',
+            '/\bso\s+the\s+personalization[^.]*\.?/i',
+            '/\bthe\s+product\s+made\s+in\s+\[SUPPLIER SPEC PLACEHOLDER - material\/size\][^.]*\.?/i',
         ];
 
         $cleaned = preg_replace($patterns, '', $prompt) ?? $prompt;
         $cleaned = trim(preg_replace('/\s+/', ' ', $cleaned) ?? $cleaned);
 
         return $cleaned !== '' ? $cleaned : $prompt;
+    }
+
+    private function cleanPersonPromptValue(?string $prompt): ?string
+    {
+        if (! is_string($prompt) || trim($prompt) === '') {
+            return null;
+        }
+
+        return $this->sanitizePersonReferenceDescription($prompt);
     }
 
     /**

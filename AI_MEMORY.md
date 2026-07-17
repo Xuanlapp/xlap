@@ -3254,3 +3254,77 @@ Fix Suncatcher person prompt de khong bat nguoi cam/holding object, dong thoi la
 
 **Follow-up notes:**  
 - Neu van con prompt cam san pham sau deploy, can kiem tra provider prompt cache/record workflow cu tren DB.
+
+### 2026-07-17 +07:00
+
+**Muc tieu:**  
+Fix preview mockup Suncatcher de hien dung 2 action nhu Ornament: generate lai bang prompt chinh va custom image bang prompt nhap tay.
+
+**File da sua/tao:**  
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi event preview Person A/B va mockup Suncatcher tu `review-image` sang `review-image-suncatcher`.
+- Mockup preview gio mo dung modal `App\Livewire\Modals\Suncatcher\ReviewImage`, noi da co san nut `Generate` theo prompt B4 va form `Custom This Image` de nhap prompt edit anh.
+
+**Root cause:**  
+- Card Suncatcher dang dispatch nham event modal chung `review-image`, nen mo modal Image chung thay vi modal Suncatcher. Modal chung khong hien dung action Suncatcher cho mockup.
+
+**Affected modules:**  
+- Suncatcher product design card
+- Suncatcher review image modal flow
+
+**Deploy impact:**  
+- Khong can migrate.
+- Can clear/rebuild Blade cache neu production dang cache.
+
+**Queue impact:**  
+- Khong doi queue. Generate lai/custom image van di qua cac method co san cua Suncatcher modal/service.
+
+**Kiem tra da chay:**  
+- `php -l resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `php artisan view:cache --no-ansi`
+
+**Follow-up notes:**  
+- Neu user van khong thay nut, can kiem tra trang da deploy code moi va event `review-image-suncatcher` co modal listener mounted trong layout.
+
+### 2026-07-17 +07:00
+
+**Muc tieu:**  
+Cho panel Suncatcher tu doc database va refresh dung card dang auto (running/waiting) de khong phai reload thu cong.
+
+**File da sua/tao:**  
+- `app/Livewire/Pages/Suncatcher/SuncatcherStatusPanel.php`
+- `resources/views/livewire/pages/suncatcher/suncatcher-status-panel.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them `wire:poll.5s=\"pollRunningAssets\"` o panel cha.
+- `pollRunningAssets()` quet bang `data_ornament_amazon`, loc cac asset dang `workflow_status` = `running` hoac `waiting` trong tab hien tai.
+- Panel cha dispatch event `suncatcher-product-design-updated.{assetId}` cho tung card dang chay, de `ProductDesignCard` refresh theo DB thay vi can reload trang.
+
+**Root cause:**  
+- Card con co poll rieng, nhung neu trang thai chay thay doi tu DB trong khi card chua duoc hydrate kip, UI co the khong bat dau refresh dung item.
+- Can them mot lop poll o panel cha de quet DB va kich hoat refresh dung card dang auto.
+
+**Affected modules:**  
+- Suncatcher status panel
+- Suncatcher product design card refresh flow
+
+**Deploy impact:**  
+- Khong can migrate.
+- Can deploy code moi va clear/rebuild Blade cache neu production dang cache.
+
+**Queue impact:**  
+- Khong doi queue.
+- Chi lam UI bat nhanh ket qua worker/automation dang chay.
+
+**Kiem tra da chay:**  
+- `php -l app/Livewire/Pages/Suncatcher/SuncatcherStatusPanel.php`
+- `php -l resources/views/livewire/pages/suncatcher/suncatcher-status-panel.blade.php`
+- `php artisan view:cache --no-ansi`
+
+**Follow-up notes:**  
+- Neu worker da ghi DB sang `completed/failed` thi poll se dung.
+- Neu user muon refresh nhanh hon 5s, co the giam poll interval xuong 3s nhung se nang tai hon.

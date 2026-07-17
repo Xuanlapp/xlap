@@ -1,4 +1,4 @@
-<div>
+<div wire:poll.5s="pollRunningAssets">
     <div class="mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div class="flex gap-1 overflow-x-auto" role="tablist" aria-label="Loc suncatcher theo trang thai">
             @foreach ([

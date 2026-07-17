@@ -705,7 +705,7 @@
                                 type="button"
                                 x-cloak
                                 x-show="refUrl"
-                                x-on:click="$dispatch('review-image', { src: refPreviewUrl || previewUrl(refUrl) || refUrl, original: refUrl, title: @js($personLabel.' Ref'), productSlug: 'suncatcher', assetId: {{ $asset->id }}, keyword: @js($asset->keyword), imagePrompt: @js($personKey === 'a' ? $personAPrompt : $personBPrompt) })"
+                                x-on:click="$dispatch('review-image-suncatcher', { src: refPreviewUrl || previewUrl(refUrl) || refUrl, original: refUrl, title: @js($personLabel.' Ref'), productSlug: 'suncatcher', assetId: {{ $asset->id }}, keyword: @js($asset->keyword), imagePrompt: @js($personKey === 'a' ? $personAPrompt : $personBPrompt) })"
                                 class="mt-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition hover:border-sky-300"
                             >
                                 <img x-bind:src="refPreviewUrl || previewUrl(refUrl) || refUrl" alt="{{ $personLabel }} ref" loading="lazy" decoding="async" class="h-full w-full object-contain bg-slate-100">
@@ -726,6 +726,7 @@
 
         <div
             x-data="{ promptCreating: @js($promptGenerating) }"
+            x-effect="promptCreating = @js($promptGenerating) || promptCreating"
             x-on:suncatcher-generation-finished.window="promptCreating = false"
             class="min-w-0 {{ $promptCreateDisabledReason ? 'opacity-55' : '' }}"
         >
@@ -772,6 +773,15 @@
             </div>
 
             <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm ring-1 ring-amber-950/[0.03]">
+                @if ($promptGenerating)
+                    <div class="absolute inset-0 z-20 flex items-center justify-center bg-white/95 backdrop-blur-sm">
+                        <div class="flex flex-col items-center gap-2 text-center text-amber-700">
+                            <span class="h-8 w-8 animate-spin rounded-full border-4 border-amber-200 border-t-amber-700"></span>
+                            <span class="text-xs font-bold text-slate-700">Writing prompt...</span>
+                        </div>
+                    </div>
+                @endif
+
                 <div x-cloak x-show="promptCreating" x-transition.opacity class="absolute inset-0 z-10 flex items-center justify-center bg-white/95 backdrop-blur-sm">
                     <div class="flex flex-col items-center gap-2 text-center text-amber-700">
                         <span class="h-8 w-8 animate-spin rounded-full border-4 border-amber-200 border-t-amber-700"></span>
@@ -1079,7 +1089,7 @@
                         return;
                     }
 
-                    dispatch('review-image', {
+                    dispatch('review-image-suncatcher', {
                         src: src || original,
                         original: original || src,
                         title: `MOCKUP ${this.slotNumber(slot)}`,
