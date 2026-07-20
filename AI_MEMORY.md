@@ -3584,3 +3584,168 @@ Kiem tra SKU SP2 sau Continue va dong bo UI/backend cho trang thai waiting.
 
 **Queue impact:**  
 - SP2 co job queue chua duoc worker lay; can worker lang nghe `suncatcher-priority,suncatcher-pipeline` de chuyen sang running.
+
+### 2026-07-20
+
+**Muc tieu:**  
+Doc va tong hop toan bo module Proxy truoc khi phan tich bai toan moi.
+
+**File da doc/cham:**  
+- `app/Livewire/Pages/Proxy/Index.php`
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `app/Livewire/Modals/Proxy/EditProxyItem.php`
+- `resources/views/livewire/modals/proxy/edit-proxy-item.blade.php`
+- `app/Services/Proxy/ProxyMonitorService.php`
+- `app/Repositories/Proxy/DataHubProxyRepository.php`
+- `app/Models/DataHubProxy.php`
+- `app/Models/DataHubProxyItem.php`
+- `app/Models/DataHubProxySnapshot.php`
+- `app/Console/Commands/RefreshProxyData.php`
+- `database/migrations/2026_07_03_090000_add_proxy_product_and_data_hub_proxy_tables.php`
+- `database/migrations/2026_07_03_091500_create_data_hub_proxy_items_table.php`
+- `database/migrations/2026_07_03_092500_add_public_ip_change_to_data_hub_proxy_items_table.php`
+- `database/migrations/2026_07_03_093000_add_note_to_data_hub_proxy_items_table.php`
+- `database/migrations/2026_07_03_093500_add_port_to_data_hub_proxy_items_table.php`
+- `database/migrations/2026_07_03_094000_add_assigned_user_to_data_hub_proxy_items_table.php`
+- `database/migrations/2026_07_03_096000_add_proxy_item_viewers_and_full_access.php`
+- `database/migrations/2026_07_03_097000_create_data_hub_proxy_item_manager_access_table.php`
+- `app/Support/ProductRegistry.php`
+- `routes/console.php`
+
+**Tong hop logic chinh:**  
+- Trang Proxy la mot product page trong Offorest, hien danh sach proxy source va tung dong proxy item.
+- Du lieu duoc refresh theo cron `offorest:refresh-proxy-data`, mac dinh moi 5 phut.
+- Service goi HTTP GET toi `source_url`, parse JSON array, normalize record, hash payload, luu snapshot, sync vao `data_hub_proxy_items`.
+- Identity cua moi item la cap `data_hub_proxy_id + ppp_tty`.
+- Trang thai doi IP hien tai duoc xac dinh chu yeu bang thay doi `public_ip`; khi doi se cap nhat `public_ip_change` va `changed_at`.
+- Admin co the refresh tay, edit item, set user, set manager access, set port, note, va reset `changed_at` de item quay ve xanh.
+- User thuong chi thay item duoc gan `assigned_user_id` hoac co trong `managerAccesses`; manager full access di qua co `can_view_all_proxy = true`.
+
+**Diem can nho:**  
+- `data_hub_proxy_user` gan quyen user tren cap proxy source, nhung repository hien tai loc thuc te theo item access (`assigned_user_id` / `managerAccesses`).
+- `data_hub_proxy_item_user` ton tai tu migration cu, nhung code hien tai dang dung `data_hub_proxy_item_manager_access` cho manager access va `assigned_user_id` cho user chinh.
+- `changed_at` la co do de UI to mau bao thay doi; reset se xoa moc nay, khong xoa lich su `public_ip_change`.
+
+### 2026-07-20
+
+**Muc tieu:**  
+Them canh bao proxy bi trung IP va luu lich su IP de phat hien IP da tung thuoc ve proxy khac.
+
+**File da sua/tao:**  
+- `database/migrations/2026_07_20_000000_create_data_hub_proxy_item_ip_histories_table.php`
+- `app/Models/DataHubProxyItemIpHistory.php`
+- `app/Models/DataHubProxyItem.php`
+- `app/Services/Proxy/ProxyMonitorService.php`
+- `app/Repositories/Proxy/DataHubProxyRepository.php`
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Tao bang `data_hub_proxy_item_ip_histories` de luu lich su tung Public IP theo tung proxy item.
+- Khi refresh proxy, moi item se upsert lich su IP hien tai voi `first_seen_at`, `last_seen_at`, `seen_count`.
+- Repository tinh 2 loai canh bao: IP dang bi trung o hien tai, va IP hien tai da tung thuoc ve proxy khac trong lich su.
+- UI them box canh bao tong theo proxy source va badge/canh bao tren tung dong item.
+- UI them cot `IP History` de user xem nhanh cac IP gan day cua moi dong proxy.
+
+**Root cause giai bai toan:**  
+- Truoc day he thong chi biet `public_ip` hien tai va chuoi `public_ip_change`, nen khong the doi chieu mot IP moi co tung nam o proxy item khac hay khong.
+- Gio da co bang lich su rieng nen co the canh bao ca trung hien tai va trung theo lich su.
+
+**Deploy impact:**  
+- Can chay migration moi va clear view cache khi deploy.
+
+**Follow-up:**  
+- Neu can manh hon nua, co the them bo loc chi hien canh bao trong N ngay gan nhat hoac them export lich su IP.
+
+### 2026-07-20
+
+**Muc tieu:**  
+Fix Proxy page 500 khi code lich su IP da deploy nhung VPS chua chay migration.
+
+**Root cause:**  
+- Repository eager-load `ipHistories` va Blade truy cap relation trong khi bang `data_hub_proxy_item_ip_histories` chua ton tai tren database VPS.
+- Loi SQLSTATE 42S02 tai `DataHubProxyRepository.php`.
+
+**File da sua:**  
+- `app/Repositories/Proxy/DataHubProxyRepository.php`
+- `app/Services/Proxy/ProxyMonitorService.php`
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Chi eager-load/query lich su IP khi `Schema::hasTable('data_hub_proxy_item_ip_histories')`.
+- Cron refresh bo qua ghi IP history neu bang chua co.
+- Blade chi doc `ipHistories` khi relation da load, tranh lazy query vao bang thieu.
+
+**Deploy impact:**  
+- Guard giup trang khong 500, nhung van phai chay `php artisan migrate --force` de bat tinh nang lich su IP.
+
+### 2026-07-20
+
+**Muc tieu:**  
+Fix loi Blade Undefined variable `duplicateIpGroups` tren trang Proxy.
+
+**File da sua:**  
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `AI_MEMORY.md`
+
+**Nguyen nhan:**  
+- Block render canh bao duplicate IP dung bien `duplicateIpGroups`, nhung khi view bien doi/compile cache cu co the render vao nhánh khong khoi tao bien.
+- Da them fallback `collect()` va tach bien co `hasDuplicateCurrentIpWarning` / `hasHistoricalIpWarning` de dam bao bien luon ton tai.
+
+**Deploy impact:**  
+- Can refresh view cache tren VPS sau khi deploy.
+
+### 2026-07-20
+
+**Muc tieu:**  
+Fix dut diem Proxy Blade van bao Undefined variable `duplicateIpGroups` sau khi them fallback.
+
+**File da sua:**  
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi:**  
+- Xoa hoan toan bien trung gian `$duplicateIpGroups` khoi Blade.
+- Dieu kien `@if` va `@foreach` tinh truc tiep collection duplicate/history warning tu `$proxy->items`.
+- Tranh van de scope/compiled view cache lam bien khong ton tai.
+
+**Deploy impact:**  
+- Bat buoc chay `php artisan view:clear`, `php artisan optimize:clear`, sau do `php artisan view:cache` tren VPS.
+
+### 2026-07-20
+
+**Muc tieu:**  
+Fix ParseError `unexpected token endif` tren Proxy warning block.
+
+**File da sua:**  
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `AI_MEMORY.md`
+
+**Nguyen nhan va xu ly:**  
+- Block canh bao co bieu thuc Blade/closure phuc tap lam parser tren VPS bao lech `@endif`.
+- Viet lai block bang `$warningGroups` trong `@php` voi closure thuong, sau do render `@if` / `@foreach` don gian.
+
+**Deploy impact:**  
+- Clear va rebuild Blade cache sau khi deploy.
+
+### 2026-07-20
+
+**Muc tieu:**  
+Fix dut diem ParseError local tren Proxy page.
+
+**Root cause that:**  
+- Directive inline `@php($proxyLastChangedAt = ...)` trong `resources/views/livewire/pages/proxy/index.blade.php` bi Livewire ExtendBlade compile thanh PHP khong hop le (`<?php(...)` khong ket thuc statement).
+- Parse error sau do bi bao tai `endforeach`/error renderer nen de nham voi warning block.
+
+**File da sua:**  
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi:**  
+- Xoa hoan toan `@php(...)` inline.
+- Dung truc tiep `$proxy->last_changed_at` va format ngay trong output.
+- Da clear/cache view va php-lint toan bo compiled Blade views; tat ca pass.
+
+**Deploy/queue impact:**  
+- Chi thay doi local theo yeu cau user. Khong queue impact.

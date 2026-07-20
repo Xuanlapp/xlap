@@ -51,9 +51,48 @@ class Index extends Component
     public function render(): View
     {
         $service = app(ProxyMonitorService::class);
+        $proxies = $service->proxiesForUser(auth()->user());
 
         return view('livewire.pages.proxy.index', [
-            'proxies' => $service->proxiesForUser(auth()->user()),
+            'proxies' => $proxies,
+            'proxyWarnings' => $this->buildProxyWarnings($proxies),
         ])->layout('layouts.app');
+    }
+
+    private function buildProxyWarnings($proxies): array
+    {
+        return $proxies->mapWithKeys(function ($proxy): array {
+            $warnings = $proxy->items
+                ->filter(function ($item): bool {
+                    return filled($item->public_ip)
+                        && (
+                            (int) ($item->duplicate_public_ip_count ?? 0) > 1
+                            || (int) ($item->historical_public_ip_owner_count ?? 0) > 0
+                        );
+                })
+                ->groupBy('public_ip')
+                ->map(function ($items, string $publicIp): array {
+                    $historicalOwnerPpps = $items
+                        ->flatMap(fn ($item): array => is_array($item->historical_public_ip_visible_owner_ppps ?? null)
+                            ? $item->historical_public_ip_visible_owner_ppps
+                            : [])
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->all();
+
+                    return [
+                        'public_ip' => $publicIp,
+                        'duplicate_count' => (int) ($items->first()?->duplicate_public_ip_count ?? $items->count()),
+                        'visible_ppps' => $items->pluck('ppp')->filter()->unique()->values()->all(),
+                        'historical_owner_ppps' => $historicalOwnerPpps,
+                        'historical_owner_count' => (int) $items->max(fn ($item): int => (int) ($item->historical_public_ip_owner_count ?? 0)),
+                    ];
+                })
+                ->values()
+                ->all();
+
+            return [$proxy->id => $warnings];
+        })->all();
     }
 }

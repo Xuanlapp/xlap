@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DataHubProxyItem extends Model
 {
@@ -68,5 +69,10 @@ class DataHubProxyItem extends Model
         return $this->belongsToMany(User::class, 'data_hub_proxy_item_manager_access')
             ->withPivot(['access_type'])
             ->withTimestamps();
+    }
+
+    public function ipHistories(): HasMany
+    {
+        return $this->hasMany(DataHubProxyItemIpHistory::class, 'data_hub_proxy_item_id');
     }
 }

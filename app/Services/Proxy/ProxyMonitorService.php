@@ -8,6 +8,7 @@ use App\Models\DataHubProxySnapshot;
 use App\Models\User;
 use App\Repositories\Proxy\DataHubProxyRepository;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class ProxyMonitorService
@@ -157,6 +158,8 @@ class ProxyMonitorService
                 'changed_at' => $publicIpChanged ? $checkedAt : $item->changed_at,
             ])->save();
 
+            $this->recordPublicIpHistory($item, $record['public_ip'], $checkedAt);
+
             if (! $exists) {
                 $created++;
             } elseif ($itemChanged) {
@@ -165,6 +168,25 @@ class ProxyMonitorService
         }
 
         return ['created' => $created, 'updated' => $updated];
+    }
+
+    private function recordPublicIpHistory(DataHubProxyItem $item, ?string $publicIp, \Illuminate\Support\Carbon $checkedAt): void
+    {
+        if ($publicIp === null || ! Schema::hasTable('data_hub_proxy_item_ip_histories')) {
+            return;
+        }
+
+        $history = $item->ipHistories()->firstOrNew(['public_ip' => $publicIp]);
+
+        if (! $history->exists) {
+            $history->first_seen_at = $checkedAt;
+            $history->seen_count = 1;
+        } else {
+            $history->seen_count++;
+        }
+
+        $history->last_seen_at = $checkedAt;
+        $history->save();
     }
 
     private function buildPublicIpChangeHistory(?string $history, ?string $previousPublicIp, ?string $currentPublicIp, bool $publicIpChanged): ?string

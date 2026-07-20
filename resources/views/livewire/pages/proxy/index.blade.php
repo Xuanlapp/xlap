@@ -29,14 +29,13 @@
 
             <div class="divide-y divide-slate-200">
                 @forelse ($proxies as $proxy)
-                    @php($proxyLastChangedAt = optional($proxy->last_changed_at)?->format('Y-m-d H:i:s'))
                     <section class="p-6 bg-white">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <h2 class="text-lg font-bold text-slate-950">{{ $proxy->name }}</h2>
-                                    @if ($proxyLastChangedAt)
-                                        <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">Changed At: {{ $proxyLastChangedAt }}</span>
+                                    @if ($proxy->last_changed_at)
+                                        <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">Changed At: {{ optional($proxy->last_changed_at)?->format('Y-m-d H:i:s') }}</span>
                                     @else
                                         <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">On dinh</span>
                                     @endif
@@ -76,6 +75,34 @@
                             @endif
                         </div>
 
+                        @if (! empty($proxyWarnings[$proxy->id] ?? []))
+                            <div class="mt-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                                <div class="font-extrabold">Canh bao Public IP dang bi trung</div>
+                                <div class="mt-2 space-y-1.5">
+                                    @foreach (($proxyWarnings[$proxy->id] ?? []) as $warning)
+                                        <div>
+                                            <span class="font-mono font-bold">{{ $warning['public_ip'] }}</span>
+                                            @if ($warning['duplicate_count'] > 1)
+                                                dang duoc dung boi
+                                                @if (count($warning['visible_ppps']) > 1)
+                                                    <span class="font-bold">{{ implode(', ', $warning['visible_ppps']) }}</span>.
+                                                @else
+                                                    <span class="font-bold">{{ $warning['visible_ppps'][0] ?? 'proxy hien tai' }}</span>
+                                                    va {{ max(1, $warning['duplicate_count'] - 1) }} proxy khac.
+                                                @endif
+                                            @endif
+                                            @if ($warning['historical_owner_count'] > 0)
+                                                <span class="{{ $warning['duplicate_count'] > 1 ? 'ml-1' : '' }}">
+                                                    IP nay tung thuoc ve
+                                                    <span class="font-bold">{{ $warning['historical_owner_ppps'] !== [] ? implode(', ', $warning['historical_owner_ppps']) : $warning['historical_owner_count'].' proxy khac' }}</span>.
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -83,6 +110,7 @@
                                         <tr>
                                             <th class="px-4 py-3 text-left font-semibold">Public IP</th>
                                             <th class="px-4 py-3 text-left font-semibold">PPP</th>
+                                            <th class="px-4 py-3 text-left font-semibold">IP History</th>
                                             <th class="px-4 py-3 text-left font-semibold">Public IP Change</th>
                                             <th class="px-4 py-3 text-left font-semibold">Port</th>
                                             <th class="px-4 py-3 text-left font-semibold">Note</th>
@@ -94,8 +122,15 @@
                                     </thead>
                                     <tbody class="divide-y divide-slate-200 bg-white">
                                         @forelse ($proxy->items as $item)
-                                            @php($hasChangedAt = filled($item->changed_at))
-                                            <tr @if (auth()->user()?->is_admin) x-on:click="openingProxyModal = true; setTimeout(() => openingProxyModal = false, 900)" wire:click="$dispatch('openModal', { component: 'modals.proxy.edit-proxy-item', arguments: { itemId: {{ $item->id }} } })" @endif class="{{ auth()->user()?->is_admin ? 'cursor-pointer hover:bg-cyan-50' : '' }} transition {{ $hasChangedAt ? 'bg-red-50' : '' }}">
+                                            @php
+                                                $hasChangedAt = filled($item->changed_at);
+                                                $isDuplicatePublicIp = (int) ($item->duplicate_public_ip_count ?? 0) > 1;
+                                                $hasHistoricalPublicIpOwner = (int) ($item->historical_public_ip_owner_count ?? 0) > 0;
+                                                $visibleDuplicatePpps = collect($item->duplicate_public_ip_visible_ppps ?? [])->filter();
+                                                $visibleHistoricalOwnerPpps = collect($item->historical_public_ip_visible_owner_ppps ?? [])->filter();
+                                                $rowStateClass = $hasChangedAt ? 'bg-red-50' : (($isDuplicatePublicIp || $hasHistoricalPublicIpOwner) ? 'bg-amber-50' : '');
+                                            @endphp
+                                            <tr @if (auth()->user()?->is_admin) x-on:click="openingProxyModal = true; setTimeout(() => openingProxyModal = false, 900)" wire:click="$dispatch('openModal', { component: 'modals.proxy.edit-proxy-item', arguments: { itemId: {{ $item->id }} } })" @endif class="{{ auth()->user()?->is_admin ? 'cursor-pointer hover:bg-cyan-50' : '' }} transition {{ $rowStateClass }}">
                                                 <td class="px-4 py-3 text-slate-700">
                                                 @if ($item->public_ip)
                                                     <button
@@ -129,11 +164,43 @@
                                                             }
                                                         "
                                                     >{{ $item->public_ip }}</button>
+                                                    @if ($isDuplicatePublicIp)
+                                                        <div class="mt-1">
+                                                            <span class="inline-flex rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-extrabold text-amber-900">
+                                                                Trung {{ (int) $item->duplicate_public_ip_count }} proxy
+                                                            </span>
+                                                            @if ($visibleDuplicatePpps->isNotEmpty())
+                                                                <div class="mt-1 text-[11px] font-semibold text-amber-800">
+                                                                    Trung voi: {{ $visibleDuplicatePpps->implode(', ') }}
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+                                                    @if ($hasHistoricalPublicIpOwner)
+                                                        <div class="mt-1">
+                                                            <span class="inline-flex rounded-full bg-orange-200 px-2 py-0.5 text-[10px] font-extrabold text-orange-900">
+                                                                Tung thuoc ve proxy khac
+                                                            </span>
+                                                            <div class="mt-1 text-[11px] font-semibold text-orange-800">
+                                                                {{ $visibleHistoricalOwnerPpps->isNotEmpty() ? 'Tung o: '.$visibleHistoricalOwnerPpps->implode(', ') : 'Tung o '.(int) $item->historical_public_ip_owner_count.' proxy khac' }}
+                                                            </div>
+                                                        </div>
+                                                    @endif
                                                 @else
                                                     -
                                                 @endif
                                             </td>
                                                 <td class="px-4 py-3 text-slate-700">{{ $item->ppp ?: '-' }}</td>
+                                                <td class="px-4 py-3 text-slate-700">
+                                                    @forelse (($item->relationLoaded('ipHistories') ? $item->ipHistories : collect())->take(5) as $ipHistory)
+                                                        <div class="whitespace-nowrap text-xs {{ $ipHistory->public_ip === $item->public_ip ? 'font-bold text-cyan-700' : 'text-slate-600' }}">
+                                                            {{ $ipHistory->public_ip }}
+                                                            <span class="text-[10px] font-normal text-slate-400">({{ optional($ipHistory->last_seen_at)?->format('d/m/Y H:i') }})</span>
+                                                        </div>
+                                                    @empty
+                                                        <span class="text-slate-400">Chua co lich su</span>
+                                                    @endforelse
+                                                </td>
                                                 <td class="px-4 py-3 text-slate-700 {{ $hasChangedAt ? 'font-semibold text-red-700' : '' }}">{{ $item->public_ip_change ?: '-' }}</td>
                                                 <td class="px-4 py-3 text-slate-700">{{ $item->port ?? (preg_match('/mvlan(\d+)/i', (string) $item->ppp, $matches) ? 9800 + (int) $matches[1] : '-') }}</td>
                                                 <td class="px-4 py-3 text-slate-700">{{ $item->note ?: '-' }}</td>
@@ -150,7 +217,7 @@
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="9" class="px-4 py-10 text-center text-sm text-slate-400">Chua co du lieu proxy. Hay doi scheduler cap nhat du lieu.</td>
+                                                <td colspan="10" class="px-4 py-10 text-center text-sm text-slate-400">Chua co du lieu proxy. Hay doi scheduler cap nhat du lieu.</td>
                                             </tr>
                                         @endforelse
                                     </tbody>
