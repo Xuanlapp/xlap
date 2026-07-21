@@ -13,6 +13,8 @@ use Illuminate\Support\Str;
 
 class ApprovedAssetDriveExportService
 {
+    private const STALE_PROCESSING_MINUTES = 15;
+
     public function __construct(
         private readonly GoogleDriveService $drive,
         private readonly ActivityLogService $activityLogs,
@@ -25,6 +27,8 @@ class ApprovedAssetDriveExportService
      */
     public function exportApprovedImages(?User $actor = null, string $trigger = 'scheduled'): array
     {
+        $this->markStaleProcessingUploadsAsFailed();
+
         $assets = ProductDesignAsset::query()
             ->with(['product', 'user'])
             ->where('is_approved', true)
@@ -51,7 +55,7 @@ class ApprovedAssetDriveExportService
                     'completed_at' => now(),
                 ]);
 
-                throw $exception;
+                continue;
             }
 
             if ($result > 0) {
@@ -75,6 +79,8 @@ class ApprovedAssetDriveExportService
 
     public function exportAssetById(int $assetId, ?User $actor = null, string $trigger = 'manual'): int
     {
+        $this->markStaleProcessingUploadsAsFailed();
+
         $asset = ProductDesignAsset::query()
             ->with(['product', 'user'])
             ->findOrFail($assetId);
@@ -157,12 +163,15 @@ class ApprovedAssetDriveExportService
         }
 
         if ($updates === []) {
+            $alreadyOnDrive = $this->assetHasDriveImages($asset);
+
             $upload->update([
-                'status' => 'waiting',
+                'status' => $alreadyOnDrive ? 'completed' : 'failed',
                 'file_info' => $fileInfo,
                 'drive_files' => $uploaded,
                 'drive_folder_id' => $driveFolder['id'],
                 'drive_folder_link' => $driveFolder['link'],
+                'error' => $alreadyOnDrive ? null : 'Khong tim thay file local de upload.',
                 'completed_at' => now(),
             ]);
 
@@ -277,6 +286,39 @@ class ApprovedAssetDriveExportService
                 'status' => 'waiting',
             ],
         );
+    }
+
+    public function markStaleProcessingUploadsAsFailed(): int
+    {
+        $cutoff = now()->subMinutes(self::STALE_PROCESSING_MINUTES);
+
+        return ProductDriveUpload::query()
+            ->where('status', 'processing')
+            ->whereNotNull('started_at')
+            ->where('started_at', '<=', $cutoff)
+            ->update([
+                'status' => 'failed',
+                'error' => 'Upload bi treo qua lau. Hay bam Reupload de chay lai.',
+                'completed_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function assetHasDriveImages(ProductDesignAsset $asset): bool
+    {
+        if ($asset->drive_uploaded_at !== null) {
+            return true;
+        }
+
+        foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
+            $url = $asset->getAttribute($field);
+
+            if (is_string($url) && str_contains($url, 'drive.google.com')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function folderNameForUser(ProductDesignAsset $asset): string

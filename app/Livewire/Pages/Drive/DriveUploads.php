@@ -80,6 +80,8 @@ class DriveUploads extends Component
 
     public function render(): View
     {
+        app(ApprovedAssetDriveExportService::class)->markStaleProcessingUploadsAsFailed();
+
         return view('livewire.pages.drive.drive-uploads', [
             'uploads' => $this->visibleQuery()
                 ->latest('updated_at')

@@ -1116,6 +1116,10 @@
                     this.targetCount = this.promptSlots.length;
                     this.slotErrors = {};
                     this.statusMessage = `Generating 0/${this.targetCount}...`;
+                    this.images = { ...this.images };
+                    this.promptSlots.forEach((slot) => {
+                        this.images[slot] = { ...(this.images[slot] || {}), preview: null, original: null };
+                    });
 
                     this.slots.forEach((slot) => {
                         if (this.promptSlots.includes(slot)) {
@@ -1127,7 +1131,7 @@
 
                     try {
                         try {
-                            await this.postJson(this.prepareUrl, {});
+                            await this.postJson(this.prepareUrl, { regenerate_all: true });
                         } catch (error) {
                             this.promptSlots.forEach((slot) => {
                                 this.setSlotState(slot, 'error');
@@ -1214,10 +1218,10 @@
                             x-bind:aria-busy="running ? 'true' : 'false'"
                             x-bind:disabled="running || Boolean(disabledReason)"
                             class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-3 py-2 text-xs font-medium text-orange-600 transition hover:bg-orange-50 focus:outline-none focus:ring-4 focus:ring-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="{{ $generateDisabledReason ?: 'Generate all 6 mockup images' }}"
+                            title="{{ $generateDisabledReason ?: 'Regenerate all 6 mockup images' }}"
                             @disabled($mockupCreateDisabled)
                         >
-                            <span x-show="! running">Generate</span>
+                            <span x-show="! running">Generate all</span>
                             <span x-cloak x-show="running" class="flex items-center gap-1.5">
                                 <span class="h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700"></span>
                                 <span>Generating...</span>

@@ -460,7 +460,8 @@ class SuncatcherService
         string $editPrompt,
         ?string $providerKey = null,
         ?string $imageModel = null,
-    ): ProductDesignAsset {
+    ): ProductDesignAsset
+    {
         $asset = $this->assetForUser($user, $assetId);
         $this->ensureNotApproved($asset);
 
@@ -1054,8 +1055,11 @@ class SuncatcherService
         return $asset->refresh();
     }
 
-    public function prepareAllWorkflowImagesForGeneration(User $user, int $assetId): ProductDesignAsset
-    {
+    public function prepareAllWorkflowImagesForGeneration(
+        User $user,
+        int $assetId,
+        bool $regenerateAll = false,
+    ): ProductDesignAsset {
         $asset = $this->assetForUser($user, $assetId);
         $this->ensureNotApproved($asset);
         $this->ensureWorkflowProductLock($asset);
@@ -1070,17 +1074,19 @@ class SuncatcherService
             throw new RuntimeException('Chua co B4 prompt nao. Hay bam Generate B4 Listing + A+ Prompts truoc.');
         }
 
-        $missingSlots = $this->missingWorkflowImageSlots($asset, $workflow, $promptSlots);
+        $slotsToReset = $regenerateAll
+            ? $promptSlots
+            : $this->missingWorkflowImageSlots($asset, $workflow, $promptSlots);
 
-        foreach ($missingSlots as $slot) {
+        foreach ($slotsToReset as $slot) {
             unset($workflow['images'][$slot]);
         }
 
         unset($workflow['images_errors'], $workflow['images_errors_at']);
         $asset = $this->saveWorkflowData($asset, $workflow);
 
-        if ($missingSlots !== []) {
-            $this->clearWorkflowListingMockups($asset, $missingSlots);
+        if ($slotsToReset !== []) {
+            $this->clearWorkflowListingMockups($asset, $slotsToReset);
         }
 
         return $asset->refresh();

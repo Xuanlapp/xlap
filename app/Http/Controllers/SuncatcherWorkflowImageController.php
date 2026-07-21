@@ -135,10 +135,17 @@ class SuncatcherWorkflowImageController extends Controller
     public function prepare(Request $request, int $asset): JsonResponse
     {
         try {
+            $payload = $request->validate([
+                'regenerate_all' => ['sometimes', 'boolean'],
+            ]);
             $service = app(SuncatcherService::class);
             $this->ensureAssetCanGenerate($service, $request, $asset);
 
-            $service->prepareAllWorkflowImagesForGeneration($request->user(), $asset);
+            $service->prepareAllWorkflowImagesForGeneration(
+                $request->user(),
+                $asset,
+                (bool) ($payload['regenerate_all'] ?? false),
+            );
 
             return response()->json([
                 'ok' => true,
