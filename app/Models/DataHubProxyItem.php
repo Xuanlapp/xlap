@@ -32,6 +32,7 @@ class DataHubProxyItem extends Model
         'first_seen_at',
         'last_seen_at',
         'changed_at',
+        'archived_at',
     ];
 
     protected function casts(): array
@@ -46,6 +47,7 @@ class DataHubProxyItem extends Model
             'last_seen_at' => 'datetime',
             'assigned_user_id' => 'integer',
             'changed_at' => 'datetime',
+            'archived_at' => 'datetime',
         ];
     }
 

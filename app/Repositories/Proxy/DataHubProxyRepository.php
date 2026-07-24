@@ -13,6 +13,7 @@ class DataHubProxyRepository
     public function forUser(User $user): Collection
     {
         $itemRelations = ['assignedUser', 'managerAccesses'];
+        $supportsArchiving = Schema::hasColumn('data_hub_proxy_items', 'archived_at');
 
         if (Schema::hasTable('data_hub_proxy_item_ip_histories')) {
             $itemRelations['ipHistories'] = fn ($query) => $query
@@ -24,16 +25,20 @@ class DataHubProxyRepository
             ->with([
                 'snapshots' => fn ($query) => $query->latest('checked_at')->limit(10),
                 'items' => fn ($query) => $this->orderedItems($query)
+                    ->when($supportsArchiving, fn ($query) => $query->whereNull('archived_at'))
                     ->when(! ($user->is_admin || $user->can_view_all_proxy), fn ($query) => $query
                         ->where('assigned_user_id', $user->id)
                         ->orWhereHas('managerAccesses', fn ($query) => $query->whereKey($user->id)))
                     ->with($itemRelations),
             ])
             ->where('is_active', true)
-            ->when(! ($user->is_admin || $user->can_view_all_proxy), function ($query) use ($user): void {
-                $query->whereHas('items', function ($query) use ($user): void {
-                    $query->where('assigned_user_id', $user->id)
-                        ->orWhereHas('managerAccesses', fn ($query) => $query->whereKey($user->id));
+            ->when(! ($user->is_admin || $user->can_view_all_proxy), function ($query) use ($user, $supportsArchiving): void {
+                $query->whereHas('items', function ($query) use ($user, $supportsArchiving): void {
+                    $query->when($supportsArchiving, fn ($query) => $query->whereNull('archived_at'))
+                        ->where(function ($query) use ($user): void {
+                            $query->where('assigned_user_id', $user->id)
+                                ->orWhereHas('managerAccesses', fn ($query) => $query->whereKey($user->id));
+                        });
                 });
             })
             ->orderBy('name')
@@ -42,6 +47,7 @@ class DataHubProxyRepository
         $duplicateCounts = DataHubProxy::query()
             ->where('is_active', true)
             ->join('data_hub_proxy_items', 'data_hub_proxy.id', '=', 'data_hub_proxy_items.data_hub_proxy_id')
+            ->when($supportsArchiving, fn ($query) => $query->whereNull('data_hub_proxy_items.archived_at'))
             ->whereNotNull('data_hub_proxy_items.public_ip')
             ->where('data_hub_proxy_items.public_ip', '!=', '')
             ->selectRaw('data_hub_proxy_items.public_ip, COUNT(*) as item_count')

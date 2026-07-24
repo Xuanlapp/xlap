@@ -25,13 +25,11 @@ class Index extends Component
         try {
             $result = app(ProxyMonitorService::class)->resetProxyIp(auth()->user(), $itemId);
 
-            $checkResult = $result['check_result'] ?? null;
             $this->dispatch(
                 'toast',
                 type: 'success',
-                title: 'Reset IP va Check ngay thanh cong',
-                message: 'Da reset '.$result['ppp'].' (port '.$result['port'].') va check lai proxy'
-                    .($checkResult ? ' luc '.$checkResult['checked_at'].'.' : '.'),
+                title: 'Reset IP thanh cong',
+                message: 'Da reset '.$result['ppp'].' (port '.$result['port'].'). He thong se Check ngay sau 5 phut, luc '.$result['scheduled_check_at'].'.',
             );
             $this->dispatch('proxy-reset-completed');
         } catch (\Throwable $exception) {
@@ -51,13 +49,16 @@ class Index extends Component
         try {
             $result = app(ProxyMonitorService::class)->refreshProxy($proxy);
 
+            $deleted = (int) ($result['deleted'] ?? 0);
+            $deletedMessage = $deleted > 0 ? ' | Deleted: '.$deleted : '';
+
             $this->dispatch(
                 'toast',
                 type: $result['changed'] ? 'warning' : 'success',
                 title: $result['changed'] ? 'Proxy changed!' : 'Proxy unchanged',
                 message: $result['changed']
-                    ? 'Proxy da thay doi tai '.$result['checked_at'].' | New: '.$result['created'].' | Updated: '.$result['updated']
-                    : 'Proxy khong thay doi tai '.$result['checked_at'],
+                    ? 'Proxy da thay doi tai '.$result['checked_at'].' | New: '.$result['created'].' | Updated: '.$result['updated'].$deletedMessage
+                    : 'Proxy khong thay doi tai '.$result['checked_at'].$deletedMessage,
             );
         } catch (\Throwable $exception) {
             $this->refreshError = $exception->getMessage();

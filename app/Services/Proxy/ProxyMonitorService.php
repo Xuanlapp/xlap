@@ -2,6 +2,7 @@
 
 namespace App\Services\Proxy;
 
+use App\Jobs\RefreshProxyAfterReset;
 use App\Models\DataHubProxy;
 use App\Models\DataHubProxyItem;
 use App\Models\DataHubProxySnapshot;
@@ -68,16 +69,17 @@ class ProxyMonitorService
             throw new \RuntimeException('API reset khong tra ve status:true. IP chua duoc reset.');
         }
 
-        $checkResult = $item->proxy
-            ? $this->refreshProxy($item->proxy->fresh())
-            : null;
+        $scheduledCheckAt = now()->addMinutes(5);
+        RefreshProxyAfterReset::dispatch($item->data_hub_proxy_id)
+            ->delay($scheduledCheckAt)
+            ->onQueue('default');
 
         return [
             'item_id' => $item->id,
             'ppp' => $item->ppp,
             'port' => $port,
             'status' => $resetStatus,
-            'check_result' => $checkResult,
+            'scheduled_check_at' => $scheduledCheckAt->toDateTimeString(),
         ];
     }
 
@@ -117,6 +119,7 @@ class ProxyMonitorService
             'total' => count($records),
             'created' => $syncResult['created'],
             'updated' => $syncResult['updated'],
+            'deleted' => $syncResult['deleted'],
         ];
     }
 
@@ -190,7 +193,7 @@ class ProxyMonitorService
             $itemChanged = $exists && $item->payload_hash !== null && $item->payload_hash !== $payloadHash;
             $publicIpChange = $this->buildPublicIpChangeHistory($item->public_ip_change, $previousPublicIp, $record['public_ip'], $publicIpChanged);
 
-            $item->fill([
+            $itemAttributes = [
                 ...$record,
                 'port' => $item->port ?? $record['port'],
                 'public_ip_change' => $publicIpChange,
@@ -199,7 +202,13 @@ class ProxyMonitorService
                 'first_seen_at' => $item->first_seen_at ?: $checkedAt,
                 'last_seen_at' => $checkedAt,
                 'changed_at' => $publicIpChanged ? $checkedAt : $item->changed_at,
-            ])->save();
+            ];
+
+            if (Schema::hasColumn('data_hub_proxy_items', 'archived_at')) {
+                $itemAttributes['archived_at'] = null;
+            }
+
+            $item->fill($itemAttributes)->save();
 
             $this->recordPublicIpHistory($item, $record['public_ip'], $checkedAt);
 
@@ -210,7 +219,51 @@ class ProxyMonitorService
             }
         }
 
-        return ['created' => $created, 'updated' => $updated];
+        $archived = $this->archiveExcessMvlanItems($proxy, $records);
+
+        return ['created' => $created, 'updated' => $updated, 'deleted' => $archived];
+    }
+
+    private function archiveExcessMvlanItems(DataHubProxy $proxy, array $records): int
+    {
+        if (! Schema::hasColumn('data_hub_proxy_items', 'archived_at')) {
+            return 0;
+        }
+
+        $highestReturnedMvlan = collect($records)
+            ->map(fn (array $record): ?int => $this->mvlanNumber($record['ppp'] ?? null))
+            ->filter(fn (?int $number): bool => $number !== null)
+            ->max();
+
+        if (! $highestReturnedMvlan) {
+            return 0;
+        }
+
+        return DataHubProxyItem::query()
+            ->where('data_hub_proxy_id', $proxy->id)
+            ->whereNull('archived_at')
+            ->get()
+            ->filter(function (DataHubProxyItem $item) use ($highestReturnedMvlan): bool {
+                $number = $this->mvlanNumber($item->ppp);
+
+                return $number !== null && $number > $highestReturnedMvlan;
+            })
+            ->each(function (DataHubProxyItem $item): void {
+                $item->forceFill([
+                    'archived_at' => now(),
+                    'last_seen_at' => now(),
+                ])->save();
+            })
+            ->count();
+    }
+
+    private function mvlanNumber(?string $ppp): ?int
+    {
+        if (preg_match('/mvlan(\d+)/i', (string) $ppp, $matches) !== 1) {
+            return null;
+        }
+
+        return (int) $matches[1];
     }
 
     private function recordPublicIpHistory(DataHubProxyItem $item, ?string $publicIp, \Illuminate\Support\Carbon $checkedAt): void

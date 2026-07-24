@@ -4147,3 +4147,80 @@ Chi admin moi thay cot `Action` va duoc reset IP proxy.
 - `php -l app/Services/Proxy/ProxyMonitorService.php`
 - `php artisan view:cache --no-ansi`
 - `git diff --check`
+
+### 2026-07-24 (Proxy cleanup + delayed reset check)
+
+**Muc tieu:**
+Khi source Proxy co max `mvlan30` thi xoa item DB `mvlan31` tro len; reset IP thi check lai sau 5 phut.
+
+**File da sua/tao:**
+- `app/Services/Proxy/ProxyMonitorService.php`
+- `app/Livewire/Pages/Proxy/Index.php`
+- `app/Jobs/RefreshProxyAfterReset.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- `syncProxyItems()` tinh `mvlan` lon nhat tu payload; sau sync xoa cac `DataHubProxyItem` cua cung proxy co chi so `mvlan` lon hon max tra ve. Vi du source den `mvlan30` thi DB `mvlan31..35` bi xoa.
+- Chi xoa khi payload co it nhat mot `mvlan`, tranh xoa khi source khong co du lieu phu hop.
+- Them job `RefreshProxyAfterReset` va dispatch vao queue `default` delay 5 phut sau khi reset API tra `status:true`.
+- Reset khong con check ngay trong request; modal dong/reload sau khi da hen job. Worker check lai proxy sau 5 phut.
+- Toast `Check ngay` hien them `Deleted: N` neu co item du bi xoa.
+
+**Kiem tra da chay:**
+- `php -l app/Services/Proxy/ProxyMonitorService.php`
+- `php -l app/Livewire/Pages/Proxy/Index.php`
+- `php -l app/Jobs/RefreshProxyAfterReset.php`
+- `php artisan view:cache --no-ansi`
+- Local `config('queue.default')` = `database`.
+
+**Deploy/queue impact:**
+- Can worker doc queue `default` de job delay 5 phut chay. Local co the chay `php artisan queue:work database --queue=default` khi test.
+- Khong can migration.
+
+### 2026-07-24 (Proxy archive excess rows instead of delete)
+
+**Muc tieu:**
+Gi? IP history khi d?n c?c mvlan th?a, thay v? xo? v?t l? l?m m?t relation l?ch s?.
+
+**File da sua/tao:**
+- `app/Models/DataHubProxyItem.php`
+- `app/Repositories/Proxy/DataHubProxyRepository.php`
+- `app/Services/Proxy/ProxyMonitorService.php`
+- `database/migrations/2026_07_24_000200_add_archived_at_to_data_hub_proxy_items_table.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Th?m c?t `archived_at` cho `data_hub_proxy_items` ?? archive m?m c?c item d?.
+- `refreshProxy()` gi? archive c?c item c? s? `mvlan` l?n h?n s? l?n nh?t ngu?n tr? v?, thay v? delete.
+- `DataHubProxyRepository` ?n item ?? archive kh?i UI v? kh?i duplicate/history grouping.
+- Khi refresh l?i, item c?n s?ng ???c unarchive (`archived_at = null`) n?u ngu?n tr? v? l?i.
+- L?ch s? IP trong `data_hub_proxy_item_ip_histories` v?n c?n nguy?n ?? ki?m tra tr?ng v? sau.
+
+**Logic can nho:**
+- Kh?ng d?ng delete v?t l? cho proxy item n?a n?u mu?n gi? relation l?ch s?.
+- Item archive m?m v?n n?m trong DB, nh?ng kh?ng hi?n ? m?n Proxy hi?n t?i.
+- Ph?i ch?y migration th?m `archived_at` tr??c khi deploy code archive.
+
+### 2026-07-24 (Proxy archive migration compatibility)
+
+**Muc tieu:**
+Ng?n trang Proxy loi 500 khi code archive da deploy nhung DB chua co cot `archived_at`.
+
+**File da sua/tao:**
+- `app/Repositories/Proxy/DataHubProxyRepository.php`
+- `app/Services/Proxy/ProxyMonitorService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `Schema::hasColumn('data_hub_proxy_items', 'archived_at')` guard cho toan bo query/filter archive.
+- Khi cot chua ton tai, UI Proxy va refresh van chay nhu logic cu; khong filter/archive item.
+- Khi migration da chay, logic archive mem tu dong bat lai.
+
+**Loi da gap va cach xu ly:**
+- VPS bao `Unknown column archived_at` tai `DataHubProxyRepository` vi code moi duoc deploy truoc migration.
+- Fix code compatibility de tranh 500 trong qua trinh deploy; van can run migrate de bat archive history retention.
+
+**Kiem tra da chay:**
+- `php -l app/Repositories/Proxy/DataHubProxyRepository.php`
+- `php -l app/Services/Proxy/ProxyMonitorService.php`
+- `php artisan view:cache --no-ansi`
