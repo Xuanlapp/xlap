@@ -1,4 +1,4 @@
-<div x-data="{ openingProxyModal: false }" @if (auth()->user()?->is_admin) x-on:open-modal.window="if ($event.detail.component === 'modals.proxy.edit-proxy-item') { openingProxyModal = true; setTimeout(() => openingProxyModal = false, 900) }" @endif class="min-h-screen bg-slate-100 px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
+<div x-data="{ openingProxyModal: false, resetProxyModal: false, resetProxyItemId: null, resetProxyPpp: '', resetProxyPort: null }" x-on:proxy-reset-completed.window="resetProxyModal = false; window.location.reload()" @if (auth()->user()?->is_admin) x-on:open-modal.window="if ($event.detail.component === 'modals.proxy.edit-proxy-item') { openingProxyModal = true; setTimeout(() => openingProxyModal = false, 900) }" @endif class="min-h-screen bg-slate-100 px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
     <div x-show="openingProxyModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/35 backdrop-blur-[1px]">
         <div class="flex items-center gap-3 rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-700 shadow-2xl">
             <svg class="h-5 w-5 animate-spin text-cyan-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -6,6 +6,29 @@
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
             </svg>
             Dang mo modal...
+        </div>
+    </div>
+    <div x-show="resetProxyModal" x-cloak x-on:keydown.escape.window="resetProxyModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-[1px]">
+        <div x-on:click.stop class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-extrabold text-slate-950">X?c nh?n reset IP</h3>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">
+                        Bạn có muốn reset IP cho <span class="font-bold text-slate-900" x-text="resetProxyPpp"></span>
+                        b?ng port <span class="font-bold text-cyan-700" x-text="resetProxyPort"></span> không
+                    </p>
+                </div>
+                <button type="button" x-on:click="resetProxyModal = false" class="text-2xl leading-none text-slate-400 hover:text-slate-700" aria-label="Close">&times;</button>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" x-on:click="resetProxyModal = false" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">
+                    No
+                </button>
+                <button type="button" x-on:click="$wire.resetProxyIp(resetProxyItemId)" wire:loading.attr="disabled" wire:target="resetProxyIp" class="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60">
+                    <span wire:loading.remove wire:target="resetProxyIp">Yes</span>
+                    <span wire:loading wire:target="resetProxyIp">Đang reset...</span>
+                </button>
+            </div>
         </div>
     </div>
     <div class="mx-auto max-w-7xl space-y-6">
@@ -111,13 +134,15 @@
                                             <th class="px-4 py-3 text-left font-semibold">Public IP</th>
                                             <th class="px-4 py-3 text-left font-semibold">PPP</th>
                                             <th class="px-4 py-3 text-left font-semibold">IP History</th>
-                                            <th class="px-4 py-3 text-left font-semibold">Public IP Change</th>
                                             <th class="px-4 py-3 text-left font-semibold">Port</th>
                                             <th class="px-4 py-3 text-left font-semibold">Note</th>
                                             <th class="px-4 py-3 text-left font-semibold">User</th>
                                             <th class="px-4 py-3 text-center font-semibold">Resetting</th>
                                             <th class="px-4 py-3 text-left font-semibold">Changed At</th>
                                             <th class="px-4 py-3 text-left font-semibold">Last Seen</th>
+                                            @if (auth()->user()?->is_admin)
+                                                <th class="px-4 py-3 text-center font-semibold">Action</th>
+                                            @endif
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-200 bg-white">
@@ -128,6 +153,7 @@
                                                 $hasHistoricalPublicIpOwner = (int) ($item->historical_public_ip_owner_count ?? 0) > 0;
                                                 $visibleDuplicatePpps = collect($item->duplicate_public_ip_visible_ppps ?? [])->filter();
                                                 $visibleHistoricalOwnerPpps = collect($item->historical_public_ip_visible_owner_ppps ?? [])->filter();
+                                                $resetPort = $item->port ?? (preg_match('/mvlan(\d+)/i', (string) $item->ppp, $matches) ? 9800 + (int) $matches[1] : null);
                                                 $rowStateClass = $hasChangedAt ? 'bg-red-50' : (($isDuplicatePublicIp || $hasHistoricalPublicIpOwner) ? 'bg-amber-50' : '');
                                             @endphp
                                             <tr @if (auth()->user()?->is_admin) x-on:click="openingProxyModal = true; setTimeout(() => openingProxyModal = false, 900)" wire:click="$dispatch('openModal', { component: 'modals.proxy.edit-proxy-item', arguments: { itemId: {{ $item->id }} } })" @endif class="{{ auth()->user()?->is_admin ? 'cursor-pointer hover:bg-cyan-50' : '' }} transition {{ $rowStateClass }}">
@@ -195,13 +221,23 @@
                                                     @forelse (($item->relationLoaded('ipHistories') ? $item->ipHistories : collect())->take(5) as $ipHistory)
                                                         <div class="whitespace-nowrap text-xs {{ $ipHistory->public_ip === $item->public_ip ? 'font-bold text-cyan-700' : 'text-slate-600' }}">
                                                             {{ $ipHistory->public_ip }}
-                                                            <span class="text-[10px] font-normal text-slate-400">({{ optional($ipHistory->last_seen_at)?->format('d/m/Y H:i') }})</span>
+                                                            <span class="text-[10px] font-normal text-slate-400">({{ optional($ipHistory->first_seen_at)?->format('d/m/Y H:i') ?: optional($ipHistory->last_seen_at)?->format('d/m/Y H:i') }})</span>
                                                         </div>
                                                     @empty
                                                         <span class="text-slate-400">Chua co lich su</span>
                                                     @endforelse
+
+                                                    @if ($hasHistoricalPublicIpOwner)
+                                                        <div class="mt-2 rounded-lg border border-orange-200 bg-orange-50 px-2 py-1.5 text-[11px] font-semibold text-orange-800">
+                                                            <div class="font-extrabold uppercase tracking-wide text-orange-700">Trung lich su IP</div>
+                                                            <div class="mt-0.5">
+                                                                {{ $visibleHistoricalOwnerPpps->isNotEmpty()
+                                                                    ? 'IP nay da tung o: '.$visibleHistoricalOwnerPpps->implode(', ')
+                                                                    : 'IP nay da tung o '.(int) $item->historical_public_ip_owner_count.' proxy khac' }}
+                                                            </div>
+                                                        </div>
+                                                    @endif
                                                 </td>
-                                                <td class="px-4 py-3 text-slate-700 {{ $hasChangedAt ? 'font-semibold text-red-700' : '' }}">{{ $item->public_ip_change ?: '-' }}</td>
                                                 <td class="px-4 py-3 text-slate-700">{{ $item->port ?? (preg_match('/mvlan(\d+)/i', (string) $item->ppp, $matches) ? 9800 + (int) $matches[1] : '-') }}</td>
                                                 <td class="px-4 py-3 text-slate-700">{{ $item->note ?: '-' }}</td>
                                                 <td class="px-4 py-3 text-slate-700">{{ $item->assignedUser?->name ?: '-' }}</td>
@@ -214,10 +250,25 @@
                                                 </td>
                                                 <td class="px-4 py-3 text-slate-700 {{ $hasChangedAt ? 'font-semibold text-red-700' : '' }}">{{ optional($item->changed_at)?->format('Y-m-d H:i:s') ?: '-' }}</td>
                                                 <td class="px-4 py-3 text-slate-700">{{ optional($item->last_seen_at)?->format('Y-m-d H:i:s') ?: '-' }}</td>
+                                                @if (auth()->user()?->is_admin)
+                                                    <td class="px-4 py-3 text-center">
+                                                        @if ($resetPort)
+                                                            <button
+                                                                type="button"
+                                                                x-on:click.stop="resetProxyItemId = {{ $item->id }}; resetProxyPpp = @js($item->ppp ?: 'Proxy'); resetProxyPort = {{ (int) $resetPort }}; resetProxyModal = true"
+                                                                class="inline-flex items-center rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 transition hover:border-orange-300 hover:bg-orange-100"
+                                                            >
+                                                                Reset IP
+                                                            </button>
+                                                        @else
+                                                            <span class="text-slate-400">-</span>
+                                                        @endif
+                                                    </td>
+                                                @endif
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="10" class="px-4 py-10 text-center text-sm text-slate-400">Chua co du lieu proxy. Hay doi scheduler cap nhat du lieu.</td>
+                                                <td colspan="{{ auth()->user()?->is_admin ? 10 : 9 }}" class="px-4 py-10 text-center text-sm text-slate-400">Chua co du lieu proxy. Hay doi scheduler cap nhat du lieu.</td>
                                             </tr>
                                         @endforelse
                                     </tbody>

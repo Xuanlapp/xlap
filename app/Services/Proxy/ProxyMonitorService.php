@@ -7,6 +7,7 @@ use App\Models\DataHubProxyItem;
 use App\Models\DataHubProxySnapshot;
 use App\Models\User;
 use App\Repositories\Proxy\DataHubProxyRepository;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -36,6 +37,48 @@ class ProxyMonitorService
         }
 
         return $results;
+    }
+
+    public function resetProxyIp(User $user, int $itemId): array
+    {
+        if (! $user->is_admin) {
+            throw new AuthorizationException('Chi admin moi co quyen reset IP proxy.');
+        }
+
+        $item = DataHubProxyItem::query()
+            ->with('proxy')
+            ->whereHas('proxy', fn ($query) => $query->where('is_active', true))
+            ->when(! ($user->is_admin || $user->can_view_all_proxy), function ($query) use ($user): void {
+                $query->where(function ($query) use ($user): void {
+                    $query->where('assigned_user_id', $user->id)
+                        ->orWhereHas('managerAccesses', fn ($query) => $query->whereKey($user->id));
+                });
+            })
+            ->findOrFail($itemId);
+
+        $port = $this->resetPortForItem($item);
+        $response = Http::timeout(30)->get('http://offorest.ddns.net/reset', [
+            'proxy' => $port,
+        ]);
+        $response->throw();
+
+        $resetStatus = filter_var($response->json('status'), FILTER_VALIDATE_BOOLEAN);
+
+        if (! $resetStatus) {
+            throw new \RuntimeException('API reset khong tra ve status:true. IP chua duoc reset.');
+        }
+
+        $checkResult = $item->proxy
+            ? $this->refreshProxy($item->proxy->fresh())
+            : null;
+
+        return [
+            'item_id' => $item->id,
+            'ppp' => $item->ppp,
+            'port' => $port,
+            'status' => $resetStatus,
+            'check_result' => $checkResult,
+        ];
     }
 
     public function refreshProxy(DataHubProxy $proxy): array
@@ -237,6 +280,21 @@ class ProxyMonitorService
         }
 
         return (int) $value;
+    }
+
+    private function resetPortForItem(DataHubProxyItem $item): int
+    {
+        $port = $item->port;
+
+        if (! $port && preg_match('/mvlan(\d+)/i', (string) $item->ppp, $matches) === 1) {
+            $port = 9800 + (int) $matches[1];
+        }
+
+        if (! is_numeric($port) || (int) $port < 1 || (int) $port > 65535) {
+            throw new \RuntimeException('Khong xac dinh duoc port reset cho proxy nay.');
+        }
+
+        return (int) $port;
     }
 
     private function derivePort(array $record): ?int

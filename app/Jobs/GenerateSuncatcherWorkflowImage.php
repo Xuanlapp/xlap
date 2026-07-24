@@ -63,6 +63,11 @@ class GenerateSuncatcherWorkflowImage implements ShouldQueue
     public function failed(Throwable $exception): void
     {
         if (in_array($this->slot, ['main', 'script', 'person_a', 'person_b', 'prompt', 'mockup'], true)) {
+            app(SuncatcherService::class)->failAutomationJob(
+                $this->assetId,
+                mb_substr($exception->getMessage(), 0, 500),
+            );
+
             return;
         }
 

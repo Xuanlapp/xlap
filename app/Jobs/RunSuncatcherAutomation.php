@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Throwable;
 
 class RunSuncatcherAutomation implements ShouldQueue
 {
@@ -41,5 +42,13 @@ class RunSuncatcherAutomation implements ShouldQueue
         }
 
         $service->resumeAutomationStep($user, $this->assetId, $this->providerKey, $this->imageModel, $this->textModel);
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        app(SuncatcherService::class)->failAutomationJob(
+            $this->assetId,
+            mb_substr($exception->getMessage(), 0, 500),
+        );
     }
 }

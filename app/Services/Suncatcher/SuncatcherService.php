@@ -24,6 +24,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -2005,24 +2006,30 @@ class SuncatcherService
         $asset = $this->assetForUser($user, $assetId);
         $automation = $this->automationForAsset($asset);
 
-        if ($automation && ($automation->workflow_status ?? null) === 'running') {
-            $step = is_string($automation->workflow_step_key) && $automation->workflow_step_key !== ''
-                ? $automation->workflow_step_key
-                : null;
+        if ($automation && in_array(($automation->workflow_status ?? null), ['waiting', 'running'], true)) {
+            $step = $this->currentAutomationStep($automation);
             $steps = is_array($automation->step_data) ? $automation->step_data : [];
             $stepState = $step ? ($steps[$step] ?? []) : [];
             $stepStartedAt = $stepState['started_at'] ?? null;
 
-            // A queued item can have workflow_status=running before a worker gets it.
-            // Only start stale detection after the worker marks the current step running.
-            if ($step
-                && ($stepState['status'] ?? null) === 'running'
+            $isRunningTooLong = ($stepState['status'] ?? null) === 'running'
                 && filled($stepStartedAt)
-                && Carbon::parse($stepStartedAt)->lt(now()->subMinutes(10))) {
+                && Carbon::parse($stepStartedAt)->lt(now()->subMinutes(10));
+            $isQueuedWithoutJob = $automation->updated_at
+                && $automation->updated_at->lt(now()->subMinutes(10))
+                && ! $this->hasPendingAutomationJob($asset->id);
+
+            if ($step && ($isRunningTooLong || $isQueuedWithoutJob)) {
+                $message = $isQueuedWithoutJob
+                    ? 'Automation da bi mat job trong queue. Hay bam Retry/Continue de tao lai job.'
+                    : 'Automation bi ket qua lau khong cap nhat. Hay bam Retry/Continue de chay lai.';
+
+                $this->markQueuedPreviewSlotsAsFailed($asset, $message);
+
                 return $this->markAutomationStepFinished(
                     $asset,
                     $step,
-                    'Automation bi ket qua lau khong cap nhat. Hay bam Retry/Continue de chay lai.'
+                    $message
                 );
             }
         }
@@ -2170,6 +2177,22 @@ class SuncatcherService
             throw new RuntimeException('Chua co bang data_ornament_amazon. Hay chay migrate truoc.');
         }
 
+        $columns = Schema::getColumnListing('data_ornament_amazon');
+        $attributes = collect($attributes)
+            ->only($columns)
+            ->all();
+
+        $existing = DataSuncatcher::query()
+            ->where('product_design_asset_id', $asset->id)
+            ->first();
+
+        if ($existing) {
+            $existing->fill($attributes);
+            $existing->save();
+
+            return $existing->refresh();
+        }
+
         $base = [
             'product_design_asset_id' => $asset->id,
             'user_id' => $asset->user_id,
@@ -2200,15 +2223,11 @@ class SuncatcherService
             'status' => $attributes['workflow_status'] ?? 'waiting',
         ];
 
-        $columns = Schema::getColumnListing('data_ornament_amazon');
         $payload = collect(array_merge($base, $attributes))
             ->only($columns)
             ->all();
 
-        return DataSuncatcher::query()->updateOrCreate(
-            ['product_design_asset_id' => $asset->id],
-            $payload,
-        );
+        return DataSuncatcher::query()->create($payload);
     }
 
     public function previewStateForSlot(ProductDesignAsset $asset, string $slot): array
@@ -2354,6 +2373,82 @@ class SuncatcherService
         }
 
         return $record;
+    }
+
+    private function currentAutomationStep(DataSuncatcher $automation): ?string
+    {
+        $step = is_string($automation->workflow_step_key) && $automation->workflow_step_key !== ''
+            ? $automation->workflow_step_key
+            : null;
+
+        if ($step) {
+            return $step;
+        }
+
+        $payload = is_array($automation->payload) ? $automation->payload : [];
+        $preview = is_array($payload['preview_state'] ?? null) ? $payload['preview_state'] : [];
+
+        if (collect($preview)->contains(fn (mixed $state): bool => is_array($state) && in_array($state['status'] ?? null, ['queued', 'generating'], true))) {
+            return 'mockup';
+        }
+
+        $steps = is_array($automation->step_data) ? $automation->step_data : [];
+
+        return collect($this->automationPipelineSteps())
+            ->first(fn (string $candidate): bool => ($steps[$candidate]['status'] ?? null) !== 'done');
+    }
+
+    private function hasPendingAutomationJob(int $assetId): bool
+    {
+        if (! Schema::hasTable('jobs')) {
+            return true;
+        }
+
+        $serializedAssetId = 'assetId";i:'.$assetId.';';
+        $escapedSerializedAssetId = '\"assetId\";i:'.$assetId.';';
+
+        return DB::table('jobs')
+            ->whereIn('queue', ['suncatcher-pipeline', 'suncatcher-priority'])
+            ->pluck('payload')
+            ->contains(function (mixed $payload) use ($serializedAssetId, $escapedSerializedAssetId): bool {
+                if (! is_string($payload)) {
+                    return false;
+                }
+
+                return Str::contains($payload, [
+                    'RunSuncatcherItemPipeline',
+                    'RunSuncatcherAutomation',
+                    'GenerateSuncatcherWorkflowImage',
+                    'RegenerateSuncatcherPreviewImage',
+                ]) && Str::contains($payload, [$serializedAssetId, $escapedSerializedAssetId]);
+            });
+    }
+
+    private function markQueuedPreviewSlotsAsFailed(ProductDesignAsset $asset, string $message): void
+    {
+        $automation = $this->automationForAsset($asset);
+        $payload = is_array($automation?->payload) ? $automation->payload : [];
+        $preview = is_array($payload['preview_state'] ?? null) ? $payload['preview_state'] : [];
+        $changed = false;
+
+        foreach ($preview as $slot => $state) {
+            if (! is_array($state) || ! in_array($state['status'] ?? null, ['queued', 'generating'], true)) {
+                continue;
+            }
+
+            $preview[$slot] = array_merge($state, [
+                'status' => 'error',
+                'error' => $message,
+                'finished_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
+            ]);
+            $changed = true;
+        }
+
+        if ($changed) {
+            $payload['preview_state'] = $preview;
+            $this->upsertAutomationRecord($asset, ['payload' => $payload]);
+        }
     }
 
     public function resumeAutomationStep(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void

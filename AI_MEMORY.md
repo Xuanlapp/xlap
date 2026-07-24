@@ -3900,3 +3900,250 @@ Xu ly item `1849` dang tre `processing/running` trong Drive upload va dam bao mo
 - `php -l app/Livewire/Pages/Drive/DriveUploads.php`
 - `php artisan view:cache --no-ansi`
 - Tinker update record `1849` ve `failed` va xac nhan status moi.
+
+### 2026-07-21
+
+**Muc tieu:**
+Mo logic `2. Main Image` cua Suncatcher de van tao/upload lai duoc khi item da co du 6 mockup, chi khoa khi item da duyet hoac automation dang chay.
+
+**Root cause:**
+- Blade dung chung bien `$workflowLocked` cho nut Main Image.
+- `$workflowLocked` bi true khi workflow `completed/failed` hoac da co du 6 mockup, nen nut `Create Image` o `2. Main Image` bi khoa du item chua duyet.
+- Backend `generateRedesign()` va `uploadMainImage()` thuc te da chi chan bang `ensureNotApproved()`, nen loi chinh la o UI/Livewire guard.
+
+**File da sua:**
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `app/Livewire/Pages/Suncatcher/WorkflowActionButton.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `$mainActionDisabled = $automationRunning` rieng cho `2. Main Image`.
+- Nut upload Main Image va nut `Create Image` khong con dung `$workflowLocked`, nen du co 6 mockup van bam tao lai duoc neu chua duyet.
+- Livewire `WorkflowActionButton` cho phep action `main` chay lai khi automation dang `failed`; van chan khi automation `waiting/running` va van chan item da approved.
+
+**Affected modules:**
+- Suncatcher ProductDesignCard, buoc `2. Main Image`.
+- Suncatcher WorkflowActionButton action `main`.
+
+**Deploy impact:**
+- Khong can migration.
+- Can clear/rebuild Blade cache khi deploy.
+
+**Queue impact:**
+- Khong doi queue.
+
+**Kiem tra da chay:**
+- `php -l app/Livewire/Pages/Suncatcher/WorkflowActionButton.php`
+- `php artisan view:cache --no-ansi`
+- `git diff --check`
+
+### 2026-07-21
+
+**Muc tieu:**
+Kiem tra vi sao IP hien tai cua Wan23 trung voi IP lich su cua Wan4 nhung khong hien canh bao.
+
+**Ket qua DB local:**
+- `mvlan23` hien tai dang la `171.234.238.128`.
+- `mvlan4` hien tai dang la `171.234.234.227`.
+- Lich su text cua `mvlan4` co ghi `171.234.238.128 -> 171.234.234.227`, nghia la IP hien tai cua Wan23 da tung duoc Wan4 su dung.
+- Bang `data_hub_proxy_item_ip_histories` dang khong ton tai trong DB local.
+
+**Root cause:**
+- `DataHubProxyRepository` chi query historical owner khi `Schema::hasTable('data_hub_proxy_item_ip_histories')` true.
+- Vi bang history thieu, code tra collection rong va khong tao warning historical.
+- Cot `public_ip_change` dang luu chuoi lich su, nhung code hien tai khong parse chuoi nay de fallback canh bao.
+
+**Affected modules:**
+- Proxy monitor refresh/history.
+- Proxy warning repository va UI.
+
+**Deploy/queue impact:**
+- Khong sua code hay chay migration trong lan kiem tra nay.
+- Can migrate bang history va backfill lich su neu muon canh bao du cac thay doi da xay ra truoc do.
+
+**Follow-up:**
+- Chay migration tao `data_hub_proxy_item_ip_histories`.
+- Backfill cac IP cu tu `public_ip_change` hoac bo sung fallback parse cot nay de Wan23/Wan4 duoc canh bao ngay.
+
+### 2026-07-22
+
+**Muc tieu:**
+Fix Suncatcher item SF10 bi quay vo han / waiting ma khong co job chay.
+
+**File da sua/tao:**
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `app/Jobs/GenerateSuncatcherWorkflowImage.php`
+- `app/Jobs/RunSuncatcherAutomation.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them recovery cho automation Suncatcher khi `workflow_status` con `waiting/running` nhung khong con job trong queue.
+- `automationForUser()` nay gio detect stale state: neu step da qua 10 phut hoac DB dang chua state ch? nhung jobs table khong con job suncatcher thi mark failed co thong bao de user bam Retry/Continue.
+- `upsertAutomationRecord()` khong con `updateOrCreate()` nua; neu record da ton tai thi update dung row hien co, tranh reset state ngoai y muon.
+- `GenerateSuncatcherWorkflowImage::failed()` va `RunSuncatcherAutomation::failed()` nay gio goi `failAutomationJob()` de luu loi automation thay vi treo im.
+- Them helper nhan dien job con ton tai trong queue va helper danh dau preview slot dang queued/generating thanh error khi job bi mat.
+
+**Loi da gap va cach xu ly:**
+- Graphiti search van bi `429 insufficient_quota` nen khong lay duoc fact moi.
+- `apply_patch` bi `Access is denied`, da phai edit file bang script Python an toan.
+
+**Logic can nho:**
+- Spinner/quay vo han o Suncatcher khong chi do UI; thuong la DB state con `waiting/running` trong khi job queue da mat.
+- Khi job mat, polling se khong tu thoat neu khong co recovery server-side.
+- `Retry/Continue` can tao lai job va khong duoc phu thuoc vao state cu da treo.
+
+**Viec can lam tiep:**
+- Neu user test SF10/sku khac, theo doi `data_ornament_amazon.workflow_status`, `workflow_step_key` va queue `suncatcher-priority` / `suncatcher-pipeline`.
+- Neu muon an toan hon, co the bo sung test cho stale automation recovery va queue missing detection.
+
+### 2026-07-24
+
+**Muc tieu:**
+Kiem tra vi sao IP `171.224.20.144` da tung duoc su dung nhung cot `IP History` khong canh bao.
+
+**File da sua/tao:**
+- `database/migrations/2026_07_24_000100_backfill_proxy_item_ip_histories_from_legacy_changes.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Xac minh database hien tai chua co bang `data_hub_proxy_item_ip_histories`; migration `2026_07_20_000000_create_data_hub_proxy_item_ip_histories_table` dang `Pending`, nen code Proxy bo qua toan bo canh bao lich su IP.
+- Kiem tra truc tiep DB va thay `171.224.20.144` xuat hien trong `data_hub_proxy_items` o 2 item: `mvlan30` (dang la public_ip hien tai) va `mvlan8` (nam trong chuoi `public_ip_change`).
+- Them migration backfill de sau khi bang history duoc tao, he thong se doc them toan bo IP cu tu truong legacy `public_ip_change` va dua vao `data_hub_proxy_item_ip_histories`, khong chi lay IP hien tai.
+
+**Loi da gap va cach xu ly:**
+- Graphiti search van bi `429 insufficient_quota`.
+- Tinker PowerShell can escape bien `$` bang backtick khi truyen vao `php artisan tinker --execute`.
+
+**Logic can nho:**
+- Neu bang `data_hub_proxy_item_ip_histories` chua ton tai thi `IP History` va canh bao lich su se khong hien gi, du `public_ip_change` van co du lieu.
+- Migration tao bang history chi backfill `public_ip` hien tai; muon canh bao lai cac IP cu da tung doi thi phai backfill tu `public_ip_change`.
+
+**Viec can lam tiep:**
+- Tren VPS/local can chay `php artisan migrate` de tao bang history va chay migration backfill moi.
+- Sau migrate, refresh trang Proxy; `171.224.20.144` se co canh bao lich su vi da tung thuoc item khac.
+
+### 2026-07-24 (bo sung Proxy IP History UI)
+
+**Muc tieu:**
+Lam ro canh bao IP `171.224.20.144` trong cot `IP History` khi IP hien tai cua `mvlan30` trung voi IP cu cua `mvlan8`.
+
+**File da sua/tao:**
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them badge `Trung lich su IP` ngay trong cot `IP History`.
+- Khi co historical owner, UI hien PPP tung su dung IP, vi du `mvlan8`.
+- Blade cache pass.
+
+**Logic can nho:**
+- Canh bao nay chi hien sau khi migration history duoc chay va backfill legacy `public_ip_change`.
+- Truoc migration, tat ca dong co the hien `Chua co lich su` vi repository chu dong bo qua relation khi bang history chua ton tai.
+
+### 2026-07-24 (Local bootstrap cache)
+
+**Muc tieu:**
+Xu ly loi local `PackageManifest.php line 179`: `bootstrap/cache directory must be present and writable` khi chay `php artisan optimize:clear`.
+
+**Thay doi chinh:**
+- Khong sua application code.
+- Phat hien `bootstrap` va `bootstrap/cache` co thuoc tinh Windows `ReadOnly`.
+- Go thuoc tinh ReadOnly bang `attrib -R`.
+- Kiem tra ACL: user Admin co FullControl; kiem tra ghi file test thanh cong.
+- Chay lai `php artisan optimize:clear` thanh cong.
+
+**Logic can nho:**
+- Local Windows loi nay co the do thuoc tinh directory/cache, khong nhat thiet do code Laravel.
+- Neu lap lai, kiem tra `bootstrap/cache` ton tai, bo ReadOnly, sau do chay lai Artisan.
+
+### 2026-07-24 (Proxy IP History date logic)
+
+**Muc tieu:**
+Bo cot `Public IP Change` va lam `IP History` hien ngay IP bat dau xuat hien thay vi ngay check moi nhat.
+
+**File da sua/tao:**
+- `app/Repositories/Proxy/DataHubProxyRepository.php`
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Sort relation `ipHistories` theo `first_seen_at` giam dan, tiep theo `last_seen_at`.
+- Cot `IP History` hien `first_seen_at` la ngay IP do bat dau duoc thay, fallback sang `last_seen_at` neu can.
+- Bo han cot `Public IP Change` khoi bang UI.
+- Update `colspan` cua dong empty state tu 10 xuong 9.
+
+**Logic can nho:**
+- Neu cron/check lai khong thay IP doi, `first_seen_at` se khong thay doi.
+- `last_seen_at` van cap nhat theo check gan nhat, nen khong dung de hien ngay doi dau tien.
+
+### 2026-07-24 (Proxy Reset IP button)
+
+**Muc tieu:**
+Them nut `Reset IP` cho tung dong proxy, xac nhan Yes/No truoc khi goi API reset.
+
+**File da sua/tao:**
+- `app/Services/Proxy/ProxyMonitorService.php`
+- `app/Livewire/Pages/Proxy/Index.php`
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `ProxyMonitorService::resetProxyIp()` goi `http://offorest.ddns.net/reset?proxy={port}` bang Laravel HTTP client.
+- Port reset lay tu `data_hub_proxy_items.port`, fallback tu `mvlanN => 9800 + N`.
+- Backend kiem tra user co quyen xem item proxy truoc khi reset; admin/full proxy access duoc reset tat ca item hien hoat dong.
+- Them Livewire action `resetProxyIp()` de goi service, toast thanh cong/that bai.
+- Them modal Alpine xac nhan `B?n c? mu?n reset IP... kh?ng?` voi nut `Yes` / `No`.
+- `Yes`: goi API reset, dong confirm modal va reload page khi thanh cong. `No`: chi dong confirm modal.
+- Them cot `Action` voi nut `Reset IP` trong tung dong.
+
+**Kiem tra da chay:**
+- `php -l app/Services/Proxy/ProxyMonitorService.php`
+- `php -l app/Livewire/Pages/Proxy/Index.php`
+- `php artisan view:cache --no-ansi`
+- `git diff --check`
+
+**Deploy/queue impact:**
+- Khong can migration.
+- Khong lien quan queue.
+- Can clear/rebuild view cache khi deploy.
+
+### 2026-07-24 (Proxy reset auto-check)
+
+**Muc tieu:**
+Sau khi API reset proxy tra JSON `status:true`, tu dong `Check ngay` proxy do truoc khi reload trang.
+
+**File da sua/tao:**
+- `app/Services/Proxy/ProxyMonitorService.php`
+- `app/Livewire/Pages/Proxy/Index.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- `resetProxyIp()` parse JSON `status` bang `FILTER_VALIDATE_BOOLEAN`.
+- Chi khi `status:true` moi goi ngay `refreshProxy()` cho proxy vua reset.
+- Neu `status:false` hoac khong co status, throw loi va UI giu modal, khong reload.
+- Toast thanh cong thong bao da reset va da check lai, sau do event cu dong modal/reload trang.
+
+**Kiem tra da chay:**
+- `php -l app/Services/Proxy/ProxyMonitorService.php`
+- `php -l app/Livewire/Pages/Proxy/Index.php`
+- `php artisan view:cache --no-ansi`
+
+### 2026-07-24 (Proxy reset admin only)
+
+**Muc tieu:**
+Chi admin moi thay cot `Action` va duoc reset IP proxy.
+
+**File da sua/tao:**
+- `app/Services/Proxy/ProxyMonitorService.php`
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- UI: boc header `Action` va cell nut `Reset IP` bang `auth()->user()?->is_admin`.
+- Empty state colspan tu dong 10 cho admin, 9 cho user thuong.
+- Backend: `ProxyMonitorService::resetProxyIp()` throw `AuthorizationException` neu user khong phai admin, ngan goi truc tiep qua Livewire/request.
+
+**Kiem tra da chay:**
+- `php -l app/Services/Proxy/ProxyMonitorService.php`
+- `php artisan view:cache --no-ansi`
+- `git diff --check`

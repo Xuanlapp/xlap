@@ -49,7 +49,7 @@ class WorkflowActionButton extends Component
                 return;
             }
 
-            if (($automation?->workflow_status ?? null) === 'failed' && $this->action !== 'person') {
+            if (($automation?->workflow_status ?? null) === 'failed' && ! in_array($this->action, ['main', 'person'], true)) {
                 $this->dispatch('toast', type: 'error', title: 'Action blocked!', message: 'Workflow dang loi. Chi duoc Retry/Continue hoac tao lai Person rieng neu can.');
 
                 return;

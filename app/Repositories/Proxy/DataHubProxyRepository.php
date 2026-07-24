@@ -15,7 +15,9 @@ class DataHubProxyRepository
         $itemRelations = ['assignedUser', 'managerAccesses'];
 
         if (Schema::hasTable('data_hub_proxy_item_ip_histories')) {
-            $itemRelations['ipHistories'] = fn ($query) => $query->latest('last_seen_at');
+            $itemRelations['ipHistories'] = fn ($query) => $query
+                ->orderByDesc('first_seen_at')
+                ->orderByDesc('last_seen_at');
         }
 
         $proxies = DataHubProxy::query()

@@ -31,6 +31,7 @@
         $mainGenerating = $automationRunning && $currentAutomationStep === 'main';
         $scriptGenerating = $automationRunning && $currentAutomationStep === 'script';
         $promptGenerating = $automationRunning && $currentAutomationStep === 'prompt';
+        $mainActionDisabled = $automationRunning;
         $workflowLocked = in_array($automationStatus, ['waiting', 'running', 'failed', 'completed'], true) || $hasAllDbMockups;
         $canShowAuto = ! $asset->is_approved && ! $scriptReady && ! $automationRunning && ! $automationFailed && $automationStatus !== 'completed';
         $canShowContinue = false;
@@ -315,6 +316,7 @@
                             x-on:click="document.getElementById('main-image-upload-{{ $asset->id }}')?.click()"
                             wire:loading.attr="disabled"
                             wire:target="mainImageUpload,updatedMainImageUpload"
+                            @disabled($mainActionDisabled)
                             class="group relative inline-flex h-6 w-6 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-600 transition hover:border-blue-200 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
                             aria-label="Upload image"
                         >
@@ -334,7 +336,7 @@
                                 :provider-key="$providerKey"
                                 :image-model="$imageModel"
                                 :running-step="$automationRunning ? $currentAutomationStep : null"
-                                :disabled="$workflowLocked"
+                                :disabled="$mainActionDisabled"
                                 :key="'suncatcher-main-action-'.$asset->id.'-'.$providerKey.'-'.$imageModel"
                             />
                         @endif

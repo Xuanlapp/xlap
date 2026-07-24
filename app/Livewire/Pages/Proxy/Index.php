@@ -20,6 +20,25 @@ class Index extends Component
         // Re-render after modal save.
     }
 
+    public function resetProxyIp(int $itemId): void
+    {
+        try {
+            $result = app(ProxyMonitorService::class)->resetProxyIp(auth()->user(), $itemId);
+
+            $checkResult = $result['check_result'] ?? null;
+            $this->dispatch(
+                'toast',
+                type: 'success',
+                title: 'Reset IP va Check ngay thanh cong',
+                message: 'Da reset '.$result['ppp'].' (port '.$result['port'].') va check lai proxy'
+                    .($checkResult ? ' luc '.$checkResult['checked_at'].'.' : '.'),
+            );
+            $this->dispatch('proxy-reset-completed');
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', title: 'Reset IP that bai', message: $exception->getMessage());
+        }
+    }
+
     public function refreshProxy(int $proxyId): void
     {
         $this->refreshingProxyId = $proxyId;
