@@ -1,4 +1,14 @@
-<article @if(in_array(($automation?->workflow_status ?? null), ['running', 'waiting'], true)) wire:poll.5s="refreshWhenUpdated" @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+<article
+    @if(
+        in_array(($automation?->workflow_status ?? null), ['running', 'waiting'], true)
+        || (($workflow['images_batch']['running'] ?? false) === true)
+        || collect(is_array($automation?->payload['preview_state'] ?? null) ? $automation->payload['preview_state'] : [])
+            ->contains(fn (mixed $state): bool => is_array($state) && in_array($state['status'] ?? null, ['queued', 'waiting', 'generating'], true))
+    )
+        wire:poll.5s="refreshWhenUpdated"
+    @endif
+    class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]"
+>
     @php
         $automationStatus = strtolower(trim((string) ($automation?->workflow_status ?? '')));
         $automationRunning = in_array($automationStatus, ['waiting', 'running'], true);
@@ -893,9 +903,22 @@
                     }
                 }
             }
-            $mockupBatchRunning = ($mockupBatch['running'] ?? false) === true
-                || ($automationRunning && $currentAutomationStep === 'mockup');
+            foreach ($mockupB5Images as $slotKey => $slotImage) {
+                if (filled($slotImage['original'] ?? null) || filled($slotImage['preview'] ?? null)) {
+                    $mockupBatchStates[$slotKey] = 'done';
+                }
+            }
+
+            $mockupBatchRunning = ! $automationFailed && (($mockupBatch['running'] ?? false) === true
+                || ($automationRunning && $currentAutomationStep === 'mockup'));
             $mockupBatchErrors = is_array($workflow['images_errors'] ?? null) ? $workflow['images_errors'] : [];
+
+            if ($automationFailed) {
+                $mockupBatchStates = collect($mockupBatchStates)
+                    ->map(fn (mixed $state): string => in_array($state, ['queued', 'waiting', 'generating'], true) ? 'error' : (is_string($state) ? $state : 'error'))
+                    ->all();
+                $mockupBatchErrors['mockup'] ??= $automation->last_error ?: 'Mockup generation failed.';
+            }
             foreach (is_array($automation?->payload['preview_state'] ?? null) ? $automation->payload['preview_state'] : [] as $slot => $state) {
                 if (is_string($state['error'] ?? null) && trim($state['error']) !== '') {
                     $mockupBatchErrors[$slot] = $state['error'];
@@ -1003,13 +1026,6 @@
                 syncStatesFromImages() {
                     this.slots.forEach((slot) => {
                         if (this.originalUrl(slot)) {
-                            const currentState = this.slotStates?.[slot] || null;
-
-                            if (['queued', 'generating', 'error'].includes(currentState)) {
-                                this.setSlotState(slot, currentState);
-                                return;
-                            }
-
                             this.setSlotState(slot, 'done');
                             return;
                         }

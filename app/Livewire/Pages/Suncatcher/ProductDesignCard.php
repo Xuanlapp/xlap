@@ -860,7 +860,11 @@ class ProductDesignCard extends Component
 
     private function refreshCurrentCardState(): void
     {
-        $asset = app(SuncatcherService::class)->assetForUser(auth()->user(), $this->assetId);
+        $service = app(SuncatcherService::class);
+        $asset = $service->assetForUser(auth()->user(), $this->assetId);
+        $service->automationForUser(auth()->user(), $asset->id);
+
+        $asset = $asset->fresh();
         $this->hydrateWorkflowInputs($this->workflowData($asset));
     }
 }

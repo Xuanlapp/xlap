@@ -185,7 +185,15 @@ class SuncatcherStatusPanel extends Component
             ->map(fn ($id): int => (int) $id)
             ->all();
 
+        $service = app(SuncatcherService::class);
+
         foreach ($runningAssetIds as $assetId) {
+            $automation = $service->automationForUser(auth()->user(), $assetId);
+
+            if (! $automation || ! in_array(($automation->workflow_status ?? null), ['running', 'waiting'], true)) {
+                continue;
+            }
+
             $this->dispatch("suncatcher-product-design-updated.{$assetId}")->to(ProductDesignCard::class);
         }
     }

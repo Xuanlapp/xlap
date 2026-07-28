@@ -4224,3 +4224,74 @@ Ng?n trang Proxy loi 500 khi code archive da deploy nhung DB chua co cot `archiv
 - `php -l app/Repositories/Proxy/DataHubProxyRepository.php`
 - `php -l app/Services/Proxy/ProxyMonitorService.php`
 - `php artisan view:cache --no-ansi`
+
+### 2026-07-26 (Suncatcher spinner recovery for stale waiting jobs)
+
+**Muc tieu:**
+Fix tinh trang card Suncatcher spin mai khi automation dang waiting nhung job queue da mat hoac worker khong nhan job.
+
+**File da sua/tao:**
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `app/Livewire/Pages/Suncatcher/ProductDesignCard.php`
+- `app/Livewire/Pages/Suncatcher/SuncatcherStatusPanel.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them grace time 90 giay cho trang thai waiting khong con job queue; qua moc nay tu dong chuyen failed de user bam Retry/Continue.
+- Giu timeout 10 phut cho step running de tranh fail nham khi API dang xu ly that.
+- Nang cap `hasPendingAutomationJob()` de nhan dien them payload asset id dang serialized va JSON.
+- Card va status panel goi `automationForUser()` khi refresh de recovery record stale trong luc poll.
+
+**Root cause:**
+- Record Suncatcher co the giu `workflow_status = waiting` trong `data_ornament_amazon` du job tuong ung da khong con trong queue.
+- UI poll theo waiting/running nen record stale lam card spin vo han neu khong co recovery chu dong.
+
+**Kiem tra da chay:**
+- `php -l app/Services/Suncatcher/SuncatcherService.php`
+- `php -l app/Livewire/Pages/Suncatcher/ProductDesignCard.php`
+- `php -l app/Livewire/Pages/Suncatcher/SuncatcherStatusPanel.php`
+- `php artisan view:cache --no-ansi`
+- Tinker rollback check: asset 1866 chuyen sang failed khi khong con job.
+
+**Deploy impact:**
+- Khong can migration.
+- Sau deploy clear cache va restart worker doc `suncatcher-pipeline` / `suncatcher-priority`.
+
+### 2026-07-26 (Suncatcher auto mockup async + polling)
+
+**Muc tieu:**
+Sua tinh trang Suncatcher auto/mockup spin mai, khong ra anh, va timeout khi step mockup tao 6 anh lien tiep trong 1 job.
+
+**File da sua/tao:**
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `app/Livewire/Pages/Suncatcher/ProductDesignCard.php`
+- `app/Livewire/Pages/Suncatcher/SuncatcherStatusPanel.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Chuyen step `mockup` trong full automation sang `startWorkflowImagesGeneration()` de dispatch 6 job rieng cho 6 mockup thay vi chay dong bo trong 1 queue job, tranh timeout `RunSuncatcherItemPipeline`.
+- Cho card Suncatcher poll khi co `workflow_status` waiting/running, khi `images_batch.running = true`, hoac khi `preview_state` dang `queued/waiting/generating`.
+- Card va status panel deu goi `automationForUser()` trong luong refresh de tu fail stale record khong con job.
+- Giu logic `waiting` mat job fail nhanh va `running` thuc su chua qua timeout van tiep tuc.
+
+**Root cause:**
+- `RunSuncatcherItemPipeline` van goi `generateAllWorkflowImages()` o step mockup, ma step nay tao 6 anh lien tiep nen rat de vuot timeout queue.
+- UI chi poll theo `waiting/running` nen truong hop batch mockup hoac preview state dang chay nhung automation khong con spin top-level se khong duoc refresh dung luc.
+
+**Kiem tra da chay:**
+- `php -l app/Services/Suncatcher/SuncatcherService.php`
+- `php -l resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `php artisan view:cache --no-ansi`
+
+**Deploy impact:**
+- Khong can migration.
+- Sau deploy nen clear cache va restart queue workers `suncatcher-pipeline` / `suncatcher-priority`.
+
+**Queue impact:**
+- Mockup se ra tung job rieng, card co the hien anh tung cai ngay khi xong thay vi cho ca 6 anh.
+- Can worker doc queue `suncatcher-pipeline` va `suncatcher-priority` on dinh de preview/mockup cap nhat.
+
+**Follow-up notes:**
+- Neu van spin, check tiep `RunSuncatcherItemPipeline` timeout va luong tao `preview_state` cua tung slot.
+- Neu muon, co the tach tiep `generateAllWorkflowImages()` thanh mode retry/continue ri?ng cho user bam `Generate` o preview.

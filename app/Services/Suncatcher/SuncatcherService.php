@@ -39,6 +39,10 @@ use ZipArchive;
 
 class SuncatcherService
 {
+    private const MISSING_QUEUED_JOB_GRACE_SECONDS = 90;
+
+    private const RUNNING_STEP_TIMEOUT_MINUTES = 10;
+
     private const REQUIRED_KEYWORD = 'suncatcher';
 
     private const MAX_KEYWORD_LENGTH = 255;
@@ -1982,9 +1986,13 @@ class SuncatcherService
                     'person_a' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'a', $providerKey, $imageModel),
                     'person_b' => $asset = $this->generateWorkflowPerson($user, $asset->id, 'b', $providerKey, $imageModel),
                     'prompt' => $asset = $this->generateWorkflowPrompts($user, $asset->id, $providerKey, $textModel),
-                    'mockup' => $asset = $this->generateAllWorkflowImages($user, $asset->id, $providerKey, $imageModel),
+                    'mockup' => $asset = $this->startWorkflowImagesGeneration($user, $asset->id, $providerKey, $imageModel),
                     default => null,
                 };
+
+                if ($step === 'mockup') {
+                    return;
+                }
 
                 $this->markAutomationStepFinished($asset, $step);
             } catch (Throwable $exception) {
@@ -2011,15 +2019,17 @@ class SuncatcherService
             $steps = is_array($automation->step_data) ? $automation->step_data : [];
             $stepState = $step ? ($steps[$step] ?? []) : [];
             $stepStartedAt = $stepState['started_at'] ?? null;
+            $hasPendingJob = $this->hasPendingAutomationJob($asset->id);
 
             $isRunningTooLong = ($stepState['status'] ?? null) === 'running'
                 && filled($stepStartedAt)
-                && Carbon::parse($stepStartedAt)->lt(now()->subMinutes(10));
-            $isQueuedWithoutJob = $automation->updated_at
-                && $automation->updated_at->lt(now()->subMinutes(10))
-                && ! $this->hasPendingAutomationJob($asset->id);
+                && Carbon::parse($stepStartedAt)->lt(now()->subMinutes(self::RUNNING_STEP_TIMEOUT_MINUTES));
+            $isQueuedWithoutJob = ($automation->workflow_status ?? null) === 'waiting'
+                && $automation->updated_at
+                && $automation->updated_at->lt(now()->subSeconds(self::MISSING_QUEUED_JOB_GRACE_SECONDS))
+                && ! $hasPendingJob;
 
-            if ($step && ($isRunningTooLong || $isQueuedWithoutJob)) {
+            if ($isRunningTooLong || $isQueuedWithoutJob) {
                 $message = $isQueuedWithoutJob
                     ? 'Automation da bi mat job trong queue. Hay bam Retry/Continue de tao lai job.'
                     : 'Automation bi ket qua lau khong cap nhat. Hay bam Retry/Continue de chay lai.';
@@ -2028,7 +2038,7 @@ class SuncatcherService
 
                 return $this->markAutomationStepFinished(
                     $asset,
-                    $step,
+                    $step ?: (filled($asset->redesign) ? 'script' : 'main'),
                     $message
                 );
             }
@@ -2277,6 +2287,10 @@ class SuncatcherService
 
     public function markAutomationStepFinished(ProductDesignAsset $asset, string $step, ?string $error = null): DataSuncatcher
     {
+        if ($error && $step === 'mockup') {
+            $this->stopWorkflowImageBatch($asset, $error);
+        }
+
         $record = $this->automationForAsset($asset);
         $steps = is_array($record?->step_data) ? $record->step_data : $this->automationDefaultSteps();
         $steps[$step] = [
@@ -2300,6 +2314,42 @@ class SuncatcherService
             'paused_at' => $error ? now() : null,
             'workflow_paused_at' => $error ? now() : null,
         ]);
+    }
+
+    private function stopWorkflowImageBatch(ProductDesignAsset $asset, string $message): ProductDesignAsset
+    {
+        $workflow = $this->workflowData($asset->fresh());
+        $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+
+        if ($batch === []) {
+            return $asset;
+        }
+
+        $slotStates = is_array($batch['slot_states'] ?? null) ? $batch['slot_states'] : [];
+        $errors = is_array($workflow['images_errors'] ?? null) ? $workflow['images_errors'] : [];
+
+        foreach (array_keys(self::WORKFLOW_IMAGE_SLOTS) as $slot) {
+            if (filled($workflow['images'][$slot]['url'] ?? null)) {
+                $slotStates[$slot] = 'done';
+                continue;
+            }
+
+            if (in_array($slotStates[$slot] ?? null, ['queued', 'waiting', 'generating'], true)) {
+                $slotStates[$slot] = 'error';
+                $errors[$slot] = $message;
+            }
+        }
+
+        $batch['running'] = false;
+        $batch['current_slot'] = null;
+        $batch['slot_states'] = $slotStates;
+        $batch['finished_at'] = now()->toIso8601String();
+        $batch['updated_at'] = now()->toIso8601String();
+        $workflow['images_batch'] = $batch;
+        $workflow['images_errors'] = $errors;
+        $workflow['images_errors_at'] = now()->toIso8601String();
+
+        return $this->saveWorkflowData($asset, $workflow)->fresh();
     }
 
     public function completeAutomation(ProductDesignAsset $asset): DataSuncatcher
@@ -2368,8 +2418,49 @@ class SuncatcherService
             return null;
         }
 
-        if (($record->workflow_status ?? null) !== 'completed' && $this->hasAllWorkflowMockupImages($asset)) {
+        if (($record->workflow_status ?? null) === 'failed' && ($record->workflow_step_key ?? null) === 'mockup') {
+            $workflow = $this->workflowData($asset);
+            $batch = is_array($workflow['images_batch'] ?? null) ? $workflow['images_batch'] : [];
+
+            if (($batch['running'] ?? false) === true) {
+                $this->stopWorkflowImageBatch(
+                    $asset,
+                    $record->last_error ?: $this->missingWorkflowMockupMessage($asset, $workflow),
+                );
+            }
+        }
+
+        $hasAllMockups = $this->hasAllWorkflowMockupImages($asset);
+
+        if (($record->workflow_status ?? null) !== 'completed' && $hasAllMockups) {
             return $this->completeAutomation($asset);
+        }
+
+        if (($record->workflow_status ?? null) === 'completed' && ! $hasAllMockups) {
+            $message = $this->missingWorkflowMockupMessage($asset);
+            $this->stopWorkflowImageBatch($asset, $message);
+            $steps = is_array($record->step_data) ? $record->step_data : $this->automationDefaultSteps();
+            $steps['mockup'] = [
+                'status' => 'failed',
+                'started_at' => $steps['mockup']['started_at'] ?? null,
+                'finished_at' => now()->toIso8601String(),
+                'error_message' => $message,
+            ];
+
+            return $this->upsertAutomationRecord($asset, [
+                'workflow_status' => 'failed',
+                'workflow_step_key' => 'mockup',
+                'workflow_step_label' => $this->automationStepLabel('mockup'),
+                'workflow_step_number' => $this->automationStepNumber('mockup'),
+                'step_data' => $steps,
+                'step_errors' => ['mockup' => $message],
+                'last_error' => $message,
+                'status' => 'paused',
+                'current_step' => 'mockup',
+                'current_step_number' => $this->automationStepNumber('mockup'),
+                'paused_at' => now(),
+                'workflow_paused_at' => now(),
+            ]);
         }
 
         return $record;
@@ -2404,13 +2495,17 @@ class SuncatcherService
             return true;
         }
 
-        $serializedAssetId = 'assetId";i:'.$assetId.';';
-        $escapedSerializedAssetId = '\"assetId\";i:'.$assetId.';';
+        $assetIdMarkers = [
+            'assetId";i:'.$assetId.';',
+            'assetId";s:'.strlen((string) $assetId).':"'.$assetId.'";',
+            '"assetId":'.$assetId,
+            '\"assetId\":'.$assetId,
+        ];
 
         return DB::table('jobs')
             ->whereIn('queue', ['suncatcher-pipeline', 'suncatcher-priority'])
             ->pluck('payload')
-            ->contains(function (mixed $payload) use ($serializedAssetId, $escapedSerializedAssetId): bool {
+            ->contains(function (mixed $payload) use ($assetIdMarkers): bool {
                 if (! is_string($payload)) {
                     return false;
                 }
@@ -2420,7 +2515,7 @@ class SuncatcherService
                     'RunSuncatcherAutomation',
                     'GenerateSuncatcherWorkflowImage',
                     'RegenerateSuncatcherPreviewImage',
-                ]) && Str::contains($payload, [$serializedAssetId, $escapedSerializedAssetId]);
+                ]) && Str::contains($payload, $assetIdMarkers);
             });
     }
 
@@ -2627,13 +2722,14 @@ class SuncatcherService
         $freshAsset = $asset->fresh();
         $workflow ??= $this->workflowData($freshAsset);
         $missingSlots = collect(self::WORKFLOW_IMAGE_SLOTS)
-            ->filter(function (array $slot, string $key) use ($freshAsset, $workflow): bool {
+            ->filter(function (string $label, string $key) use ($freshAsset, $workflow): bool {
                 $column = $this->workflowListingMockupColumn($key);
 
                 return ! filled($freshAsset->{$column} ?? null)
                     && ! filled($workflow['images'][$key]['url'] ?? null);
             })
-            ->map(fn (array $slot): string => 'Mockup '.$slot['number'])
+            ->keys()
+            ->map(fn (string $slot): string => 'Mockup '.($this->workflowListingMockupNumber($slot) ?? $slot))
             ->values()
             ->all();
 
@@ -3095,6 +3191,19 @@ PROMPT;
             'details' => 'mockup5',
             'custom_guide' => 'mockup6',
             default => throw new InvalidArgumentException('Slot anh workflow khong hop le.'),
+        };
+    }
+
+    private function workflowListingMockupNumber(string $slot): ?int
+    {
+        return match ($slot) {
+            'usp' => 1,
+            'before_after' => 2,
+            'comparison' => 3,
+            'features' => 4,
+            'details' => 5,
+            'custom_guide' => 6,
+            default => null,
         };
     }
 
