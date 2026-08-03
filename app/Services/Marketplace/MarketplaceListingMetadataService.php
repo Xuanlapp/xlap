@@ -445,12 +445,12 @@ PROMPT;
     {
         $prompt = $this->prompt($this->amazonPromptTemplate($asset), $asset);
 
-        if (($asset->product?->slug ?? null) === 'ornament-amazon-2') {
+        if (in_array($asset->product?->slug ?? null, ['suncatcher', 'ornament-amazon-2'], true)) {
             if (! $asset->user->canUseAiProvider('v98store')) {
                 throw new RuntimeException('User duoc duyet item nay chua bat provider v98Store cho Listing metadata logs.');
             }
 
-            $this->ensureOrnamentAmazonTwoV98StoreBalance($asset->user);
+            $this->ensureV98StoreBalance($asset->user, $asset->product?->slug ?? null);
 
             return $this->apiKeyGenerator->generateText($asset->user, 'v98store', $prompt, 'gpt-5.4');
         }
@@ -462,7 +462,7 @@ PROMPT;
         return $this->generator->generateText($asset->user, $prompt);
     }
 
-    private function ensureOrnamentAmazonTwoV98StoreBalance(User $user): void
+    private function ensureV98StoreBalance(User $user, ?string $productSlug = null): void
     {
         $balance = $this->v98StoreBalanceForUser($user);
 
@@ -475,7 +475,11 @@ PROMPT;
         if ($remaining <= 0) {
             $this->notifyV98StoreBalanceExhausted($user, $balance);
 
-            throw new RuntimeException('v98Store da het tien/het quota. Listing metadata logs tam dung, vui long nap them tien roi chay lai.');
+            $message = $productSlug === 'suncatcher'
+                ? 'v98Store da het tien/het quota. Suncatcher listing metadata logs tam dung, vui long nap them tien roi chay lai.'
+                : 'v98Store da het tien/het quota. Listing metadata logs tam dung, vui long nap them tien roi chay lai.';
+
+            throw new RuntimeException($message);
         }
     }
 

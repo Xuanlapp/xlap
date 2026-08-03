@@ -127,7 +127,7 @@ class OrnamentAmazonTwoService
     public function providerOptionsForUser(User $user): array
     {
         $providerOptions = config('ai_providers.providers', []);
-        $allowedProviderKeys = ['chatgpt', 'v98store'];
+        $allowedProviderKeys = ['v98store'];
 
         return $user->enabledAiProviders()
             ->pluck('provider_key')
@@ -2525,13 +2525,13 @@ PROMPT;
             return $fallback;
         }
 
-        throw new RuntimeException('Tai khoan nay chua duoc cap provider ChatGPT hoac v98Store.');
+        throw new RuntimeException('Tai khoan nay chua duoc cau hinh v98Store active de tao text/image.');
     }
 
     private function ensureApiKeyProvider(string $providerKey): void
     {
-        if (! in_array($providerKey, ['chatgpt', 'v98store'], true)) {
-            throw new RuntimeException('Workflow Ornament Amazon 2 chi dung ChatGPT hoac v98Store.');
+        if ($providerKey !== 'v98store') {
+            throw new RuntimeException('Workflow Ornament Amazon 2 chi dung v98Store.');
         }
     }
 

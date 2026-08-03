@@ -4358,3 +4358,94 @@ Cho card Suncatcher auto reload moi 10 giay va phan biet ro pending voi running.
 
 **Follow-up:**
 - Neu can 10 item chay dong thoi, tang Supervisor `numprocs` phu hop va theo doi rate limit/quota provider.
+
+### 2026-08-03 (Force v98Store for Suncatcher and Ornament Amazon 2)
+
+**Muc tieu:**
+Fix loi catalog/workflow Suncatcher va Ornament Amazon 2 roi vao Vertex va bao `User chua cau hinh Vertex API active`, trong khi mong muon hai module nay dung v98Store; Sticker giu Vertex.
+
+**Root cause:**
+- `config/ai_providers.php` co default Vertex va provider selection cua user/session co the fallback sang provider khac.
+- Hai service Suncatcher/Ornament truoc do cho phep `chatgpt` va `v98store`, nen co the khong chon dung v98Store.
+
+**File da sua:**
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `app/Services/OrnamentAmazonTwo/OrnamentAmazonTwoService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Provider options cua Suncatcher va Ornament Amazon 2 chi con `v98store`.
+- Normalize provider fallback cua hai service chi nhan v98Store.
+- Error moi neu user thieu key: `Tai khoan nay chua duoc cau hinh v98Store active de tao text/image.`
+- Ensure provider cua hai workflow chi cho phep `v98store`.
+- Khong sua Sticker; Sticker van co the dung Vertex theo cau hinh rieng.
+
+**Affected modules:**
+- Suncatcher Catalog/Auto/Workflow.
+- Ornament Amazon 2 Catalog/Auto/Workflow.
+- Sticker khong bi anh huong.
+
+**Deploy impact:**
+- Da chay `php -l` cho 2 service va `php artisan optimize:clear` local.
+- Deploy len VPS can deploy 2 file PHP, clear config cache va restart worker queue de nap code moi.
+
+**Queue impact:**
+- Job cu co providerKey Vertex se bi normalize ve v98Store neu user co credential v98; user thieu v98 se fail ro rang thay vi loi Vertex.
+
+**Follow-up:**
+- User phai co `UserApiCredential` active voi `provider_key=v98store` va key hop le.
+- Xac nhan Sticker van duoc gan Vertex active neu dung module Sticker.
+
+### 2026-08-03 (Marketplace listing metadata Amazon uses v98Store for Suncatcher and Ornament Amazon 2)
+
+**Muc tieu:**
+Fix loi Retry title cua listing metadata Amazon cho Suncatcher va Ornament Amazon 2 bi roi vao Vertex, trong khi mong muon hai luong nay dung v98Store; Sticker van giu Vertex.
+
+**Root cause:**
+- `MarketplaceListingMetadataService` truoc do chi ep `ornament-amazon-2` dung v98Store; Suncatcher Amazon metadata van fallback sang Vertex, gay loi `User chua cau hinh Vertex API active de tao text/image.`
+
+**File da sua:**
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Amazon listing metadata cua `suncatcher` va `ornament-amazon-2` deu dung `v98store`.
+- Sticker van dung Vertex text generation nhu cu.
+- Them ham `ensureV98StoreBalance()` de kiem tra quota chung cho Amazon listing metadata khi dung v98Store.
+
+**Affected modules:**
+- Listing metadata Retry title cho Suncatcher.
+- Listing metadata Retry title cho Ornament Amazon 2.
+- Sticker listing metadata khong bi anh huong.
+
+**Deploy impact:**
+- Da chay `php -l` va `php artisan optimize:clear` local.
+- Deploy len VPS can clear config/view cache va restart queue/scheduler neu service nay chay qua command/cron.
+
+**Queue impact:**
+- Job listing metadata Amazon cho Suncatcher/Ornament Amazon 2 se dung v98Store, khong con nho Vertex API active.
+
+**Follow-up:**
+- Neu user muon Amazon metadata cho Sticker cung dung v98Store thi can co nhan rule rieng, vi hien tai Sticker giu Vertex theo yeu cau.
+
+### 2026-08-03 (Local verification plan for v98Store listing metadata)
+
+**Muc tieu:**
+Test local truoc khi deploy VPS cho routing provider cua Listing metadata.
+
+**Ket qua kiem tra:**
+- Item `#1857` local la Suncatcher, da co title va status `completed`; Retry se return som, khong goi API.
+- Co cac item Suncatcher approved chua co title de test that, gom `#1865`, `#1863`, `#1862`, `#1858`.
+- Nen test tung item, bat dau `#1865`, de tranh ton quota v98Store va tranh xu ly hang loat.
+
+**Test can lam:**
+- Clear cache local.
+- Mo Listing metadata logs local va Retry mot item Suncatcher chua co title.
+- Xac nhan khong con loi Vertex; neu loi thi phai la credential/quota/response cua v98Store.
+- Test Sticker rieng de xac nhan van dung Vertex.
+
+**Deploy impact:**
+- Chua deploy VPS trong giai doan test local.
+
+**Queue impact:**
+- Khong chay command generate hang loat; test Retry tung item de khong day nhieu job/API request.
