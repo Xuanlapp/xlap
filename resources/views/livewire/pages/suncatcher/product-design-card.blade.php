@@ -5,13 +5,15 @@
         || collect(is_array($automation?->payload['preview_state'] ?? null) ? $automation->payload['preview_state'] : [])
             ->contains(fn (mixed $state): bool => is_array($state) && in_array($state['status'] ?? null, ['queued', 'waiting', 'generating'], true))
     )
-        wire:poll.5s="refreshWhenUpdated"
+        wire:poll.10s="refreshWhenUpdated"
     @endif
     class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]"
 >
     @php
         $automationStatus = strtolower(trim((string) ($automation?->workflow_status ?? '')));
-        $automationRunning = in_array($automationStatus, ['waiting', 'running'], true);
+        $automationActive = in_array($automationStatus, ['waiting', 'running'], true);
+        $automationPending = ($automationStatus === 'waiting');
+        $automationRunning = ($automationStatus === 'running');
         $automationFailed = ($automationStatus === 'failed');
         $automationSteps = [
             'main' => '2. Main Image',
@@ -28,7 +30,7 @@
             ->count();
         $hasAllDbMockups = ($dbMockupCount === 6);
         $scriptReady = !empty($workflow['script']) && is_array($workflow['script'] ?? null);
-        if (! $currentAutomationStep && ($automationRunning || $automationFailed)) {
+        if (! $currentAutomationStep && ($automationActive || $automationFailed)) {
             foreach ($automationSteps as $stepKey => $stepLabel) {
                 if (($automationStepData[$stepKey]['status'] ?? null) !== 'done') {
                     $currentAutomationStep = $stepKey;
@@ -41,9 +43,9 @@
         $mainGenerating = $automationRunning && $currentAutomationStep === 'main';
         $scriptGenerating = $automationRunning && $currentAutomationStep === 'script';
         $promptGenerating = $automationRunning && $currentAutomationStep === 'prompt';
-        $mainActionDisabled = $automationRunning;
+        $mainActionDisabled = $automationActive;
         $workflowLocked = in_array($automationStatus, ['waiting', 'running', 'failed', 'completed'], true) || $hasAllDbMockups;
-        $canShowAuto = ! $asset->is_approved && ! $scriptReady && ! $automationRunning && ! $automationFailed && $automationStatus !== 'completed';
+        $canShowAuto = ! $asset->is_approved && ! $scriptReady && ! $automationActive && ! $automationFailed && $automationStatus !== 'completed';
         $canShowContinue = false;
         $canShowRetry = ! $asset->is_approved && $asset->redesign && $automationFailed && $currentAutomationStep === 'mockup' && $dbMockupCount < 6;
         $canShowApprove = ! $asset->is_approved && filled($asset->redesign) && $hasAllDbMockups;
@@ -63,6 +65,10 @@
             @if ($automationRunning)
                 <x-badge color="cyan">
                     Auto: {{ $currentAutomationLabel }}
+                </x-badge>
+            @elseif ($automationPending)
+                <x-badge color="amber">
+                    Pending
                 </x-badge>
             @elseif (($automation?->workflow_status ?? null) === 'failed')
                 <x-badge color="rose">
@@ -150,32 +156,36 @@
         </button>
     </div>
 
-    @if ($automationRunning || $automationFailed)
+    @if ($automationActive || $automationFailed)
         <div class="mb-4 rounded-2xl border {{ (($automation?->workflow_status ?? null) === 'failed') ? 'border-rose-100 bg-rose-50/70' : 'border-cyan-100 bg-cyan-50/70' }} px-4 py-3 shadow-sm">
             <div class="flex items-start gap-3">
                 <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full {{ (($automation?->workflow_status ?? null) === 'failed') ? 'bg-rose-500 shadow-rose-500/25' : 'bg-cyan-500 shadow-cyan-500/25' }} text-white shadow-sm">
                     @if ($automationFailed)
                         <span class="text-sm font-black">!</span>
+                    @elseif ($automationPending)
+                        <span class="h-3.5 w-3.5 rounded-full border-2 border-white/80"></span>
                     @else
                         <span class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
                     @endif
                 </div>
                 <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
-                        <h3 class="text-sm font-bold text-cyan-950">Đang xử lý tự động</h3>
+                        <h3 class="text-sm font-bold text-cyan-950">{{ $automationPending ? 'Pending - dang cho worker' : 'Dang xu ly tu dong' }}</h3>
                         <span class="rounded-full bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-cyan-700 shadow-sm">
                             {{ $currentAutomationLabel }}
                         </span>
                     </div>
                     <p class="mt-1 text-xs font-medium leading-5 text-cyan-900/80">
-                        ĐANG AUTO.
+                        {{ $automationPending ? 'Job da vao hang doi, chua duoc worker nhan.' : 'DANG AUTO.' }}
                     </p>
 
                     <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                         @foreach ($automationSteps as $stepKey => $stepLabel)
                             <div class="flex items-center gap-2 rounded-xl border border-white/80 bg-white px-3 py-2 text-xs shadow-sm">
-                                @if ($currentAutomationStep === $stepKey)
+                                @if ($currentAutomationStep === $stepKey && $automationRunning)
                                     <span class="h-2.5 w-2.5 animate-pulse rounded-full bg-cyan-500"></span>
+                                @elseif ($currentAutomationStep === $stepKey && $automationPending)
+                                    <span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
                                 @elseif (($automation?->step_data[$stepKey]['status'] ?? null) === 'done')
                                     <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
                                 @elseif (($automation?->step_data[$stepKey]['status'] ?? null) === 'failed')
@@ -278,7 +288,7 @@
             ->filter(fn (array $tab): bool => trim($tab['content']) !== '');
         $hasWorkflowScript = $topScriptTabs->isNotEmpty();
         $hasPersonRefs = filled($personARef) && filled($personBRef);
-        $promptCreateDisabledReason = $automationRunning
+        $promptCreateDisabledReason = $automationActive
             ? 'Workflow auto dang chay.'
             : ($automationFailed
                 ? 'Workflow dang loi. Chi duoc Retry 6. Mockup.'
@@ -510,7 +520,7 @@
                                     }
                                 },
                                 async generatePerson() {
-                                    if (this.personGenerating || @js(! $hasWorkflowScript || $asset->is_approved || $automationRunning || $automationFailed)) {
+                                    if (this.personGenerating || @js(! $hasWorkflowScript || $asset->is_approved || $automationActive || $automationFailed)) {
                                         return;
                                     }
 
@@ -884,7 +894,7 @@
                     $key => is_string($workflow['prompts'][$key] ?? null) ? trim($workflow['prompts'][$key]) : '',
                 ])
                 ->all();
-            $generateDisabledReason = $automationRunning
+            $generateDisabledReason = $automationActive
                 ? 'Workflow auto dang chay.'
                 : ($asset->is_approved
                     ? 'Item da duyet.'

@@ -4295,3 +4295,66 @@ Sua tinh trang Suncatcher auto/mockup spin mai, khong ra anh, va timeout khi ste
 **Follow-up notes:**
 - Neu van spin, check tiep `RunSuncatcherItemPipeline` timeout va luong tao `preview_state` cua tung slot.
 - Neu muon, co the tach tiep `generateAllWorkflowImages()` thanh mode retry/continue ri?ng cho user bam `Generate` o preview.
+
+### 2026-08-03 (Suncatcher auto shows pending until worker starts)
+
+**Muc tieu:**
+Sua UI auto de item trong hang doi chi hien `Pending`, chi item worker da nhan moi spin `Running`.
+
+**Root cause:**
+- UI card Suncatcher truoc do gom chung `waiting` va `running` thanh mot trang thai dang chay.
+- Vi vay item da vao queue nhung chua duoc worker nhan van hien spinner, gay cam giac tat ca dang chay cung luc.
+
+**File da sua:**
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `resources/views/livewire/pages/suncatcher/automation-catalog.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Tach `automationPending` (`workflow_status = waiting`) va `automationRunning` (`workflow_status = running`).
+- Card hien badge `Pending`, panel `Pending - dang cho worker`, va bo spinner cho item chi dang cho queue.
+- Chi item `running` moi hien spinner/pulse.
+- Automation Catalog doi nhan `waiting` thanh `Pending` va mau amber de nhin ro hang doi.
+
+**Affected modules:**
+- UI card Suncatcher.
+- Suncatcher automation catalog.
+
+**Deploy impact:**
+- Da clear + rebuild Blade cache local.
+- Khi deploy len server nen chay clear/cache view.
+
+**Queue impact:**
+- Khong doi logic queue hay worker.
+- Neu server tang worker len 10, toi da 10 item se hien `running`, con lai van `pending` den khi duoc nhan.
+
+**Follow-up:**
+- Neu muon dung hinh anh pending/running cho Ornament Amazon 2, co the ap dung pattern giong Suncatcher.
+
+### 2026-08-03 (Suncatcher card poll interval 10 seconds)
+
+**Muc tieu:**
+Cho card Suncatcher auto reload moi 10 giay va phan biet ro pending voi running.
+
+**Thay doi chinh:**
+- Doi `wire:poll.5s` thanh `wire:poll.10s` trong card Suncatcher.
+- Card `waiting` van poll de nhan biet luc worker nhan job, nhung hien `Pending` va khong spinner.
+- Card `running` moi hien spinner.
+- Doi dieu kien khoa action sang `automationActive` de ca Pending va Running deu khong tao job trung.
+
+**File da sua:**
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:**
+- Suncatcher product card auto status/polling/action lock.
+
+**Deploy impact:**
+- Da clear + rebuild Blade cache local; deploy server nen clear view/cache.
+
+**Queue impact:**
+- Khong doi logic queue.
+- So item Running that su phu thuoc Supervisor worker count. Server hien tai co 2 `suncatcher-pipeline` va 1 `suncatcher-priority`, khong phai 10.
+
+**Follow-up:**
+- Neu can 10 item chay dong thoi, tang Supervisor `numprocs` phu hop va theo doi rate limit/quota provider.

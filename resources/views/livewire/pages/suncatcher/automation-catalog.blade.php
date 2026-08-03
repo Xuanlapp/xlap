@@ -27,7 +27,7 @@
                     wire:click="$set('status', '{{ $option }}')"
                     class="rounded-full border px-4 py-2 text-sm font-semibold transition {{ $status === $option ? 'border-cyan-200 bg-cyan-50 text-cyan-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}"
                 >
-                    {{ $option === 'failed' ? 'Failed' : ucfirst($option) }}
+                    {{ $option === 'failed' ? 'Failed' : ($option === 'waiting' ? 'Pending' : ucfirst($option)) }}
                     <span class="ml-1 text-xs opacity-70">({{ $statusCounts[$option] ?? 0 }})</span>
                 </button>
             @endforeach
@@ -63,8 +63,14 @@
                 $overallClass = fn (?string $state): string => match ($state) {
                     'completed' => 'bg-emerald-100 text-emerald-700',
                     'running' => 'bg-blue-100 text-blue-700',
+                    'waiting' => 'bg-amber-100 text-amber-700',
                     'paused' => 'bg-red-100 text-red-700',
                     default => 'bg-slate-100 text-slate-500',
+                };
+                $overallLabel = fn (?string $state): string => match ($state) {
+                    'waiting' => 'Pending',
+                    'paused' => 'Failed',
+                    default => ucfirst((string) $state),
                 };
             @endphp
 
@@ -128,7 +134,7 @@
                                 @endforeach
                                 <td class="px-4 py-4 align-top">
                                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $overallClass($row->status) }}">
-                                        {{ $row->status === 'paused' ? 'Failed' : ucfirst($row->status) }}
+                                        {{ $overallLabel($row->status) }}
                                     </span>
                                     @if ($row->error_message)
                                         <p class="mt-2 max-w-xs text-xs text-red-600">{{ $row->error_message }}</p>
