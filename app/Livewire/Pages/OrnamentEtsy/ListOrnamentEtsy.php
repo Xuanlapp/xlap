@@ -19,6 +19,12 @@ class ListOrnamentEtsy extends Component
 
     public string $addButtonLabel = 'Them ornament Etsy';
 
+    #[Session(key: 'ornament-etsy.ai-provider')]
+    public ?string $selectedAiProvider = null;
+
+    #[Session(key: 'ornament-etsy.image-model')]
+    public ?string $selectedImageModel = null;
+
     #[Session(key: 'ornament-etsy.per-page')]
     public int $perPage = 5;
 
@@ -46,6 +52,32 @@ class ListOrnamentEtsy extends Component
         //
     }
 
+    public function updatedSelectedAiProvider(?string $providerKey): void
+    {
+        $this->selectedAiProvider = $providerKey;
+        $this->selectedImageModel = null;
+        $this->syncProviderSelection();
+    }
+
+    #[On('v98store-key-updated')]
+    public function v98StoreKeyUpdated(): void
+    {
+        $this->selectedAiProvider = 'v98store';
+        $this->selectedImageModel = null;
+    }
+
+    #[On('cheapkeyai-key-updated')]
+    public function cheapKeyAiKeyUpdated(): void
+    {
+        $this->selectedAiProvider = 'cheapkeyai';
+        $this->selectedImageModel = null;
+    }
+
+    public function updatedSelectedImageModel(?string $model): void
+    {
+        $this->selectedImageModel = $model;
+    }
+
     public function updatedPerPage(int|string $perPage): void
     {
         $perPage = (int) $perPage;
@@ -56,15 +88,34 @@ class ListOrnamentEtsy extends Component
 
     }
 
+    private function syncProviderSelection(?array $providerOptions = null): void
+    {
+        $providerOptions ??= app(OrnamentEtsyService::class)->providerOptionsForUser(auth()->user());
+        $this->selectedAiProvider = array_key_exists((string) $this->selectedAiProvider, $providerOptions)
+            ? $this->selectedAiProvider
+            : array_key_first($providerOptions);
+        $models = app(OrnamentEtsyService::class)->imageModelOptionsForProvider($this->selectedAiProvider);
+        $this->selectedImageModel = array_key_exists((string) $this->selectedImageModel, $models)
+            ? $this->selectedImageModel
+            : array_key_first($models);
+    }
+
     public function render(): View
     {
         $service = app(OrnamentEtsyService::class);
         $perPage = in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 5;
+        $providerOptions = $service->providerOptionsForUser(auth()->user());
+        $this->syncProviderSelection($providerOptions);
+        $imageModelOptions = $service->imageModelOptionsForProvider($this->selectedAiProvider);
+        $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);
 
         return view('livewire.pages.ornament-etsy.list-ornament-etsy', [
             'statusCounts' => $service->statusCountsForUser(auth()->user()),
             'activePsdTemplateName' => app(PsdMockupTemplateService::class)->activeOrnamentTemplateForUser(auth()->user())?->name,
             'perPageOptions' => self::PER_PAGE_OPTIONS,
+            'providerOptions' => $providerOptions,
+            'imageModelOptions' => $imageModelOptions,
+            'v98StoreBalance' => $v98StoreBalance,
             'product' => $service->product(),
             'pageTitle' => $this->pageTitle,
             'pageSubtitle' => $this->pageSubtitle,

@@ -1,4 +1,4 @@
-﻿<article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+<article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
             <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
@@ -86,10 +86,17 @@
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-blue-600">2. Create Master</x-label>
                 @if ($asset->image_link && ! $asset->is_approved && ! $asset->hasCustomMockupOutput())
-                    <x-ui.button color="blue" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('sticker-generation-started'))" wire:click="generateRedesign" wire:loading.attr="disabled" wire:target="generateRedesign" class="shrink-0">
+                    <button
+                        type="button"
+                        wire:click="generateRedesign"
+                        wire:loading.attr="disabled"
+                        wire:target="generateRedesign"
+                        class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 hover:text-blue-700 disabled:cursor-wait disabled:opacity-60"
+                    >
+                        <svg wire:loading wire:target="generateRedesign" class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" /><path class="opacity-75" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3z" /></svg>
                         <span wire:loading.remove wire:target="generateRedesign">Create Master</span>
                         <span wire:loading wire:target="generateRedesign">Creating...</span>
-                    </x-ui.button>
+                    </button>
                 @endif
             </div>
 
@@ -231,6 +238,3 @@
         </div>
     </div>
 </article>
-
-
-

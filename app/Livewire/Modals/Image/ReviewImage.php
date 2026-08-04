@@ -5,6 +5,8 @@ namespace App\Livewire\Modals\Image;
 use App\Livewire\Concerns\ReportsUserActionErrors;
 use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentAmazonTwo\OrnamentAmazonTwoStatusPanel;
+use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
+use App\Livewire\Pages\OrnamentEtsy\OrnamentEtsyStatusPanel;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
 use App\Models\DataOrnamentAmazon;
@@ -12,6 +14,7 @@ use App\Models\ProductDesignAsset;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Logging\ActivityLogService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
+use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
@@ -377,6 +380,85 @@ class ReviewImage extends Component
         $this->dispatch('sticker-product-design-workflow-updated')->to(ListSticker::class);
         $this->dispatch('sticker-product-design-workflow-updated')->to(StickerStatusPanel::class);
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da chon lai anh Create Master.');
+        $this->close();
+    }
+
+    public function selectAsOrnamentEtsyRedesign(): void
+    {
+        if ($this->action !== 'ornament-etsy-redesign' || ! $this->assetId || ! $this->original) {
+            return;
+        }
+
+        try {
+            app(OrnamentEtsyService::class)->selectRedesign(auth()->user(), $this->assetId, $this->original);
+        } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ornament_etsy.select_redesign', [
+                'asset_id' => $this->assetId,
+                'original' => $this->original,
+            ]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+
+            return;
+        }
+
+        $this->dispatch('ornament-etsy-product-design-updated', assetId: $this->assetId);
+        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da chon lai anh Create Master.');
+        $this->close();
+    }
+
+    public function createOrnamentEtsyItemFromImage(): void
+    {
+        if ($this->action !== 'ornament-etsy-redesign' || ! $this->original) {
+            return;
+        }
+
+        $this->dispatch('openModal', component: 'modals.ornament-etsy.add-product-design', arguments: [
+            'keyword' => $this->keyword ?: '',
+            'imageLink' => $this->original,
+        ]);
+        $this->close();
+    }
+
+    public function customizeOrnamentEtsyRedesign(): void
+    {
+        if ($this->action !== 'ornament-etsy-redesign' || ! $this->assetId || ! $this->original) {
+            return;
+        }
+
+        try {
+            $asset = app(OrnamentEtsyService::class)->customizeRedesign(
+                auth()->user(),
+                $this->assetId,
+                $this->original,
+                $this->customPrompt,
+            );
+            app(ActivityLogService::class)->record(
+                event: 'ornament_etsy.master_customized',
+                description: 'User customized Ornament Etsy master image from preview.',
+                subject: $asset,
+                properties: ['item_number' => $asset->item_number, 'redesign' => $asset->redesign],
+            );
+        } catch (InvalidArgumentException|RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ornament_etsy.customize_redesign', [
+                'asset_id' => $this->assetId,
+                'original' => $this->original,
+            ]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+
+            return;
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ornament_etsy.customize_redesign', ['asset_id' => $this->assetId]);
+            Log::error('Ornament Etsy master customization failed unexpectedly.', [
+                'asset_id' => $this->assetId,
+                'message' => $exception->getMessage(),
+            ]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao variation Ornament Etsy.');
+
+            return;
+        }
+
+        $this->dispatch('ornament-etsy-product-design-updated', assetId: $this->assetId);
+        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao variation Ornament Etsy moi.');
         $this->close();
     }
 

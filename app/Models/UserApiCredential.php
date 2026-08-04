@@ -10,6 +10,7 @@ class UserApiCredential extends Model
     protected $fillable = [
         'user_id',
         'provider_key',
+        'function_key',
         'name',
         'key_api',
         'is_active',

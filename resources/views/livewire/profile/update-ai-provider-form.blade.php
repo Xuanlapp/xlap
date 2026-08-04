@@ -35,6 +35,7 @@ new class extends Component
             ->all();
     }
 
+
     /**
      * Save the selected AI provider for the current user.
      */
@@ -101,4 +102,5 @@ new class extends Component
             </div>
         </form>
     @endif
+
 </section>

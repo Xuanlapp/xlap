@@ -8,13 +8,20 @@ use App\Models\User;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use App\Repositories\Product\ProductRepository;
 use App\Repositories\Prompt\PromptRepository;
+use App\Models\UserApiCredential;
+use App\Services\Ai\ApiKeyImageGenerator;
+use App\Services\Ai\CheapKeyAiImageGenerator;
 use App\Services\Product\ProductBackgroundRemovalService;
 use App\Services\Product\ProductDesignAssetFileCleanupService;
 use App\Services\Product\ProductDriveUploadQueueService;
 use App\Services\Vertex\VertexImageGenerator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Throwable;
 use RuntimeException;
 
 class StickerService
@@ -32,6 +39,8 @@ class StickerService
         private readonly ProductDesignAssetRepository $assets,
         private readonly PromptRepository $prompts,
         private readonly VertexImageGenerator $generator,
+        private readonly ApiKeyImageGenerator $apiKeyGenerator,
+        private readonly CheapKeyAiImageGenerator $cheapKeyAiGenerator,
         private readonly ProductBackgroundRemovalService $backgroundRemoval,
         private readonly ProductDriveUploadQueueService $driveUploadQueue,
         private readonly ProductDesignAssetFileCleanupService $fileCleanup,
@@ -79,6 +88,118 @@ class StickerService
     public function statusCountsForUser(User $user, ?string $search = null): array
     {
         return $this->assets->statusCountsForUserAndProduct($user->id, $this->product()->id, $search);
+    }
+
+    /** @return array<string, string> */
+    public function providerOptionsForUser(User $user): array
+    {
+        $configured = config('ai_providers.providers', []);
+        $options = [];
+
+        if ($user->vertexApiCredential()->exists()) {
+            $options['vertex'] = $configured['vertex']['label'] ?? 'Vertex';
+        }
+
+        if (UserApiCredential::query()->where('provider_key', 'v98store')->where('function_key', 'sticker')->where('is_active', true)->where(function ($query) use ($user): void {
+            $query->where('user_id', $user->id)->orWhereNull('user_id');
+        })->exists()) {
+            $options['v98store'] = $configured['v98store']['label'] ?? 'v98Store';
+        }
+
+                if (UserApiCredential::query()->where('provider_key', 'cheapkeyai')->where('function_key', 'sticker')->where('is_active', true)->where(function ($query) use ($user): void {
+            $query->where('user_id', $user->id)->orWhereNull('user_id');
+        })->exists()) {
+            $options['cheapkeyai'] = $configured['cheapkeyai']['label'] ?? 'CheapKeyAI';
+        }
+
+        return $options;
+    }
+
+    /** @return array{ok: bool, remain_quota?: float|int, message?: string}|null */
+    public function cheapKeyAiBalanceForUser(User $user, ?string $providerKey): ?array
+    {
+        if ($providerKey !== 'cheapkeyai') {
+            return null;
+        }
+
+        $credential = UserApiCredential::query()
+            ->where('provider_key', 'cheapkeyai')
+            ->where('function_key', 'sticker')
+            ->where('is_active', true)
+            ->where(function ($query) use ($user): void {
+                $query->where('user_id', $user->id)->orWhereNull('user_id');
+            })
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->first();
+
+        if (! $credential) {
+            return ['ok' => false, 'message' => 'No key'];
+        }
+
+        return Cache::remember("cheapkeyai-balance:{$credential->id}", now()->addSeconds(15), function () use ($credential): array {
+            try {
+                $key = trim((string) $credential->key_api);
+                $endpoint = trim((string) config('services.api_key_providers.cheapkeyai.balance_endpoint'));
+                $response = Http::timeout(10)->get($endpoint, ['key' => $key]);
+                $payload = $response->json();
+
+                if ($response->failed() || ! is_array($payload) || ! is_numeric($payload['remain_quota'] ?? null)) {
+                    return ['ok' => false, 'message' => 'Balance unavailable'];
+                }
+
+                return ['ok' => true, 'remain_quota' => $payload['remain_quota'] + 0];
+            } catch (Throwable) {
+                return ['ok' => false, 'message' => 'Balance unavailable'];
+            }
+        });
+    }
+
+    /** @return array<string, string> */
+    public function imageModelOptionsForProvider(?string $providerKey): array
+    {
+        $providerKey = trim((string) $providerKey);
+        $options = config("ai_providers.providers.{$providerKey}.image_models", []);
+
+        return is_array($options) ? $options : [];
+    }
+
+    /** @return array{ok: bool, remain_quota?: float|int, message?: string}|null */
+    public function v98StoreBalanceForUser(User $user, ?string $providerKey): ?array
+    {
+        if ($providerKey !== 'v98store') {
+            return null;
+        }
+
+        $credential = UserApiCredential::query()
+            ->where('provider_key', 'v98store')
+            ->where('function_key', 'sticker')
+            ->where('is_active', true)
+            ->where(function ($query) use ($user): void {
+                $query->where('user_id', $user->id)->orWhereNull('user_id');
+            })
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->first();
+
+        if (! $credential) {
+            return ['ok' => false, 'message' => 'No key'];
+        }
+
+        return Cache::remember("v98store-balance:{$credential->id}", now()->addSeconds(15), function () use ($credential): array {
+            try {
+                $key = trim((string) $credential->key_api);
+                $endpoint = trim((string) config('services.api_key_providers.v98store.balance_endpoint'));
+                $response = Http::timeout(10)->get($endpoint, ['key' => $key]);
+                $payload = $response->json();
+
+                if ($response->failed() || ! is_array($payload) || ! is_numeric($payload['remain_quota'] ?? null)) {
+                    return ['ok' => false, 'message' => 'Balance unavailable'];
+                }
+
+                return ['ok' => true, 'remain_quota' => $payload['remain_quota'] + 0];
+            } catch (Throwable) {
+                return ['ok' => false, 'message' => 'Balance unavailable'];
+            }
+        });
     }
 
     public function createDraftAsset(User $user, string $keyword): ProductDesignAsset
@@ -189,7 +310,7 @@ class StickerService
     /**
      * Generate the master redesign image for one Sticker item.
      */
-    public function generateRedesign(User $user, int $assetId): ProductDesignAsset
+    public function generateRedesign(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
         $this->ensureNotApproved($asset);
@@ -201,12 +322,14 @@ class StickerService
 
         return $this->assets->updateRedesign(
             $asset,
-            $this->generator->generate(
+            $this->generateImage(
                 user: $user,
+                providerKey: $providerKey,
                 imageUri: $asset->image_link,
                 prompt: $this->promptContent($user, 1),
                 folder: 'generated/sticker/redesign',
                 removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
+                imageModel: $imageModel,
             ),
         );
     }
@@ -259,7 +382,7 @@ class StickerService
     /**
      * Generate the two final Sticker images from the master redesign.
      */
-    public function generateFinalImages(User $user, int $assetId): ProductDesignAsset
+    public function generateFinalImages(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
         $this->ensureNotApproved($asset);
@@ -268,25 +391,31 @@ class StickerService
             throw new RuntimeException('Can tao anh redesign truoc.');
         }
 
-        $lifestyle1 = $this->generator->generate(
+        $lifestyle1 = $this->generateImage(
             user: $user,
+            providerKey: $providerKey,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 2),
             folder: 'generated/sticker/final',
+            imageModel: $imageModel,
         );
 
-        $lifestyle2 = $this->generator->generate(
+        $lifestyle2 = $this->generateImage(
             user: $user,
+            providerKey: $providerKey,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 3),
             folder: 'generated/sticker/final',
+            imageModel: $imageModel,
         );
 
-        $lifestyle3 = $this->generator->generate(
+        $lifestyle3 = $this->generateImage(
             user: $user,
+            providerKey: $providerKey,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 4),
             folder: 'generated/sticker/final',
+            imageModel: $imageModel,
         );
 
         return $this->assets->updateLifestyleImages($asset, $lifestyle1, $lifestyle2, $lifestyle3);
@@ -345,6 +474,69 @@ class StickerService
         $this->assets->delete($asset);
 
         return $asset;
+    }
+
+    private function generateImage(
+        User $user,
+        ?string $providerKey,
+        string $imageUri,
+        string $prompt,
+        string $folder,
+        bool $removeBackground = false,
+        ?string $imageModel = null,
+    ): string {
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+
+        if ($providerKey === 'vertex') {
+            return $this->generator->generate(
+                user: $user,
+                imageUri: $imageUri,
+                prompt: $prompt,
+                folder: $folder,
+                removeBackground: $removeBackground,
+            );
+        }
+
+        if ($providerKey === 'cheapkeyai') {
+            return $this->cheapKeyAiGenerator->generate(
+                user: $user,
+                imageUri: $imageUri,
+                prompt: $prompt,
+                folder: $folder,
+                removeBackground: $removeBackground,
+                model: $imageModel,
+                functionKey: 'sticker',
+            );
+        }
+
+        return $this->apiKeyGenerator->generate(
+            user: $user,
+            providerKey: $providerKey,
+            imageUri: $imageUri,
+            prompt: $prompt,
+            folder: $folder,
+            removeBackground: $removeBackground,
+            model: $imageModel,
+            functionKey: 'sticker',
+        );
+    }
+
+    private function normalizeProviderKey(User $user, ?string $providerKey): string
+    {
+        $options = $this->providerOptionsForUser($user);
+        $candidate = Str::lower(trim((string) ($providerKey ?: $user->activeAiProviderKey() ?: '')));
+
+        if ($candidate !== '' && array_key_exists($candidate, $options)) {
+            return $candidate;
+        }
+
+        $fallback = array_key_first($options);
+
+        if (is_string($fallback)) {
+            return $fallback;
+        }
+
+        throw new RuntimeException('Tai khoan nay chua co Vertex hoac v98Store API key active.');
     }
 
     private function ensureNotApproved(ProductDesignAsset $asset): void

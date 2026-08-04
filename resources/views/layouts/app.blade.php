@@ -38,6 +38,28 @@
                 </main>
             </div>
 
+            <div
+                x-data="{ showBackToTop: window.scrollY > 300 }"
+                @scroll.window="showBackToTop = window.scrollY > 300"
+                class="fixed bottom-5 right-5 z-50"
+            >
+                <button
+                    type="button"
+                    x-show="showBackToTop"
+                    x-cloak
+                    x-transition.opacity.duration.200ms
+                    x-on:click="window.scrollTo({ top: 0, behavior: 'smooth' })"
+                    class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg shadow-slate-400/30 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                    aria-label="Len dau trang"
+                    title="Len dau trang"
+                >
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 19V5" />
+                        <path d="m5 12 7-7 7 7" />
+                    </svg>
+                </button>
+            </div>
+
             <livewire:modals.image.review-image />
             <livewire:modals.suncatcher.review-image />
             <x-toast />

@@ -96,6 +96,7 @@ class OrnamentAmazonTwoStatusPanel extends Component
     }
 
     #[On('product-design-created')]
+    #[On('ornament-amazon-two-product-design-updated')]
     #[On('ornament-amazon-two-product-design-approval-updated')]
     #[On('ornament-amazon-two-product-design-workflow-updated')]
     public function refreshAssets(): void

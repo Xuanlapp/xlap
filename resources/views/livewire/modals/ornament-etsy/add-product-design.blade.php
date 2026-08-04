@@ -98,6 +98,18 @@
 
                     <div class="space-y-5 p-4 md:p-5">
                         <div>
+                            <label for="ornament-etsy-sku" class="mb-2 block text-sm font-medium text-gray-900">SKU</label>
+                            <x-input
+                                id="ornament-etsy-sku"
+                                wire:model="sku"
+                                type="text"
+                                class="block w-full"
+                                placeholder="Nhap SKU"
+                            />
+                            @error('sku') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div>
                             <label for="ornament-etsy-keyword" class="mb-2 block text-sm font-medium text-gray-900">Keyword</label>
                             <x-input
                                 id="ornament-etsy-keyword"

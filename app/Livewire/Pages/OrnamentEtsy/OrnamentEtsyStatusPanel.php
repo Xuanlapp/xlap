@@ -21,6 +21,10 @@ class OrnamentEtsyStatusPanel extends Component
 
     public ?string $activePsdTemplateName = null;
 
+    public ?string $providerKey = null;
+
+    public ?string $imageModel = null;
+
     /**
      * @var array{all?: int, unapproved?: int, approved?: int}
      */
@@ -29,12 +33,14 @@ class OrnamentEtsyStatusPanel extends Component
     /**
      * @param array{all?: int, unapproved?: int, approved?: int} $statusCounts
      */
-    public function mount(string $status, int $perPage, ?string $activePsdTemplateName = null, array $statusCounts = []): void
+    public function mount(string $status, int $perPage, ?string $activePsdTemplateName = null, array $statusCounts = [], ?string $providerKey = null, ?string $imageModel = null): void
     {
         $this->status = in_array($status, self::STATUS_OPTIONS, true) ? $status : 'all';
         $this->perPage = $perPage;
         $this->activePsdTemplateName = $activePsdTemplateName;
         $this->statusCounts = $statusCounts;
+        $this->providerKey = $providerKey;
+        $this->imageModel = $imageModel;
     }
 
     #[On('ornament-etsy-product-design-created')]
@@ -59,6 +65,8 @@ class OrnamentEtsyStatusPanel extends Component
 
     public function render(): View
     {
+        $this->statusCounts = app(OrnamentEtsyService::class)->statusCountsForUser(auth()->user());
+
         return view('livewire.pages.ornament-etsy.ornament-etsy-status-panel', [
             'assets' => app(OrnamentEtsyService::class)->paginatedAssetsForUser(
                 auth()->user(),

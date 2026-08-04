@@ -3,7 +3,6 @@
 namespace App\Livewire\Pages\Sticker;
 
 use App\Livewire\Concerns\ReportsUserActionErrors;
-use App\Livewire\Pages\Sticker\ListSticker;
 use App\Models\ProductDesignAsset;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Logging\ActivityLogService;
@@ -12,6 +11,7 @@ use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 use RuntimeException;
 use Throwable;
@@ -22,12 +22,21 @@ class ProductDesignCard extends Component
 
     public int $assetId;
 
+    #[Reactive]
     public ?string $activePsdTemplateName = null;
 
-    public function mount(int $assetId, ?string $activePsdTemplateName = null): void
+    #[Reactive]
+    public ?string $providerKey = null;
+
+    #[Reactive]
+    public ?string $imageModel = null;
+
+    public function mount(int $assetId, ?string $activePsdTemplateName = null, ?string $providerKey = null, ?string $imageModel = null): void
     {
         $this->assetId = $assetId;
         $this->activePsdTemplateName = $activePsdTemplateName;
+        $this->providerKey = $providerKey;
+        $this->imageModel = $imageModel;
     }
 
     #[On('sticker-product-design-updated')]
@@ -41,7 +50,7 @@ class ProductDesignCard extends Component
     public function generateRedesign(): void
     {
         try {
-            $asset = app(StickerService::class)->generateRedesign(auth()->user(), $this->assetId);
+            $asset = app(StickerService::class)->generateRedesign(auth()->user(), $this->assetId, $this->providerKey, $this->imageModel);
             app(ActivityLogService::class)->record(
                 event: 'sticker.master_generated',
                 description: 'User generated Sticker master image.',
@@ -49,8 +58,6 @@ class ProductDesignCard extends Component
                 properties: ['item_number' => $asset->item_number, 'redesign' => $asset->redesign],
             );
 
-            $this->dispatch('sticker-product-design-workflow-updated')->to(ListSticker::class);
-            $this->dispatch('sticker-product-design-workflow-updated')->to(StickerStatusPanel::class);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh master.');
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'sticker.generate_redesign', ['asset_id' => $this->assetId]);

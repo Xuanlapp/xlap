@@ -126,10 +126,12 @@ class ProductDesignAssetRepository
         });
     }
 
-    public function createWithSource(int $userId, int $productId, string $keyword, string $imageLink, ?string $sku = null): ProductDesignAsset
+    public function createWithSource(int $userId, int $productId, string $keyword, string $imageLink, ?string $sku = null, bool $ensureSkuUnique = true): ProductDesignAsset
     {
-        return DB::transaction(function () use ($userId, $productId, $keyword, $imageLink, $sku): ProductDesignAsset {
-            $this->ensureSkuUniqueForUserAndProduct($userId, $productId, $sku);
+        return DB::transaction(function () use ($userId, $productId, $keyword, $imageLink, $sku, $ensureSkuUnique): ProductDesignAsset {
+            if ($ensureSkuUnique) {
+                $this->ensureSkuUniqueForUserAndProduct($userId, $productId, $sku);
+            }
             $lastNumber = ProductDesignAsset::query()
                 ->where('user_id', $userId)
                 ->where('product_id', $productId)

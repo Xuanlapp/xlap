@@ -20,6 +20,8 @@ class AddProductDesign extends Component
 
     public string $keyword = '';
 
+    public string $sku = '';
+
     public string $imageLink = '';
 
     public ?bool $isImageLink = null;
@@ -50,7 +52,7 @@ class AddProductDesign extends Component
     public function open(string $keyword = '', string $imageLink = ''): void
     {
         $this->resetValidation();
-        $this->reset(['keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'imageUpload', 'uploadedImagePreviewUrl']);
+        $this->reset(['keyword', 'sku', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'imageUpload', 'uploadedImagePreviewUrl']);
         $this->keyword = $keyword;
         $this->imageLink = $imageLink;
         $this->refreshImageState();
@@ -91,6 +93,7 @@ class AddProductDesign extends Component
     {
         $validated = $this->validate([
             'keyword' => ['required', 'string', 'max:255'],
+            'sku' => ['required', 'string', 'max:255'],
             'imageLink' => ['nullable', 'string', 'max:1000', function (string $attribute, mixed $value, \Closure $fail): void {
                 if ($value === '') {
                     return;
@@ -111,7 +114,7 @@ class AddProductDesign extends Component
 
         $imageSource = $this->resolveImageSource($validated['imageLink'] ?? '', $validated['imageUpload'] ?? null);
 
-        app(OrnamentEtsyService::class)->createAsset(auth()->user(), $validated['keyword'], $imageSource);
+        app(OrnamentEtsyService::class)->createAsset(auth()->user(), $validated['keyword'], $imageSource, $validated['sku'] ?? null);
 
         $this->dispatch('ornament-etsy-product-design-created')->to(ListOrnamentEtsy::class);
         $this->dispatch('ornament-etsy-product-design-created')->to(OrnamentEtsyStatusPanel::class);

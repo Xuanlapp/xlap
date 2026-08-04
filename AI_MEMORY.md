@@ -4449,3 +4449,911 @@ Test local truoc khi deploy VPS cho routing provider cua Listing metadata.
 
 **Queue impact:**
 - Khong chay command generate hang loat; test Retry tung item de khong day nhieu job/API request.
+
+### 2026-08-03 (Fix v98Store endpoint domain for local testing)
+
+**Muc tieu:**
+Sua timeout khi Retry listing metadata local goi nham domain v98Store cu.
+
+**Root cause:**
+Request da dung dung provider v98Store nhung config/.env van tro toi `https://v98store.com`, dan den cURL error 28 timeout 180 giay.
+
+**File da sua:**
+- `config/services.php`
+- `.env` (chi doi endpoint URL, khong doi API key)
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Doi balance endpoint sang `https://cheapkeyai.shop/check-balance`.
+- Doi text endpoint sang `https://cheapkeyai.shop/v1/chat/completions`.
+- Doi image generation/edit endpoints sang `https://cheapkeyai.shop/v1/images/generations` va `/v1/images/edits`.
+- Chay `php artisan optimize:clear` local.
+- Laravel runtime da resolve ca 4 endpoint sang `cheapkeyai.shop`.
+
+**Affected modules:**
+- v98Store text listing metadata.
+- v98Store image generation/edit workflows.
+- v98Store balance checks.
+
+**Deploy impact:**
+- Local da san sang test lai.
+- Khi deploy VPS phai cap nhat cung cac bien V98STORE endpoint trong `.env` VPS va chay `php artisan optimize:clear`.
+
+**Queue impact:**
+- Khong doi queue logic; request moi se di qua domain API moi.
+
+**Follow-up:**
+- Retry lai mot item Suncatcher local chua co title, vi du `#1865`.
+- Neu van timeout thi kiem tra DNS/SSL/network cua `cheapkeyai.shop`, khong phai loi Vertex provider routing.
+
+### 2026-08-03 (Isolate local public image storage from project/VPS)
+
+**Muc tieu:**
+Tach noi luu anh public local ra folder rieng de khong dung chung du lieu trong project hoac VPS.
+
+**Root cause:**
+Nhieu luong anh dang ghi vao `storage/app/public` va `public/storage` trong repo local. Mot so PSD renderer con hard-code `storage_path('app/public/...')`, nen kho tach storage neu khong chuan hoa ve filesystem disk.
+
+**File da sua:**
+- `config/filesystems.php`
+- `app/Services/Suncatcher/PsdMockupRenderer.php`
+- `app/Services/OrnamentAmazonTwo/PsdMockupRenderer.php`
+- `app/Services/Sticker/PsdMockupRenderer.php`
+- `app/Services/OrnamentEtsy/PsdMockupRenderer.php`
+- `.env`
+- `.env.example`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them bien `XLAP_PUBLIC_STORAGE_PATH` de cau hinh root cho disk `public` thay vi co dinh `storage/app/public`.
+- Cap nhat symlink config `public/storage` cung tro theo bien nay.
+- Chuyen 4 renderer PSD dang hard-code `storage_path('app/public/generated/...')` sang `Storage::disk('public')->path(...)`.
+- Dat local storage moi tai `D:/FFACTORY/XLAP_LOCAL_STORAGE/public`.
+- Doi `public/storage` thanh Junction tro toi folder moi.
+- Di chuyen backup du lieu cu ra ngoai repo: `D:/FFACTORY/XLAP_LOCAL_STORAGE/storage_legacy_backup_20260803`.
+
+**Affected modules:**
+- Toan bo luong luu anh public qua disk `public`.
+- PSD mockup render cua Suncatcher, Ornament Amazon 2, Sticker, Suncatcher Etsy.
+
+**Deploy impact:**
+- Day la thay doi local-isolation; khong nen copy nguyen `XLAP_PUBLIC_STORAGE_PATH` local len VPS neu VPS co storage rieng khac.
+- Neu muon tach VPS, set `XLAP_PUBLIC_STORAGE_PATH` tren VPS theo folder rieng roi clear cache.
+
+**Queue impact:**
+- Khong doi logic queue; worker se ghi anh vao root moi cua disk `public`.
+
+**Kiem tra da chay:**
+- `php artisan optimize:clear`
+- `php -l config/filesystems.php`
+- `php -l` cho 4 renderer PSD
+- Ghi test file qua `Storage::disk('public')` va xac nhan truy cap qua `public/storage/...` thanh cong.
+
+**Follow-up:**
+- Co the copy thu cong anh can giu tu backup cu vao `D:/FFACTORY/XLAP_LOCAL_STORAGE/public` neu muon xem lai qua URL `/storage`.
+- Neu can tach tiep private storage/log/cache/session ra workspace rieng, co the lam them theo nhom duong dan.
+
+### 2026-08-03 (Recreate local public storage link with Artisan)
+
+**Muc tieu:**
+Tao lai `public/storage` bang lenh Laravel `php artisan storage:link` theo storage root local rieng.
+
+**Thay doi chinh:**
+- Xac minh `public/storage` la Junction tro dung `D:/FFACTORY/XLAP_LOCAL_STORAGE/public`.
+- Xoa chi Junction cu, khong xoa folder target va khong xoa anh.
+- Chay `php artisan storage:link` bang PHP Laragon.
+- Laravel tao lai Junction `public/storage` toi `D:/FFACTORY/XLAP_LOCAL_STORAGE/public` thanh cong.
+- File test trong target van con nguyen sau khi tao lai link.
+
+**Affected modules:**
+- Public image URL `/storage/...` tren local.
+
+**Deploy impact:**
+- Khong anh huong VPS.
+
+**Queue impact:**
+- Khong doi queue; worker van ghi vao public disk local rieng.
+
+**Follow-up:**
+- Khi doi `XLAP_PUBLIC_STORAGE_PATH`, chay `php artisan optimize:clear` va tao lai `storage:link` neu target link thay doi.
+
+### 2026-08-03 (Switch v98 API endpoints back to v98store.com)
+
+**Muc tieu:**
+Doi endpoint API local tu `cheapkeyai.shop` ve lai `v98store.com` theo yeu cau user.
+
+**File da sua:**
+- `config/services.php`
+- `.env`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Balance: `https://v98store.com/check-balance`.
+- Text: `https://v98store.com/v1/chat/completions`.
+- Image generation: `https://v98store.com/v1/images/generations`.
+- Image edit: `https://v98store.com/v1/images/edits`.
+- Khong doi API key.
+- Chay `php artisan optimize:clear` va xac nhan runtime Laravel resolve dung 4 URL tren.
+
+**Affected modules:**
+- v98Store balance, text generation va image generation/edit tren local.
+
+**Deploy impact:**
+- Hien tai chi doi local. VPS chi doi neu user yeu cau deploy sau.
+
+**Queue impact:**
+- Khong doi logic queue; request moi se goi domain `v98store.com`.
+
+**Follow-up:**
+- Test lai v98Store balance va Retry title local.
+- Neu `v98store.com/v1` tiep tuc timeout thi day la van de endpoint/network, khong phai provider routing.
+
+### 2026-08-03 (Add SKU for Ornament Etsy create flow and tighten card layout)
+
+**Muc tieu:**
+Them truong SKU khi tao item Ornament Etsy va chinh card Ornament Etsy thanh 2 cot gap nho hon theo mockup user gui.
+
+**File da sua:**
+- `app/Livewire/Modals/OrnamentEtsy/AddProductDesign.php`
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `resources/views/livewire/modals/ornament-etsy/add-product-design.blade.php`
+- `resources/views/livewire/pages/ornament-etsy/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Modal Add Ornament Etsy co them input `SKU (optional)`.
+- Save flow truyen SKU vao `OrnamentEtsyService::createAsset(...)`.
+- Service tao asset da forward SKU vao repository `createWithSource(...)`.
+- Card Ornament Etsy hien badge `SKU: ...` giong style Sticker.
+- Doi grid card tu `lg:grid-cols-4` + `gap-5` thanh `lg:grid-cols-2` + `gap-2`.
+- Card Ornament Etsy van chi con 2 muc `Source Image` va `Create Master`; khong co `Mockup Tu Chon`.
+
+**Affected modules:**
+- Ornament Etsy create modal.
+- Ornament Etsy create persistence.
+- Ornament Etsy product card UI.
+
+**Deploy impact:**
+- Khong can migration.
+- Sau deploy nen clear view/cache.
+
+**Queue impact:**
+- Khong doi logic queue.
+
+**Follow-up:**
+- Neu can sua/edit SKU sau khi tao, co the bo sung SKU vao modal edit product detail cua Ornament Etsy.
+
+### 2026-08-03 (Refresh Ornament Etsy Create Master preview after regeneration)
+
+**Muc tieu:**
+Sua loi bam Create Master lan thu hai nhung card van hien anh master cu cho den khi mo review image.
+
+**Root cause:**
+Component `x-image-preview` giu Alpine state `currentSrc` trong DOM Livewire. Khi Livewire morph card sau lan generate moi, Alpine node cu co the khong khoi tao lai nen thumbnail tiep tuc hien URL cu.
+
+**File da sua:**
+- `resources/views/livewire/pages/ornament-etsy/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `wire:key` cho preview Create Master theo `asset_id` va hash cua `redesign_preview_url`.
+- Khi URL master thay doi sau lan generate moi, Livewire tao lai preview node, Alpine nhan `currentSrc` moi ngay tren card.
+
+**Affected modules:**
+- Ornament Etsy Create Master preview.
+
+**Deploy impact:**
+- Da clear va rebuild Blade view cache local.
+- Deploy server can clear view cache neu dang cache view.
+
+**Queue impact:**
+- Khong doi queue/generation logic.
+
+**Follow-up:**
+- Test generate Create Master hai lan lien tiep; lan thu hai phai hien anh moi ngay tren card, khong can bam vao mo review.
+
+### 2026-08-03 (Require Ornament Etsy SKU and match Sticker card size)
+
+**Muc tieu:**
+Sua card Ornament Etsy dang qua lon va doi SKU thanh bat buoc khi tao item.
+
+**File da sua:**
+- `app/Livewire/Modals/OrnamentEtsy/AddProductDesign.php`
+- `resources/views/livewire/modals/ornament-etsy/add-product-design.blade.php`
+- `resources/views/livewire/pages/ornament-etsy/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Validation SKU cua modal Add Ornament Etsy tu `nullable` sang `required`.
+- Label form doi tu `SKU (optional)` thanh `SKU`.
+- Card Ornament Etsy doi grid tu `lg:grid-cols-2` sang `lg:grid-cols-3` de kich thuoc anh/card gan Sticker hon.
+- Giu `gap-2` theo yeu cau user.
+
+**Affected modules:**
+- Ornament Etsy create modal validation/UI.
+- Ornament Etsy product card layout.
+
+**Deploy impact:**
+- Khong can migration.
+- Da clear va rebuild Blade cache local; deploy can clear view cache.
+
+**Queue impact:**
+- Khong doi queue.
+
+**Follow-up:**
+- Neu can edit SKU sau khi tao, them field SKU vao modal edit Ornament Etsy.
+
+### 2026-08-03 (Ornament Etsy equal two-card layout)
+
+**Muc tieu:**
+Dat Ornament Etsy thanh 2 card deu nhau theo yeu cau user, giu khoang cach `gap-2`.
+
+**File da sua:**
+- `resources/views/livewire/pages/ornament-etsy/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Thay grid 2 cot co chieu rong co dinh bang `grid grid-cols-1 gap-2 lg:grid-cols-2`.
+- Tren desktop Source Image va Create Master chiem 2 cot deu nhau; mobile van xep 1 cot.
+
+**Affected modules:**
+- Ornament Etsy product card UI.
+
+**Deploy impact:**
+- Da clear va rebuild Blade view cache local; deploy can clear view cache.
+
+**Queue impact:**
+- Khong doi queue.
+
+**Follow-up:**
+- Neu card van qua rong theo man hinh lon, can dat max-width cho toan card/container theo UI mong muon, khong nen co dinh tung cot.
+
+### 2026-08-03 (Add old Create Master gallery for Ornament Etsy)
+
+**Muc tieu:**
+Bo sung logic hien cac anh Create Master cu o duoi card Ornament Etsy va cho phep chon lai anh nao dang duoc dung.
+
+**File da sua:**
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `app/Livewire/Pages/OrnamentEtsy/ProductDesignCard.php`
+- `resources/views/livewire/pages/ornament-etsy/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `selectRedesign()` trong Ornament Etsy service de chon lai mot anh master cu lam `redesign` hien tai.
+- Them action `selectRedesign()` trong Livewire card.
+- Build `redesign_gallery` tu `redesign_candidates` va preview URL cua tung anh.
+- Hien gallery thumbnail `Anh Create Master da tao` o duoi muc `2. Create Master` khi co hon 1 anh.
+- Thumbnail dang duoc chon co border/ring xanh.
+- Bam thumbnail se doi anh do thanh master hien tai, khong mo modal review.
+
+**Affected modules:**
+- Ornament Etsy Create Master gallery va chon lai anh cu.
+
+**Deploy impact:**
+- Da clear va rebuild Blade cache local.
+- Deploy can clear view cache.
+
+**Queue impact:**
+- Khong doi queue/generation logic.
+
+**Follow-up:**
+- Neu muon co nut xoa mot candidate cu, co the noi tiep voi `removeRedesignCandidate()` cua repository.
+
+### 2026-08-03 (Fixed Navbar with scroll-centered single Offorest logo)
+
+**Muc tieu:**
+Chinh navbar Laravel Livewire de fixed tren cung; khi scroll hon 70px, dung mot cum logo + Offorest truot tu trai vao giua; khi scroll len thi tro ve trai.
+
+**Root cause:**
+Navbar cu dung `sticky` va logo nam trong flex flow, nen khong the di chuyen doc lap ma khong lam thay doi bo cuc cac nut.
+
+**File da sua:**
+- `resources/views/livewire/layout/navigation.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them Alpine state `scrolled: window.scrollY > 70` vao x-data hien tai.
+- Them `@scroll.window="scrolled = window.scrollY > 70"`; khong dung Livewire request cho scroll.
+- Doi navbar tu `sticky` sang `fixed left-3 right-3 top-1 z-50`.
+- Them `pt-[4.75rem]` vao wrapper de noi dung khong bi navbar fixed che.
+- Them `relative` cho inner navbar.
+- Chuyen dung mot link logo + chu Offorest thanh absolute.
+- Trang thai dau: `left-12 translate-x-0`; scroll: `left-1/2 -translate-x-1/2`.
+- Animation dung `transition-all duration-500 ease-in-out`.
+- Nut menu va nut dieu khien ben phai van trong flex flow, khong di chuyen.
+
+**Affected modules:**
+- Global authenticated navigation/navbar.
+
+**Deploy impact:**
+- Da clear va rebuild Blade cache local.
+- Deploy can clear view cache va build frontend neu CSS Tailwind production can scan class moi.
+
+**Queue impact:**
+- Khong doi queue.
+
+**Follow-up:**
+- Test desktop/mobile va scroll qua nguong 70px.
+- Neu build production khong nhan arbitrary class `pt-[4.75rem]`, chay `npm run build` sau deploy.
+
+### 2026-08-03 (Global back-to-top button)
+
+**Muc tieu:**
+Them nut o goc phai duoi cho toan bo trang de bam len dau trang.
+
+**File da sua:**
+- `resources/views/layouts/app.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them Alpine local state `showBackToTop: window.scrollY > 300`.
+- Theo doi `@scroll.window` tren client, khong gui Livewire request.
+- Nut duoc dat `fixed bottom-5 right-5 z-50`.
+- Hien/an bang `x-show` + `x-transition.opacity`.
+- Bam nut goi `window.scrollTo({ top: 0, behavior: 'smooth' })`.
+- Nut nam o layout chinh nen ap dung cho toan bo trang authenticated dung `layouts/app.blade.php`.
+
+**Affected modules:**
+- Global app layout.
+
+**Deploy impact:**
+- Da clear va rebuild Blade cache local.
+- Deploy can clear view cache.
+
+**Queue impact:**
+- Khong doi queue.
+
+### 2026-08-03 (Mark admin Ornament Etsy STT 2 unapproved locally)
+
+**Muc tieu:**
+Theo yeu cau user, chuyen item `STT: 2` cua admin ve trang thai chua duyet tren local DB.
+
+**Ket qua:**
+- Khong tim thay user ten/email `adminxlap` trong local DB.
+- Tim theo quyen admin thay user `#24 Xuân Lập <xuanlap250203@gmail.com>` co Ornament Etsy `STT: 2`.
+- Asset da cap nhat: `product_design_assets.id = 1934`, product `ornament-etsy`, keyword `lapdzok`.
+- Set `is_approved = false` va `approved_at = null`.
+
+**File da sua:**
+- Khong sua file code.
+- `AI_MEMORY.md` chi ghi nhat ky.
+
+**Affected modules:**
+- Local database product_design_assets.
+- Ornament Etsy status filter/UI se hien item nay o tab chua duyet sau refresh.
+
+**Deploy impact:**
+- Khong anh huong VPS.
+
+**Queue impact:**
+- Khong doi queue.
+
+### 2026-08-03 (Ornament Etsy approval flow for duplicate SKU)
+
+**Muc tieu:**
+Them luong duyet co xu ly SKU trung cho Ornament Etsy.
+
+**Root cause:**
+Truoc day SKU bi kiem tra unique ngay luc tao asset, nen khong the co nhieu ban chua duyet cung SKU de xu ly tai buoc Duyet. Nut Duyet cung goi thang toggleApproval, khong co lua chon thay the hay doi SKU.
+
+**File da sua:**
+- `app/Repositories/Product/ProductDesignAssetRepository.php`
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `app/Livewire/Pages/OrnamentEtsy/ProductDesignCard.php`
+- `resources/views/livewire/pages/ornament-etsy/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Cho phep tao asset Ornament Etsy co SKU trung o giai doan chua duyet; cac module khac van giu SKU unique mac dinh.
+- Khi SKU khong co item cu: Duyet thang.
+- Khi SKU da co item cu: mo popup hai lua chon.
+- `Xoa ban cu & duyet`: xoa local files cua cac asset cu cung SKU, xoa record cu, sau do duyet asset hien tai.
+- `Luu thanh item moi`: bat nhap SKU moi, kiem tra khong trung, cap nhat SKU hien tai va duyet.
+- Them cac action Livewire `requestApproval`, `approveReplacingExistingSku`, `approveAsNewSku`, `cancelApprovalConflict`.
+- Giu sync Drive/activity log sau khi duyet.
+
+**Affected modules:**
+- Ornament Etsy create SKU and approval workflow.
+
+**Deploy impact:**
+- Khong can migration.
+- Da clear va rebuild Blade cache local.
+- Deploy can clear view cache.
+
+**Queue impact:**
+- Khong doi queue logic; Drive upload sync chay sau khi duyet.
+
+**Follow-up:**
+- Test local bang 2 item Ornament Etsy cung SKU: bam Duyet item moi de thay popup, test ca hai lua chon.
+- Khong ap dung rule nay cho Sticker/Suncatcher/Ornament Amazon 2.
+
+### 2026-08-03
+
+**Muc tieu:**
+Hoan thien logic duyet Ornament Etsy theo so anh Create Master da tao, khong dua vao SKU trung; dong thoi dua STT 2 `lapdzok` ve trang thai chua duyet.
+
+**File da sua/tao:**
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `resources/views/livewire/pages/ornament-etsy/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Bo chan duyet theo `existingSkuAssets()` trong `toggleApproval()`; item chi can popup xu ly khi co hon 1 anh trong gallery Create Master.
+- Giu `approvalNeedsMasterResolution()` de bat popup khi `redesign_candidates` + `redesign` co nhieu hon 1 anh.
+- Giu 2 nhanh popup:
+  - `approveKeepingSelectedMaster()`: xoa cac anh Create Master cu trong storage, giu anh dang chon, cap nhat `redesign_candidates`, roi duyet item hien tai.
+  - `approveAsNewMasterItem()`: yeu cau SKU moi duy nhat, tao item moi bang anh dang chon va duyet item moi, item cu giu nguyen.
+- Sua lai `createAsset()` de Ornament Etsy quay ve kiem tra SKU trung ngay tu luc tao item.
+- Sua type return `masterCandidates()` thanh `SupportCollection` dung voi gia tri thuc te.
+- Sua Blade popup dung `wire:click="approveAsNewSku"` / `wire:target="approveAsNewSku"` de khop voi method Livewire.
+- Xac nhan asset `id=1934` (STT 2, keyword `lapdzok`) dang `is_approved = false`.
+
+**Loi da gap va cach xu ly:**
+- File `OrnamentEtsyService.php` bi BOM sau khi PowerShell ghi file, gay loi `Namespace declaration statement has to be the very first statement`; da ghi lai UTF-8 khong BOM.
+- `masterCandidates()` khai bao nham `Eloquent Collection` trong khi thuc te tra `SupportCollection`; da sua type hint.
+- Popup button "Tao item moi & duyet" truoc do goi sai ten method Livewire; da doi ve `approveAsNewSku`.
+
+**Logic can nho:**
+- Neu item chi co 1 anh Create Master thi bam Duyet se duyet thang, khong popup.
+- Neu item co nhieu anh Create Master thi bam Duyet se mo popup de chon 1 trong 2 cach xu ly.
+- Nhanh "Tao item moi & duyet" khong con dua vao SKU cu/cung item, ma tao item moi tu anh dang chon va bat buoc SKU moi duy nhat.
+- Nhanh "Xoa anh cu & duyet" co tinh chat pha huy file storage cua cac anh cu khong duoc chon.
+
+**Deploy / queue impact:**
+- Khong doi queue worker, supervisor hay env.
+- Can clear/view cache neu giao dien popup chua cap nhat tren moi truong dang chay.
+
+**Viec can lam tiep:**
+- Test local tren item co nhieu anh Create Master: popup, tao item moi bang SKU moi, va nhanh xoa anh cu.
+- Neu dua len VPS thi chay `php artisan view:clear` va `php artisan view:cache` sau khi deploy.
+
+### 2026-08-03
+
+**Muc tieu:**
+Fix loi approve popup Ornament Etsy bao `Call to undefined method ensureCanApprove()`.
+
+**File da sua:**
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Bo sung lai helper `ensureCanApprove()` de kiem tra item phai co it nhat 1 lifestyle/mockup truoc khi duyet.
+- Bo sung lai helper `approve()` de gom logic `setApproval(true)` va `syncForAsset()` cho ca nhanh duyet thuong va duyet trong popup.
+- Clear va rebuild Blade cache sau khi sua.
+
+**Root cause:**
+- Trong luc refactor logic duyet theo gallery Create Master, service da goi `ensureCanApprove()` va `approve()` nhung 2 helper nay chua ton tai trong `OrnamentEtsyService`.
+
+**Deploy / queue impact:**
+- Khong doi env hay queue worker.
+- Drive upload queue van sync nhu cu sau khi duyet thanh cong.
+
+**Viec can nho:**
+- Popup approve hien chi khi co nhieu hon 1 anh Create Master.
+- Nhanh `Xoa anh cu & duyet` va `Tao item moi & duyet` deu dung chung helper duyet vua duoc khoi phuc.
+
+### 2026-08-03
+
+**Muc tieu:**
+Fix nut `Tao item moi & duyet` khong chay khi item chi moi co Create Master.
+
+**File da sua:**
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `AI_MEMORY.md`
+
+**Root cause:**
+`ensureCanApprove()` chi cho phep item co lifestyle/mockup, trong khi flow moi yeu cau co Create Master la co the duyet/tach thanh item moi.
+
+**Thay doi chinh:**
+- Cho phep duyet neu asset co `redesign` Create Master; neu khong co redesign thi van yeu cau mockup/lifestyle.
+- Nut tao item moi van bat buoc SKU moi khong rong.
+- SKU moi duoc check bang `user_id + product_id`, tuc la chi trung neu cung user va cung trang Ornament Etsy; SKU o user/trang khac khong lam chan.
+- Asset `1934` da xac nhan co redesign; lookup SKU test tren user #24/product 8 hoat dong.
+
+**Deploy / queue impact:**
+- Khong doi queue hay env.
+- Da clear va rebuild view cache local.
+
+**Follow-up:**
+Reload local, nhap SKU moi chua ton tai trong Ornament Etsy cua user #24, roi bam `Tao item moi & duyet`. Neu SKU da ton tai cung trang, he thong se bao `SKU moi da ton tai`.
+
+### 2026-08-03
+
+**Muc tieu:**
+Bat buoc nhap SKU khi bam Duyet neu item Ornament Etsy chua co SKU.
+
+**File da sua:**
+- `app/Livewire/Pages/OrnamentEtsy/ProductDesignCard.php`
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `resources/views/livewire/pages/ornament-etsy/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Root cause:**
+Flow Duyet truoc do chi xu ly popup nhieu anh Create Master, nen item khong co SKU van co the di tiep hoac vao sai popup.
+
+**Thay doi chinh:**
+- Trong `requestApproval()`, neu item chua co `sku` thi mo popup `sku_required` truoc.
+- Them action `approveCurrentWithSku()` trong Livewire va Service de luu SKU cho chinh item hien tai.
+- SKU khi duyet item hien tai duoc check trung theo `user_id + product_id`, bo qua chinh asset dang sua.
+- Sau khi luu SKU:
+  - neu item co nhieu Create Master thi chuyen sang popup `master` de user chon xu ly anh cu,
+  - neu khong thi duyet thang.
+- Popup approve nay gio co 2 mode:
+  - `sku_required`: nhap SKU roi `Luu SKU & duyet`
+  - `master`: xu ly nhieu anh Create Master nhu truoc.
+
+**Deploy / queue impact:**
+- Khong doi env/queue.
+- Da clear va rebuild Blade cache local.
+
+**Logic can nho:**
+- Bam Duyet ma chua co SKU => bat buoc nhap SKU.
+- SKU trung chi tinh trong cung user va cung trang Ornament Etsy.
+- Item co nhieu Create Master chi xu ly sau khi da co SKU hop le.
+
+### 2026-08-03
+
+**Muc tieu:**
+Sua logic `Duyet thanh item moi` de anh Create Master duoc chuyen sang item moi thay vi bi copy va van nam o item cu.
+
+**File da sua:**
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `AI_MEMORY.md`
+
+**Root cause:**
+Flow `approveAsNewMasterItem()` truoc do tao item moi roi copy `redesign` vao item moi, nhung khong go anh da chon khoi `redesign_candidates` cua item cu. Vi vay user thay nhu da luu SKU/tao item moi nhung gallery item cu van giu anh do.
+
+**Thay doi chinh:**
+- `approveAsNewMasterItem()` nay chuyen anh Create Master dang chon sang item moi:
+  - item moi nhan `redesign` + `redesign_candidates` chi gom anh dang chon,
+  - item cu bi loai anh dang chon khoi `redesign_candidates`,
+  - `redesign` cua item cu doi sang anh con lai cuoi cung neu co.
+- Khong xoa file storage trong nhanh nay; chi tach quyen so huu/gallery giua item cu va item moi.
+- Da sua du lieu local cho asset `1934` de bo anh da tach sang item moi khoi gallery item cu.
+
+**Deploy / queue impact:**
+- Khong doi env/queue.
+- Can reload UI de thay gallery moi.
+
+**Logic can nho:**
+- `Duyet thanh item moi` = tach anh dang chon thanh item moi, item cu khong con giu anh do trong gallery.
+- `Xoa anh cu & duyet` = giu item hien tai va xoa file anh Create Master cu khong duoc chon.
+
+### 2026-08-03
+
+**Muc tieu:**
+Cho user chon API tao anh giua Vertex va v98Store tren Ornament Etsy; neu chi co 1 key thi chi hien 1 lua chon. Dong thoi cho user tu thay v98Store key trong Profile, chi can key bat dau bang `sk-`.
+
+**File da sua:**
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `app/Livewire/Pages/OrnamentEtsy/ListOrnamentEtsy.php`
+- `app/Livewire/Pages/OrnamentEtsy/OrnamentEtsyStatusPanel.php`
+- `app/Livewire/Pages/OrnamentEtsy/ProductDesignCard.php`
+- `resources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php`
+- `resources/views/livewire/pages/ornament-etsy/ornament-etsy-status-panel.blade.php`
+- `resources/views/livewire/profile/update-ai-provider-form.blade.php`
+- `AI_MEMORY.md`
+
+**Root cause:**
+- Ornament Etsy truoc do tao anh bang Vertex co dinh, khong co provider selector theo credential cua user.
+- User-side Profile chi cho chon provider mac dinh, chua co cho tu nhap/thay v98Store API key.
+
+**Thay doi chinh:**
+- Ornament Etsy nay co provider selector o header page:
+  - Vertex hien khi user co `vertexApiCredential` active.
+  - v98Store hien khi user co `user_api_credentials` active cho `provider_key = v98store`.
+  - Neu chi co 1 provider thi select chi co 1 option.
+- `generateRedesign()` cua Ornament Etsy nhan them `providerKey` + `imageModel`:
+  - `vertex` => dung `VertexImageGenerator` nhu cu.
+  - `v98store` => dung `ApiKeyImageGenerator` va gui anh qua endpoint v98Store.
+- Truyen `providerKey` / `imageModel` tu `ListOrnamentEtsy` -> `OrnamentEtsyStatusPanel` -> `ProductDesignCard`.
+- Trong Profile (`update-ai-provider-form`), them form `Luu v98 key`:
+  - luu key vao `user_api_credentials`,
+  - deactivate key v98Store cu cua chinh user,
+  - auto enable provider `v98store` cho user,
+  - validate toi thieu: key bat dau bang `sk-`.
+
+**Deploy / queue impact:**
+- Khong doi env hay queue worker.
+- Da clear va rebuild view cache local.
+
+**Logic can nho:**
+- Ornament Etsy provider options duoc tinh tu credential that cua user, khong phu thuoc hoan toan vao `enabledAiProviders` cu.
+- User co the tu doi v98Store key o Profile ma khong can admin.
+- Validation v98Store key hien tai chi yeu cau prefix `sk-` theo yeu cau user.
+
+### 2026-08-03
+
+**Muc tieu:**
+Lam cho badge `Tat ca / Chua duyet / Da duyet` cap nhat ngay sau cac thao tac Add / Duyet / sua workflow, khong can reload trang.
+
+**File da sua:**
+- `app/Livewire/Pages/Sticker/StickerStatusPanel.php`
+- `app/Livewire/Pages/Suncatcher/SuncatcherStatusPanel.php`
+- `app/Livewire/Pages/OrnamentEtsy/OrnamentEtsyStatusPanel.php`
+- `app/Livewire/Pages/OrnamentAmazonTwo/OrnamentAmazonTwoStatusPanel.php`
+- `AI_MEMORY.md`
+
+**Root cause:**
+Nhieu StatusPanel chi nhan event de rerender list, nhung `statusCounts` lai bi giu gia tri luc mount. Vi vay card/list co the doi ngay, nhung badge tong so khong doi cho den khi reload toan trang.
+
+**Thay doi chinh:**
+- Sticker, Suncatcher, Ornament Etsy: moi lan `render()` deu tinh lai `statusCounts` tu service.
+- Bo sung listener `*-product-design-updated` con thieu cho mot so StatusPanel de cac thay doi edit/delete-like cung kich hoat refresh count.
+- Ornament Amazon 2 da co tinh lai `statusCounts` trong `render()`, chi bo sung listener `ornament-amazon-two-product-design-updated` de dong bo hon.
+
+**Deploy / queue impact:**
+- Khong doi env/queue.
+- Da clear va rebuild view cache local.
+
+**Logic can nho:**
+- Neu action co dispatch event Livewire dung (`created`, `updated`, `approval-updated`, `workflow-updated`) thi badge se nhay so ngay.
+- Neu sau nay co them action moi ma badge khong doi, uu tien kiem tra action do co dispatch event den StatusPanel hay khong.
+
+### 2026-08-03
+
+**Muc tieu:**
+Doi v98Store API key ngay tren thanh API cua Ornament Etsy, khong can vao Profile.
+
+**File da sua/tao:**
+- `app/Livewire/Modals/Ai/ChangeV98StoreKey.php`
+- `resources/views/livewire/modals/ai/change-v98-store-key.blade.php`
+- `resources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php`
+- `resources/views/livewire/profile/update-ai-provider-form.blade.php`
+- `AI_MEMORY.md`
+
+**Root cause:**
+Form doi v98 key dat trong Profile khong tien cho user khi dang thao tac tao anh tren Ornament Etsy. User muon bam doi key ngay tai thanh provider va chi luu neu key co tien.
+
+**Thay doi chinh:**
+- Them nut `Change API v98` ngay canh select API, chi hien khi provider dang chon la `v98store`.
+- Them modal `modals.ai.change-v98-store-key`:
+  - nhap key `sk-...`,
+  - bam `Check key` goi endpoint `services.api_key_providers.v98store.balance_endpoint`,
+  - neu key sai / khong tra so du => bao loi key sai hoac khong check duoc,
+  - neu so du < `$1` => bao phai co it nhat `$1`,
+  - neu so du >= `$1` => hien nut `Save`.
+- Khi Save:
+  - deactivate cac v98 key active cu cua chinh user,
+  - tao credential v98Store moi,
+  - enable provider `v98store` cho user,
+  - dispatch toast thanh cong.
+- Go form nhap v98 key khoi Profile de dung yeu cau moi.
+
+**Deploy / queue impact:**
+- Khong doi queue/env.
+- Da clear va rebuild view cache local.
+
+**Logic can nho:**
+- Save chi duoc sau khi key vua check thanh cong va hash key khop voi key dang nhap.
+- Rule so du toi thieu cua v98Store la `$1`.
+
+### 2026-08-03
+
+**Muc tieu:**
+Modal Change API v98 tu dong check key khi user nhap va bao neu key do dang duoc user su dung.
+
+**File da sua:**
+- `app/Livewire/Modals/Ai/ChangeV98StoreKey.php`
+- `resources/views/livewire/modals/ai/change-v98-store-key.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Input dung `wire:model.live.debounce.700ms`, sau khi user ngung go se tu goi `updatedApiKey()` va check balance, khong con nut `Check key`.
+- Khi dang check hien `Dang kiem tra key...`.
+- Truoc khi goi v98 balance endpoint, he thong giai ma cac v98 credential active cua chinh user va so sanh bang `hash_equals`.
+- Neu trung key dang active, bao `Ban dang su dung key nay. Hay nhap key v98Store khac.` va khong cho Save.
+- Van giu rule: key phai bat dau `sk-`, balance phai doc duoc va >= `$1` thi moi hien Save.
+- Save van kiem tra hash key da test khop voi key hien tai de tranh user sua key sau khi check.
+
+**Deploy / queue impact:**
+- Khong doi env/queue.
+- Da clear va rebuild view cache local.
+
+### 2026-08-03
+
+**Muc tieu:**
+Fix truong hop modal Change API v98 van cho qua key trung khi user dang su dung key shared (`user_id = null`).
+
+**File da sua:**
+- `app/Livewire/Modals/Ai/ChangeV98StoreKey.php`
+- `AI_MEMORY.md`
+
+**Root cause:**
+Ham `isCurrentUserV98StoreKey()` truoc do chi check credential v98 active co `user_id = current user`, trong khi luong tao anh v98 co the fallback sang credential shared (`user_id = null`). Vi vay user nhap lai dung key dang dung nhung modal van coi la key moi hop le va tiep tuc check balance.
+
+**Thay doi chinh:**
+- Mo rong duplicate check sang tat ca credential `v98store` active co hieu luc voi user:
+  - key rieng cua user (`user_id = current user`)
+  - key shared (`user_id = null`)
+- Duplicate van duoc check truoc khi goi balance endpoint.
+
+**Logic can nho:**
+- Neu user dang dung v98 key shared, nhap lai key do se bao `Ban dang su dung key nay...` ngay, khong hien thong bao balance hop le.
+
+### 2026-08-03
+
+**Muc tieu:**
+Hien so du v98Store cua user ngay canh nut `Change API v98` tren toolbar Ornament Etsy.
+
+**File da sua:**
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `app/Livewire/Pages/OrnamentEtsy/ListOrnamentEtsy.php`
+- `resources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `v98StoreBalanceForUser()` cho Ornament Etsy, uu tien key rieng cua user va fallback key shared active.
+- Balance duoc cache 15 giay theo credential id de tranh goi endpoint lien tuc moi render.
+- Khi provider dang chon la v98Store, toolbar hien badge `$xx.xx` canh nut `Change API v98`.
+- Neu khong doc duoc balance thi hien `N/A`.
+
+**Deploy / queue impact:**
+- Khong doi env/queue.
+- Da clear va rebuild view cache local.
+
+### 2026-08-04
+
+**Muc tieu:**
+Them lua chon v98Store API cho trang Sticker giong Ornament Etsy, gom select API, so du balance, nut `Change API v98`, va tao anh qua provider dang chon.
+
+**File da sua:**
+- `app/Services/Sticker/StickerService.php`
+- `app/Livewire/Pages/Sticker/ListSticker.php`
+- `app/Livewire/Pages/Sticker/StickerStatusPanel.php`
+- `app/Livewire/Pages/Sticker/ProductDesignCard.php`
+- `resources/views/livewire/pages/sticker/list-sticker.blade.php`
+- `resources/views/livewire/pages/sticker/sticker-status-panel.blade.php`
+- `AI_MEMORY.md`
+
+**Root cause:**
+Sticker truoc do tao anh bang Vertex co dinh, khong co select provider tren toolbar va khong dung v98Store key cua user.
+
+**Thay doi chinh:**
+- Them provider options cho Sticker:
+  - `vertex` hien khi user co Vertex credential active.
+  - `v98store` hien khi user co v98 credential active rieng hoac shared.
+- Them toolbar Sticker:
+  - select `API`,
+  - hien nut `Change API v98` khi dang chon `v98store`,
+  - hien balance `$xx.xx` hoac `N/A` canh nut.
+- Truyen `providerKey` va `imageModel` tu `ListSticker` -> `StickerStatusPanel` -> `ProductDesignCard`.
+- `generateRedesign()` va `generateFinalImages()` cua Sticker nay di qua `generateImage()`:
+  - `vertex` dung `VertexImageGenerator`,
+  - `v98store` dung `ApiKeyImageGenerator` va gui anh qua v98Store.
+- Dung lai modal chung `modals.ai.change-v98-store-key` da co.
+
+**Deploy / queue impact:**
+- Khong doi queue/env.
+- Da clear va rebuild view cache local.
+
+**Follow-up:**
+- Test local: vao Sticker, chon v98Store, xem balance, bam Create Master de xac nhan request di qua v98 key user.
+
+### 2026-08-04
+
+**Muc tieu:**
+Fix loi 500 `Property [$selectedAiProvider] not found` tren trang Sticker sau khi them v98 provider.
+
+**File da sua:**
+- `app/Livewire/Pages/Sticker/ListSticker.php`
+- `app/Livewire/Pages/Sticker/StickerStatusPanel.php`
+- `AI_MEMORY.md`
+
+**Root cause:**
+Code render cua `ListSticker` da dung `$selectedAiProvider` va `$selectedImageModel`, nhung 2 Livewire public property chua duoc them thanh cong. Dong thoi `StickerStatusPanel::render()` co 2 dong tinh lai `statusCounts` bi lap.
+
+**Thay doi chinh:**
+- Them property session:
+  - `sticker.ai-provider` -> `$selectedAiProvider`
+  - `sticker.image-model` -> `$selectedImageModel`
+- Xoa dong tinh `statusCounts` trung lap trong StickerStatusPanel.
+- Da clear va rebuild view cache local.
+
+**Deploy / queue impact:**
+- Khong doi env/queue.
+- Reload trang Sticker sau khi deploy/local refresh.
+
+### 2026-08-04
+
+**Muc tieu:**
+Tach rieng v98Store API key theo tung trang, khong dung chung key giua Sticker va Ornament Etsy.
+
+**File da sua:**
+- `app/Livewire/Modals/Ai/ChangeV98StoreKey.php`
+- `app/Models/UserApiCredential.php`
+- `app/Services/Ai/ApiKeyImageGenerator.php`
+- `app/Services/Sticker/StickerService.php`
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `resources/views/livewire/pages/sticker/list-sticker.blade.php`
+- `resources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php`
+- `AI_MEMORY.md`
+
+**Root cause:**
+Credential v98Store truoc do chi loc theo `provider_key = v98store`, nen key luu o Sticker co the bi Ornament Etsy doc va dung chung.
+
+**Thay doi chinh:**
+- Dung cot `user_api_credentials.function_key` de tach key theo trang:
+  - Sticker: `sticker`
+  - Ornament Etsy: `ornament-etsy`
+- Modal Change API v98 luu, deactivate va duplicate-check trong dung scope trang.
+- Balance/provider option cua tung service chi doc credential dung scope.
+- `ApiKeyImageGenerator` nhan `functionKey` optional; Sticker/Ornament Etsy truyen scope khi tao anh de request di dung API key cua trang do.
+- Them `function_key` vao `$fillable` cua `UserApiCredential`.
+
+**Deploy / queue impact:**
+- Khong doi database migration, env hay queue.
+- Da lint PHP va clear/rebuild Blade view cache thanh cong.
+
+**Follow-up:**
+Neu them v98 cho trang khac, phai dat `function_key` rieng va truyen vao modal + service generator, khong dung lai scope cua Sticker/Ornament Etsy.
+
+### 2026-08-04
+
+**Muc tieu:**
+Fix loi 500 `Unknown column function_key` sau khi tach API key v98Store/CheapKeyAI theo tung trang.
+
+**Root cause:**
+Migration cu `2026_06_15_000040_simplify_user_api_credentials_for_api_keys` da xoa cot `function_key` trong `up()`, trong khi code scope key moi can cot nay.
+
+**File da tao:**
+- `database/migrations/2026_08_04_000060_add_function_key_to_user_api_credentials_table.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Migration moi them lai `function_key` neu database chua co, default `image_generation`.
+- Them index an toan cho `provider_key + function_key + is_active` va `user_id + provider_key + function_key`.
+- Da chay thanh cong migration local va `php artisan optimize:clear`.
+- Da xac nhan cot ton tai va query scope Sticker khong con loi SQL.
+
+**Deploy / queue impact:**
+- Khi dua len VPS phai chay `php artisan migrate --force` roi `php artisan optimize:clear`.
+- Khong anh huong queue.
+
+**Follow-up:**
+Credential cu tu dong co scope `image_generation`; muon dung key rieng theo trang thi luu lai key qua modal cua trang do.
+
+### 2026-08-04
+
+**Muc tieu:**
+Fix Sticker Create Master goi nham component va lam vo toan bo card.
+
+**Nguyen nhan goc:**
+- Trong `resources/views/livewire/pages/sticker/product-design-card.blade.php`, loading overlay dung `wire:target="$parent.generateRedesign"`.
+- Target nay huong Livewire ve `StickerStatusPanel`, dan den toast "Vui long tai lai..." va parent rerender lam cac card chi con header.
+
+**File da sua:**
+- `app/Livewire/Pages/Sticker/ProductDesignCard.php`
+- `resources/views/livewire/pages/sticker/product-design-card.blade.php`
+
+**Thay doi:**
+- Doi tat ca loading target cua Create Master sang `generateRedesign` cua chinh `ProductDesignCard`.
+- Bo dispatch workflow update sau Create Master de khong rerender `ListSticker`/`StickerStatusPanel`; card con tu rerender sau request va hien anh moi.
+- Ghi lai file PHP UTF-8 khong BOM de tranh loi namespace declaration.
+
+**Kiem tra:**
+- `php -l app\\Livewire\\Pages\\Sticker\\ProductDesignCard.php` pass.
+- `php -l app\\Livewire\\Pages\\Sticker\\StickerStatusPanel.php` pass.
+- `php artisan optimize:clear`, `php artisan view:cache`, `git diff --check` pass.
+
+**Deploy / queue:**
+- Khong doi queue. Khi deploy can clear cache va tai lai trinh duyet mot lan de bo Livewire snapshot cu.
+
+### 2026-08-04
+
+**Muc tieu:**
+Dong bo fix Create Master cho Ornament Etsy de tranh rerender parent lam nhay/vo card.
+
+**Thay doi:**
+- `app/Livewire/Pages/OrnamentEtsy/ProductDesignCard.php`: bo dispatch workflow update len `ListOrnamentEtsy` va `OrnamentEtsyStatusPanel` sau Create Master; card tu render lai sau action.
+- File khong dung `$parent.generateRedesign`; loading target dang nham vao `generateRedesign` cua chinh card.
+- Don dong rac `$this` va xac nhan PHP parse hop le.
+
+**Kiem tra:**
+- `php -l app\\Livewire\\Pages\\OrnamentEtsy\\ProductDesignCard.php` pass.
+- `php artisan optimize:clear` pass.
+- `php artisan view:cache` pass.
+
+**Deploy / queue:**
+Khong doi queue. Khi deploy can clear cache va tai lai trang Ornament Etsy mot lan de bo snapshot Livewire cu.

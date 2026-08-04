@@ -91,6 +91,7 @@ class SuncatcherStatusPanel extends Component
     }
 
     #[On('product-design-created')]
+    #[On('suncatcher-product-design-updated')]
     #[On('suncatcher-product-design-approval-updated')]
     #[On('suncatcher-product-design-workflow-updated')]
     public function refreshAssets(): void
@@ -130,6 +131,8 @@ class SuncatcherStatusPanel extends Component
 
     public function render(): View
     {
+        $this->statusCounts = app(SuncatcherService::class)->statusCountsForUser(auth()->user());
+
         $assets = app(SuncatcherService::class)->paginatedAssetsForUser(
             auth()->user(),
             $this->perPage,
@@ -159,6 +162,8 @@ class SuncatcherStatusPanel extends Component
         if (! Schema::hasTable('data_ornament_amazon')) {
             return;
         }
+
+        $this->statusCounts = app(SuncatcherService::class)->statusCountsForUser(auth()->user());
 
         $assets = app(SuncatcherService::class)->paginatedAssetsForUser(
             auth()->user(),

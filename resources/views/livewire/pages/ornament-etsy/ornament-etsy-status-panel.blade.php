@@ -39,6 +39,8 @@
             <livewire:pages.ornament-etsy.product-design-card
                 :asset-id="$asset->id"
                 :active-psd-template-name="$activePsdTemplateName"
+                :provider-key="$providerKey"
+                :image-model="$imageModel"
                 :key="'ornament-etsy-'.$status.'-product-design-card-'.$asset->id"
             />
         @empty

@@ -31,6 +31,7 @@ class ApiKeyImageGenerator
         string $folder,
         bool $removeBackground = false,
         ?string $model = null,
+        ?string $functionKey = null,
     ): string {
         $providerKey = $this->normalizeProviderKey($providerKey);
 
@@ -42,6 +43,7 @@ class ApiKeyImageGenerator
             folder: $folder,
             removeBackground: $removeBackground,
             model: $model,
+            functionKey: $functionKey,
         );
     }
 
@@ -55,6 +57,7 @@ class ApiKeyImageGenerator
         string $folder,
         bool $removeBackground = false,
         ?string $model = null,
+        ?string $functionKey = null,
     ): string {
         $providerKey = $this->normalizeProviderKey($providerKey);
         $endpoint = $this->imageEndpoint($providerKey, false);
@@ -63,7 +66,7 @@ class ApiKeyImageGenerator
             throw new RuntimeException("Provider {$this->providerLabel($providerKey)} da co key nhung chua cau hinh endpoint tao anh.");
         }
 
-        $credential = $this->credentialFor($user, $providerKey);
+        $credential = $this->credentialFor($user, $providerKey, $functionKey);
         $response = $this->postImageJsonWithRetries($providerKey, $this->credentialKeyApi($credential, $providerKey), $endpoint, [
             'model' => $this->imageModel($providerKey, $model),
             'prompt' => $prompt,
@@ -96,6 +99,7 @@ class ApiKeyImageGenerator
         string $folder,
         bool $removeBackground = false,
         ?string $model = null,
+        ?string $functionKey = null,
     ): string {
         $providerKey = $this->normalizeProviderKey($providerKey);
         $endpoint = $this->imageEndpoint($providerKey, true);
@@ -104,7 +108,7 @@ class ApiKeyImageGenerator
             throw new RuntimeException("Provider {$this->providerLabel($providerKey)} da co key nhung chua cau hinh endpoint tao anh.");
         }
 
-        $credential = $this->credentialFor($user, $providerKey);
+        $credential = $this->credentialFor($user, $providerKey, $functionKey);
         $images = collect($imageUris)
             ->filter(fn (string $imageUri): bool => trim($imageUri) !== '')
             ->unique()
@@ -203,13 +207,19 @@ class ApiKeyImageGenerator
         return trim($content);
     }
 
-    private function credentialFor(User $user, string $providerKey): UserApiCredential
+    private function credentialFor(User $user, string $providerKey, ?string $functionKey = null): UserApiCredential
     {
         $providerKey = $this->normalizeProviderKey($providerKey);
 
-        $credential = UserApiCredential::query()
+        $credentialQuery = UserApiCredential::query()
             ->where('provider_key', $providerKey)
-            ->where('is_active', true)
+            ->where('is_active', true);
+
+        if (is_string($functionKey) && trim($functionKey) !== '') {
+            $credentialQuery->where('function_key', trim($functionKey));
+        }
+
+        $credential = $credentialQuery
             ->where(function ($query) use ($user): void {
                 $query->where('user_id', $user->id)
                     ->orWhereNull('user_id');

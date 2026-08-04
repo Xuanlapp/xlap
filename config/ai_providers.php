@@ -39,5 +39,22 @@ return [
                 'gpt-5-mini' => 'GPT-5 Mini',
             ],
         ],
+        'cheapkeyai' => [
+            'label' => 'CheapKeyAI',
+            'description' => 'CheapKeyAI image/text generation API.',
+            'model' => env('CHEAPKEYAI_IMAGE_MODEL', 'gpt-image-2'),
+            'image_models' => [
+                'gpt-image-2' => 'GPT Image 2',
+            ],
+            'text_models' => [
+                'gpt-5.4' => 'GPT-5.4 (best)',
+                'gpt-5.4-mini' => 'GPT-5.4 Mini',
+                'gpt-5.4-nano' => 'GPT-5.4 Nano',
+                'gpt-5.2' => 'GPT-5.2',
+                'gpt-5.1' => 'GPT-5.1',
+                'gpt-5' => 'GPT-5',
+                'gpt-5-mini' => 'GPT-5 Mini',
+            ],
+        ],
     ],
 ];

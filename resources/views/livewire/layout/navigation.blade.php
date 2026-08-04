@@ -87,9 +87,9 @@ new class extends Component
     $avatarClass = $avatarPalettes[$avatarSeed % count($avatarPalettes)];
 @endphp
 
-<div x-data="{ sidebarOpen: false, userMenuOpen: false, isDark: {{ $themeMode === 'dark' ? 'true' : 'false' }} }" x-init="document.documentElement.classList.toggle('theme-dark', isDark); document.documentElement.classList.toggle('theme-light', !isDark)" x-on:keydown.escape.window="sidebarOpen = false; userMenuOpen = false">
-    <div class="sticky top-0 z-40 border-b border-slate-200 bg-gray-100 px-3 py-2 text-slate-950">
-        <div class="flex h-11 items-center rounded-xl border border-slate-300 bg-white px-2 shadow-sm">
+<div class="pt-[4.75rem]" x-data="{ sidebarOpen: false, userMenuOpen: false, isDark: {{ $themeMode === 'dark' ? 'true' : 'false' }}, scrolled: window.scrollY > 70 }" @scroll.window="scrolled = window.scrollY > 70" x-init="document.documentElement.classList.toggle('theme-dark', isDark); document.documentElement.classList.toggle('theme-light', !isDark)" x-on:keydown.escape.window="sidebarOpen = false; userMenuOpen = false">
+    <div class="fixed left-3 right-3 top-1 z-50 border-b border-slate-200 bg-gray-100 px-3 py-2 text-slate-950">
+        <div class="relative flex h-11 items-center rounded-xl border border-slate-300 bg-white px-2 shadow-sm">
         <button
             type="button"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none"
@@ -103,11 +103,16 @@ new class extends Component
             </svg>
         </button>
 
-        <a href="{{ route('dashboard') }}" wire:navigate class="ml-2 flex min-w-0 items-center gap-2 focus:outline-none">
+        <a
+            href="{{ route('dashboard') }}"
+            wire:navigate
+            class="absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-2 whitespace-nowrap transition-all duration-500 ease-in-out focus:outline-none"
+            :class="scrolled ? 'left-1/2 -translate-x-1/2' : 'left-12 translate-x-0'"
+        >
             <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 shadow-sm">
                 <x-application-logo class="h-6 w-6" />
             </span>
-            <span class="truncate text-sm font-semibold">Offorest</span>
+            <span class="text-sm font-semibold">Offorest</span>
         </a>
 
 <button

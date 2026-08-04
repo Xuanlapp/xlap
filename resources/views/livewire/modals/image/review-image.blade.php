@@ -534,7 +534,7 @@
                                 </section>
                             @endif
 
-                            @if (! $assetApproved && $action === 'sticker-redesign')
+                            @if (! $assetApproved && in_array($action, ['sticker-redesign', 'ornament-etsy-redesign'], true))
                                 <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div class="mb-4 flex items-center gap-3">
                                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
@@ -545,7 +545,7 @@
                                         <h3 class="text-sm font-bold text-slate-950">Custom Prompt</h3>
                                     </div>
 
-                                    <form wire:submit.prevent="customizeStickerRedesign" class="space-y-3">
+                                    <form wire:submit.prevent="{{ $action === 'ornament-etsy-redesign' ? 'customizeOrnamentEtsyRedesign' : 'customizeStickerRedesign' }}" class="space-y-3">
                                         <textarea
                                             x-ref="customPromptInput"
                                             wire:model.defer="customPrompt"
@@ -561,14 +561,14 @@
                                         <button
                                             type="submit"
                                             wire:loading.attr="disabled"
-                                            wire:target="customizeStickerRedesign"
+                                            wire:target="{{ $action === 'ornament-etsy-redesign' ? 'customizeOrnamentEtsyRedesign' : 'customizeStickerRedesign' }}"
                                             class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                                 <path d="M12 2 14.7 9.3 22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z" />
                                             </svg>
-                                            <span wire:loading.remove wire:target="customizeStickerRedesign">Generate Variation</span>
-                                            <span wire:loading wire:target="customizeStickerRedesign">Generating...</span>
+                                            <span wire:loading.remove wire:target="{{ $action === 'ornament-etsy-redesign' ? 'customizeOrnamentEtsyRedesign' : 'customizeStickerRedesign' }}">Generate Variation</span>
+                                            <span wire:loading wire:target="{{ $action === 'ornament-etsy-redesign' ? 'customizeOrnamentEtsyRedesign' : 'customizeStickerRedesign' }}">Generating...</span>
                                         </button>
                                     </form>
                                 </section>
@@ -599,7 +599,7 @@
                                             </svg>
                                         </button>
 
-                                        <button type="button" wire:click="createStickerItemFromImage" class="group flex w-full items-center gap-4 rounded-xl border border-violet-200 bg-violet-50/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 hover:shadow-md">
+                                        <button type="button" wire:click="{{ $action === 'ornament-etsy-redesign' ? 'createOrnamentEtsyItemFromImage' : 'createStickerItemFromImage' }}" class="group flex w-full items-center gap-4 rounded-xl border border-violet-200 bg-violet-50/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 hover:shadow-md">
                                             <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-violet-600 shadow-sm">
                                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                     <path d="M12 5v14M5 12h14" />
@@ -639,8 +639,8 @@
                                     <button type="button" x-on:click="modalVisible = false" wire:click="close" class="inline-flex min-w-32 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                                         Close
                                     </button>
-                                    @if ($action === 'sticker-redesign')
-                                        <button type="button" wire:click="selectAsStickerRedesign" class="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
+                                    @if (in_array($action, ['sticker-redesign', 'ornament-etsy-redesign'], true))
+                                        <button type="button" wire:click="{{ $action === 'ornament-etsy-redesign' ? 'selectAsOrnamentEtsyRedesign' : 'selectAsStickerRedesign' }}" class="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                 <path d="M20 6 9 17l-5-5" />
                                             </svg>

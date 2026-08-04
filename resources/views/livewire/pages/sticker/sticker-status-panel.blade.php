@@ -39,7 +39,9 @@
             <livewire:pages.sticker.product-design-card
                 :asset-id="$asset->id"
                 :active-psd-template-name="$activePsdTemplateName"
-                :key="'sticker-'.$status.'-product-design-card-'.$asset->id.'-'.$asset->updated_at?->timestamp"
+                :provider-key="$providerKey"
+                :image-model="$imageModel"
+                :key="'sticker-'.$status.'-product-design-card-'.$asset->id"
             />
         @empty
             <div class="rounded-lg border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">

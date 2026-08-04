@@ -116,5 +116,18 @@ return [
             'image_attempts' => env('V98STORE_IMAGE_ATTEMPTS', 4),
             'image_timeout_seconds' => env('V98STORE_IMAGE_TIMEOUT_SECONDS', 120),
         ],
+        'cheapkeyai' => [
+            'balance_endpoint' => env('CHEAPKEYAI_BALANCE_ENDPOINT', 'https://cheapkeyai.shop/check-balance'),
+            'image_generation_endpoint' => env('CHEAPKEYAI_IMAGE_GENERATION_ENDPOINT', 'https://cheapkeyai.shop/v1/images/generations'),
+            'image_edit_endpoint' => env('CHEAPKEYAI_IMAGE_EDIT_ENDPOINT', 'https://cheapkeyai.shop/v1/images/edits'),
+            'image_endpoint' => env('CHEAPKEYAI_IMAGE_ENDPOINT'),
+            'text_endpoint' => env('CHEAPKEYAI_TEXT_ENDPOINT', 'https://cheapkeyai.shop/v1/chat/completions'),
+            'model' => env('CHEAPKEYAI_IMAGE_MODEL', 'gpt-image-2'),
+            'text_model' => env('CHEAPKEYAI_TEXT_MODEL', 'gpt-5.4'),
+            'image_min_interval_ms' => env('CHEAPKEYAI_IMAGE_MIN_INTERVAL_MS', 2500),
+            'text_min_interval_ms' => env('CHEAPKEYAI_TEXT_MIN_INTERVAL_MS', 700),
+            'image_attempts' => env('CHEAPKEYAI_IMAGE_ATTEMPTS', 4),
+            'image_timeout_seconds' => env('CHEAPKEYAI_IMAGE_TIMEOUT_SECONDS', 120),
+        ],
     ],
 ];

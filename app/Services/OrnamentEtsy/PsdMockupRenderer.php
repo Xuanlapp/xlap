@@ -27,7 +27,7 @@ class PsdMockupRenderer
             throw new RuntimeException('Chua cau hinh PSD renderer. Can set PSD_MOCKUP_RENDERER_COMMAND de render layer Design.');
         }
 
-        $outputDirectory = storage_path("app/public/generated/suncatcher-etsy/mockups/{$assetId}");
+        $outputDirectory = Storage::disk('public')->path("generated/suncatcher-etsy/mockups/{$assetId}");
         File::ensureDirectoryExists($outputDirectory);
         $this->clearPngFiles($outputDirectory);
 
