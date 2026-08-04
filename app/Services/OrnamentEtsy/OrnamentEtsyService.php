@@ -91,8 +91,16 @@ class OrnamentEtsyService
             $options['vertex'] = $configured['vertex']['label'] ?? 'Vertex';
         }
 
-        if (UserApiCredential::query()->where('user_id', $user->id)->where('provider_key', 'v98store')->where('function_key', 'ornament-etsy')->where('is_active', true)->exists()) {
+        if (UserApiCredential::query()->where('provider_key', 'v98store')->where('function_key', 'ornament-etsy')->where('is_active', true)->where(function ($query) use ($user): void {
+            $query->where('user_id', $user->id)->orWhereNull('user_id');
+        })->exists()) {
             $options['v98store'] = $configured['v98store']['label'] ?? 'v98Store';
+        }
+
+        if (UserApiCredential::query()->where('provider_key', 'cheapkeyai')->where('function_key', 'ornament-etsy')->where('is_active', true)->where(function ($query) use ($user): void {
+            $query->where('user_id', $user->id)->orWhereNull('user_id');
+        })->exists()) {
+            $options['cheapkeyai'] = $configured['cheapkeyai']['label'] ?? 'CheapKeyAI';
         }
 
         return $options;

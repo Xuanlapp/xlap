@@ -6,6 +6,7 @@ use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\OrnamentEtsy\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -19,10 +20,13 @@ class OrnamentEtsyStatusPanel extends Component
 
     public int $perPage;
 
+    #[Reactive]
     public ?string $activePsdTemplateName = null;
 
+    #[Reactive]
     public ?string $providerKey = null;
 
+    #[Reactive]
     public ?string $imageModel = null;
 
     /**

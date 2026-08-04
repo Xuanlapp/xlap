@@ -11,6 +11,7 @@ use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 use RuntimeException;
 use Throwable;
@@ -21,10 +22,13 @@ class ProductDesignCard extends Component
 
     public int $assetId;
 
+    #[Reactive]
     public ?string $activePsdTemplateName = null;
 
+    #[Reactive]
     public ?string $providerKey = null;
 
+    #[Reactive]
     public ?string $imageModel = null;
 
     public bool $approvalConflictOpen = false;
