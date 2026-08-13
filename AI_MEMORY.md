@@ -1,4 +1,4 @@
-﻿# AI MEMORY
+# AI MEMORY
 
 File nÃ y dÃ¹ng Ä‘á»ƒ lÆ°u láº¡i quÃ¡ trÃ¬nh AI Ä‘Ã£ lÃ m trong project.
 TrÆ°á»›c khi lÃ m tiáº¿p, AI pháº£i Ä‘á»c file nÃ y trÆ°á»›c.
@@ -4088,7 +4088,7 @@ Them nut `Reset IP` cho tung dong proxy, xac nhan Yes/No truoc khi goi API reset
 - `AI_MEMORY.md`
 
 **Thay doi chinh:**
-- Them `ProxyMonitorService::resetProxyIp()` goi `http://offorest.ddns.net/reset?proxy={port}` bang Laravel HTTP client.
+- Them `ProxyMonitorService::resetProxyIp()` goi `http://offorest.duckdns.org/reset?proxy={port}` bang Laravel HTTP client.
 - Port reset lay tu `data_hub_proxy_items.port`, fallback tu `mvlanN => 9800 + N`.
 - Backend kiem tra user co quyen xem item proxy truoc khi reset; admin/full proxy access duoc reset tat ca item hien hoat dong.
 - Them Livewire action `resetProxyIp()` de goi service, toast thanh cong/that bai.
@@ -5357,3 +5357,115 @@ Dong bo fix Create Master cho Ornament Etsy de tranh rerender parent lam nhay/vo
 
 **Deploy / queue:**
 Khong doi queue. Khi deploy can clear cache va tai lai trang Ornament Etsy mot lan de bo snapshot Livewire cu.
+
+### 2026-08-04
+
+**Muc tieu:**
+Hien lai nut Auto tren card Suncatcher khi user da tao thu cong mot so buoc va van con buoc chua xong.
+
+**File da sua:**
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Bo dieu kien cu an Auto khi Script da co output.
+- Tinh trang thieu output theo Main Image, Script, Person A, Person B, Prompt create va du 6 Mockup.
+- Nut Auto hien khi con bat ky buoc nao chua co output, khong bi an chi vi automation truoc do da completed.
+- Backend Suncatcher da co logic skip buoc da co output, nen Auto se tiep tuc tu buoc con thieu.
+
+**Affected modules:**
+- Suncatcher product design card UI.
+- Suncatcher automation workflow.
+
+**Deploy impact:**
+- Khong doi database, migration, queue worker hoac env.
+- Neu deploy production, clear/recompile Blade cache bang `php artisan view:cache` hoac `php artisan optimize:clear`.
+
+**Queue impact:**
+- Khong doi queue; cac buoc da co output van duoc backend bo qua.
+
+**Follow-up notes:**
+- Neu Auto van khong hien, kiem tra asset da approved hay automation dang `waiting/running/failed`; cac trang thai nay van co chu y khong cho bam trung.
+
+### 2026-08-05
+
+**Muc tieu:**
+Tach provider Listing metadata theo tung trang va chi dung credential cua chinh user do.
+
+**File da sua:**
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `app/Services/Ai/ApiKeyImageGenerator.php`
+- `app/Services/Vertex/VertexImageGenerator.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Suncatcher va Ornament Amazon 2 tao Listing metadata bang `cheapkeyai` thay vi `v98store`.
+- CheapKeyAI cho Listing metadata bat buoc dung `UserApiCredential` cua chinh user va dung dung `function_key` theo trang (`suncatcher`, `ornament-amazon-2`).
+- Sticker va Ornament Etsy tao Listing metadata bang Vertex va bat buoc dung Vertex credential cua chinh user, khong fallback sang key shared/null.
+- Mo rong `ApiKeyImageGenerator::generateText()` de nhan `functionKey` va resolve dung key theo trang.
+- `generateEtsyMetadata()` cung ep Vertex `userCredentialOnly = true` de khong lay key cua user khac.
+
+**Root cause:**
+- Listing metadata dang hard-code `v98store` cho Suncatcher/Ornament Amazon 2.
+- Vertex text generation co the fallback `orWhereNull('user_id')`, nen co nguy co lay credential shared thay vi key rieng cua user.
+- API-key text generation chua truyen `function_key`, nen co the lay nham key khac trang.
+
+**Affected modules:**
+- Marketplace listing metadata logs.
+- Retry title / queue command `GenerateMarketplaceListingMetadata`.
+- Resolve API credential cho CheapKeyAI va Vertex text generation.
+
+**Deploy impact:**
+- Khong doi database, migration, env hay queue worker.
+- Sau khi pull code nen chay `php artisan optimize:clear` de clear cache class/view neu can.
+
+**Queue impact:**
+- Queue listing metadata se bat dau fail dung neu user chua co dung key tren dung trang, thay vi am tham lay key chung/khac trang.
+
+**Follow-up notes:**
+- Neu user bao loi thieu credential, can kiem tra `user_api_credentials.function_key` co dung `suncatcher` hoac `ornament-amazon-2` khong.
+- Sticker va Ornament Etsy can co Vertex active gan cho dung user do moi chay duoc listing metadata.
+
+### 2026-08-13
+
+**Muc tieu:**
+Doi hostname proxy cu `offorest.ddns.net` sang `offorest.duckdns.org` trong toan bo project.
+
+**File da sua:**
+- `app/Services/Proxy/ProxyMonitorService.php`
+- `database/migrations/2026_07_03_090000_add_proxy_product_and_data_hub_proxy_tables.php`
+- `docs/architecture.md`
+- `docs/memory.md`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Reset proxy URL doi tu `http://offorest.ddns.net/reset` sang `http://offorest.duckdns.org/reset`.
+- Default proxy source seed doi tu `http://offorest.ddns.net:16869/proxy_list` sang `http://offorest.duckdns.org/proxy_list`.
+- Cap nhat tai lieu proxy data hub theo hostname moi.
+
+**Root cause:**
+- Host cu `offorest.ddns.net` khong con resolve DNS, trong khi `offorest.duckdns.org` resolve va port `16869` ket noi TCP thanh cong.
+
+**Affected modules:**
+- Proxy reset action.
+- Proxy Data Hub seed/default source URL.
+- Docs/memory ve proxy source.
+
+**Deploy impact:**
+- Khong doi schema DB.
+- Neu database da co san record source_url cu, migration cu khong tu update lai record da seed; can update DB bang SQL hoac UI neu dang dung data cu.
+
+**Queue impact:**
+- Khong doi queue. Command refresh proxy se dung URL trong DB hien tai; neu DB con URL cu thi can update record.
+
+**Follow-up notes:**
+- Chay `php artisan optimize:clear` sau deploy.
+- Kiem tra bang `data_hub_proxy.source_url` tren VPS/local de dam bao khong con URL cu.
+
+### 2026-08-13
+
+**Cap nhat proxy URL:**
+- User yeu cau bo port `:16869`.
+- Proxy Data Hub source URL chuan la `http://offorest.duckdns.org/proxy_list`.
+- Proxy reset URL giu `http://offorest.duckdns.org/reset?proxy={port}`.
+- Khong doi database schema hay queue worker.

@@ -153,6 +153,7 @@ class ApiKeyImageGenerator
         string $prompt,
         ?string $model = null,
         bool $json = true,
+        ?string $functionKey = null,
     ): string {
         $providerKey = $this->normalizeProviderKey($providerKey);
         $endpoint = $this->textEndpoint($providerKey);
@@ -161,7 +162,7 @@ class ApiKeyImageGenerator
             throw new RuntimeException("Provider {$this->providerLabel($providerKey)} da co key nhung chua cau hinh endpoint tao text.");
         }
 
-        $credential = $this->credentialFor($user, $providerKey);
+        $credential = $this->credentialFor($user, $providerKey, $functionKey);
 
         $messages = [];
 

@@ -9,6 +9,7 @@ use App\Http\Controllers\SuncatcherWorkflowImageController;
 use App\Http\Controllers\OrnamentAmazonTwoWorkflowImageController;
 use App\Http\Controllers\Webhook\TelegramWebhookController;
 use App\Livewire\Pages\Admin\ActivityLogs;
+use App\Livewire\Pages\Admin\AiModels;
 use App\Livewire\Pages\Admin\ApiCredits;
 use App\Livewire\Pages\Admin\ListUser;
 use App\Livewire\Pages\Admin\MailTest;
@@ -72,6 +73,10 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('admin/api-credits', ApiCredits::class)
         ->middleware('admin')
         ->name('offorest.admin.api-credits');
+
+    Route::get('admin/ai-models', AiModels::class)
+        ->middleware('admin')
+        ->name('offorest.admin.ai-models');
 
     Route::get('admin/mail-test', MailTest::class)
         ->middleware('admin')

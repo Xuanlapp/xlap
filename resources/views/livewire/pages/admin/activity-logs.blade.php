@@ -10,6 +10,9 @@
             <a href="{{ route('offorest.admin.users') }}" wire:navigate class="inline-flex items-center justify-center rounded-md border border-white/10 px-4 py-2 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white">
                 User access
             </a>
+            <a href="{{ route('offorest.admin.ai-models') }}" wire:navigate class="inline-flex items-center justify-center rounded-md border border-white/10 px-4 py-2 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white">
+                AI Models
+            </a>
         </div>
 
         <div class="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-4">

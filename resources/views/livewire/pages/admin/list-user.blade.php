@@ -10,7 +10,7 @@
                         </svg>
                     </div>
                     <div class="min-w-0">
-                        <h1 class="text-base font-bold text-slate-950">User access</h1>
+                        <div class="flex items-center gap-2"><h1 class="text-base font-bold text-slate-950">User access</h1><a href="{{ route('offorest.admin.ai-models') }}" wire:navigate class="inline-flex items-center rounded-md border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700 transition hover:bg-slate-50">AI Models</a></div>
                         <p class="mt-0.5 text-xs text-slate-500">Quan ly user va cac chuc nang duoc phep su dung.</p>
                     </div>
                 </div>

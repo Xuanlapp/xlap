@@ -30,6 +30,15 @@
             ->count();
         $hasAllDbMockups = ($dbMockupCount === 6);
         $scriptReady = !empty($workflow['script']) && is_array($workflow['script'] ?? null);
+        $personAReady = filled($workflow['b2']['person_a_ref'] ?? null);
+        $personBReady = filled($workflow['b2']['person_b_ref'] ?? null);
+        $promptReady = ! empty($workflow['prompts']) && is_array($workflow['prompts'] ?? null);
+        $hasIncompleteAutomationStep = ! filled($asset->redesign)
+            || ! $scriptReady
+            || ! $personAReady
+            || ! $personBReady
+            || ! $promptReady
+            || ! $hasAllDbMockups;
         if (! $currentAutomationStep && ($automationActive || $automationFailed)) {
             foreach ($automationSteps as $stepKey => $stepLabel) {
                 if (($automationStepData[$stepKey]['status'] ?? null) !== 'done') {
@@ -45,7 +54,10 @@
         $promptGenerating = $automationRunning && $currentAutomationStep === 'prompt';
         $mainActionDisabled = $automationActive;
         $workflowLocked = in_array($automationStatus, ['waiting', 'running', 'failed', 'completed'], true) || $hasAllDbMockups;
-        $canShowAuto = ! $asset->is_approved && ! $scriptReady && ! $automationActive && ! $automationFailed && $automationStatus !== 'completed';
+        $canShowAuto = ! $asset->is_approved
+            && $hasIncompleteAutomationStep
+            && ! $automationActive
+            && ! $automationFailed;
         $canShowContinue = false;
         $canShowRetry = ! $asset->is_approved && $asset->redesign && $automationFailed && $currentAutomationStep === 'mockup' && $dbMockupCount < 6;
         $canShowApprove = ! $asset->is_approved && filled($asset->redesign) && $hasAllDbMockups;
@@ -364,7 +376,12 @@
                 @endif
             </div>
 
-            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <div
+                class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+                x-data="{ mainActionRunning: false }"
+                x-on:suncatcher-workflow-action-started.window="if (Number($event.detail?.assetId || 0) === Number(@js($asset->id)) && $event.detail?.action === 'main') { mainActionRunning = true }"
+                x-on:suncatcher-workflow-action-finished.window="if (Number($event.detail?.assetId || 0) === Number(@js($asset->id)) && $event.detail?.action === 'main') { mainActionRunning = false }"
+            >
                 @if ($mainGenerating)
                     <div class="absolute inset-0 z-20 flex items-center justify-center bg-white/92 backdrop-blur-sm">
                         <div class="flex flex-col items-center gap-2 text-center text-blue-700">
@@ -373,6 +390,15 @@
                         </div>
                     </div>
                 @endif
+
+                <template x-if="mainActionRunning && ! @js((bool) $mainGenerating)">
+                    <div class="absolute inset-0 z-20 flex items-center justify-center bg-white/92 backdrop-blur-sm">
+                        <div class="flex flex-col items-center gap-2 text-center text-blue-700">
+                            <span class="h-9 w-9 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700"></span>
+                            <span class="text-xs font-bold text-slate-700">Creating main image...</span>
+                        </div>
+                    </div>
+                </template>
 
                 <div wire:loading.flex wire:target="mainImageUpload,updatedMainImageUpload" class="absolute inset-0 z-20 items-center justify-center bg-white/82 backdrop-blur-sm">
                     <div class="flex h-14 w-14 items-center justify-center rounded-full border border-blue-200 bg-blue-50 shadow-lg">
@@ -408,7 +434,12 @@
                 @endif
             </div>
 
-            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-violet-100 bg-white shadow-sm ring-1 ring-violet-950/[0.03]">
+            <div
+                class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-violet-100 bg-white shadow-sm ring-1 ring-violet-950/[0.03]"
+                x-data="{ scriptActionRunning: false }"
+                x-on:suncatcher-workflow-action-started.window="if (Number($event.detail?.assetId || 0) === Number(@js($asset->id)) && $event.detail?.action === 'script') { scriptActionRunning = true }"
+                x-on:suncatcher-workflow-action-finished.window="if (Number($event.detail?.assetId || 0) === Number(@js($asset->id)) && $event.detail?.action === 'script') { scriptActionRunning = false }"
+            >
                 @if ($scriptGenerating)
                     <div class="absolute inset-0 z-20 flex items-center justify-center bg-white/92 backdrop-blur-sm">
                         <div class="flex flex-col items-center gap-2 text-center text-violet-700">
@@ -417,6 +448,15 @@
                         </div>
                     </div>
                 @endif
+
+                <template x-if="scriptActionRunning && ! @js((bool) $scriptGenerating)">
+                    <div class="absolute inset-0 z-20 flex items-center justify-center bg-white/92 backdrop-blur-sm">
+                        <div class="flex flex-col items-center gap-2 text-center text-violet-700">
+                            <span class="h-9 w-9 animate-spin rounded-full border-4 border-violet-200 border-t-violet-700"></span>
+                            <span class="text-xs font-bold text-slate-700">Writing script...</span>
+                        </div>
+                    </div>
+                </template>
                 <div class="h-full w-full">
                     @if ($topScriptTabs->isNotEmpty())
                         <div
@@ -1344,9 +1384,3 @@
     </div>
 
 </article>
-
-
-
-
-
-

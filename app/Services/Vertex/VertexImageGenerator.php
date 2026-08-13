@@ -133,13 +133,21 @@ class VertexImageGenerator
      */
     public function generateText(User $user, string $prompt, bool $userCredentialOnly = false): string
     {
-        $credential = VertexApiCredential::query()
-            ->where('is_active', true)
-            ->where(function ($query) use ($user): void {
-                $query->where('user_id', $user->id)
-                    ->orWhereNull('user_id');
-            })
-            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+        $credentialQuery = VertexApiCredential::query()
+            ->where('is_active', true);
+
+        if ($userCredentialOnly) {
+            $credentialQuery->where('user_id', $user->id);
+        } else {
+            $credentialQuery
+                ->where(function ($query) use ($user): void {
+                    $query->where('user_id', $user->id)
+                        ->orWhereNull('user_id');
+                })
+                ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id]);
+        }
+
+        $credential = $credentialQuery
             ->latest('id')
             ->first();
 

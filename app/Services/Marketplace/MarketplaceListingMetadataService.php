@@ -445,21 +445,35 @@ PROMPT;
     {
         $prompt = $this->prompt($this->amazonPromptTemplate($asset), $asset);
 
-        if (in_array($asset->product?->slug ?? null, ['suncatcher', 'ornament-amazon-2'], true)) {
-            if (! $asset->user->canUseAiProvider('v98store')) {
-                throw new RuntimeException('User duoc duyet item nay chua bat provider v98Store cho Listing metadata logs.');
-            }
+        $productSlug = $asset->product?->slug ?? null;
 
-            $this->ensureV98StoreBalance($asset->user, $asset->product?->slug ?? null);
+        if (in_array($productSlug, ['suncatcher', 'ornament-amazon-2'], true)) {
+            $this->ensureUserOwnsApiCredential($asset->user, 'cheapkeyai', $productSlug);
 
-            return $this->apiKeyGenerator->generateText($asset->user, 'v98store', $prompt, 'gpt-5.4');
+            return $this->apiKeyGenerator->generateText(
+                user: $asset->user,
+                providerKey: 'cheapkeyai',
+                prompt: $prompt,
+                model: 'gpt-5.4',
+                functionKey: $productSlug,
+            );
         }
 
-        if (($asset->product?->slug ?? null) === 'sticker') {
-            return $this->generator->generateText($asset->user, $prompt, true);
-        }
+        return $this->generator->generateText($asset->user, $prompt, true);
+    }
 
-        return $this->generator->generateText($asset->user, $prompt);
+    private function ensureUserOwnsApiCredential(User $user, string $providerKey, string $functionKey): void
+    {
+        $hasCredential = UserApiCredential::query()
+            ->where('user_id', $user->id)
+            ->where('provider_key', $providerKey)
+            ->where('function_key', $functionKey)
+            ->where('is_active', true)
+            ->exists();
+
+        if (! $hasCredential) {
+            throw new RuntimeException("User chua cau hinh CheapKeyAI active cho trang {$functionKey} de tao Listing metadata.");
+        }
     }
 
     private function ensureV98StoreBalance(User $user, ?string $productSlug = null): void
@@ -605,7 +619,7 @@ PROMPT;
     private function generateEtsyMetadata(ProductDesignAsset $asset): ProductDesignAsset
     {
         $payload = $this->jsonPayload(
-            $this->generator->generateText($asset->user, $this->prompt(self::ETSY_PROMPT_TEMPLATE, $asset)),
+            $this->generator->generateText($asset->user, $this->prompt(self::ETSY_PROMPT_TEMPLATE, $asset), true),
         );
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [

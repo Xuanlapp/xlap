@@ -1,7 +1,6 @@
 <div
     x-data="{
         activeTab: @js($activeStatus),
-        showScrollTop: false,
         setTab(tab) {
             if (this.activeTab === tab) {
                 return;
@@ -12,9 +11,6 @@
             window.Livewire.dispatch('suncatcher-active-status-changed', { status: tab });
             window.dispatchEvent(new CustomEvent('suncatcher-tab-changed', { detail: { tab } }));
         },
-        scrollToTop() {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
     }"
     x-init="
         if (['all', 'unapproved', 'approved'].includes(localStorage.getItem('suncatcher.status-filter')) && localStorage.getItem('suncatcher.status-filter') !== activeTab) {
@@ -81,7 +77,7 @@
     class="min-h-[calc(100vh-4rem)] bg-[#f3f4f6] text-slate-950"
 >
     <div class="mx-auto max-w-[1520px] px-4 py-5 sm:px-6 lg:px-8">
-        <div class="mb-4 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div class="relative z-30 mb-4 overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
             <div class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex min-w-0 items-center gap-3">
                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-600">
@@ -98,36 +94,51 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
-                    @if (count($providerOptions) > 0)
-                        <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
-                            <span>API</span>
-                            <select
-                                wire:model.live="selectedAiProvider"
-                                class="h-7 cursor-pointer rounded-md border-0 bg-slate-100 py-0 pl-2 pr-7 text-xs font-semibold text-slate-700 transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6366f1]"
-                            >
-                                @foreach ($providerOptions as $providerKey => $providerLabel)
-                                    <option value="{{ $providerKey }}">{{ $providerLabel }}</option>
-                                @endforeach
-                            </select>
-                            @if (($selectedAiProvider ?? null) === 'v98store' && ! empty($v98StoreBalance))
-                                @if ($v98StoreBalance['ok'] ?? false)
-                                    <span
-                                        class="inline-flex h-7 items-center rounded-md bg-emerald-50 px-2 text-xs font-bold text-emerald-700"
-                                        title="{{ $v98StoreBalance['name'] ?? 'v98Store balance' }}"
-                                    >
-                                        ${{ number_format((float) ($v98StoreBalance['remain_quota'] ?? 0), 2) }}
-                                    </span>
-                                @else
-                                    <span
-                                        class="inline-flex h-7 items-center rounded-md bg-amber-50 px-2 text-xs font-bold text-amber-700"
-                                        title="{{ $v98StoreBalance['message'] ?? 'Balance unavailable' }}"
-                                    >
-                                        N/A
-                                    </span>
+                    <div class="inline-flex items-center gap-2">
+                        @if (count($providerOptions) > 0)
+                            <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
+                                <span>API</span>
+                                <select
+                                    wire:model.live="selectedAiProvider"
+                                    class="h-7 cursor-pointer rounded-md border-0 bg-slate-100 py-0 pl-2 pr-7 text-xs font-semibold text-slate-700 transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6366f1]"
+                                >
+                                    @foreach ($providerOptions as $providerKey => $providerLabel)
+                                        <option value="{{ $providerKey }}">{{ $providerLabel }}</option>
+                                    @endforeach
+                                </select>
+                                @if (($selectedAiProvider ?? null) === 'v98store' && ! empty($v98StoreBalance))
+                                    @if ($v98StoreBalance['ok'] ?? false)
+                                        <span class="inline-flex h-7 items-center rounded-md bg-emerald-50 px-2 text-xs font-bold text-emerald-700" title="{{ $v98StoreBalance['name'] ?? 'v98Store balance' }}">
+                                            ${{ number_format((float) ($v98StoreBalance['remain_quota'] ?? 0), 2) }}
+                                        </span>
+                                    @else
+                                        <span class="inline-flex h-7 items-center rounded-md bg-amber-50 px-2 text-xs font-bold text-amber-700" title="{{ $v98StoreBalance['message'] ?? 'Balance unavailable' }}">N/A</span>
+                                    @endif
                                 @endif
-                            @endif
-                        </label>
-                    @endif
+                            </label>
+                        @endif
+
+                        <div class="relative z-50" x-data="{ open: false }" x-on:click.outside="open = false">
+                            <button type="button" x-on:click="open = ! open" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700" title="Them API Suncatcher">
+                                <span class="text-lg font-bold leading-none">+</span>
+                            </button>
+                            <div x-cloak x-show="open" x-transition class="absolute left-0 top-full z-[100] mt-2 w-48 rounded-lg border border-slate-200 bg-white p-1 shadow-xl">
+                                @if (! array_key_exists('v98store', $providerOptions))
+                                    <button type="button" x-on:click="open = false" wire:click="$dispatch('openModal', { component: 'modals.ai.change-v98-store-key', arguments: { functionKey: 'suncatcher' } })" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"><span class="text-base leading-none">+</span> API v98</button>
+                                @endif
+                                @if (! array_key_exists('cheapkeyai', $providerOptions))
+                                    <button type="button" x-on:click="open = false" wire:click="$dispatch('openModal', { component: 'modals.ai.change-cheap-key-ai-key', arguments: { functionKey: 'suncatcher' } })" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"><span class="text-base leading-none">+</span> API CheapKeyAI</button>
+                                @endif
+                                @if (array_key_exists('v98store', $providerOptions) && array_key_exists('cheapkeyai', $providerOptions))
+                                    <div class="px-3 py-2 text-xs font-semibold text-slate-400">Da co du API</div>
+                                @endif
+                            </div>
+                        </div>
+
+                        @if (($selectedAiProvider ?? null) === 'v98store' || ($selectedAiProvider ?? null) === 'cheapkeyai')
+                            <button type="button" wire:click="$dispatch('openModal', { component: '{{ ($selectedAiProvider ?? null) === 'cheapkeyai' ? 'modals.ai.change-cheap-key-ai-key' : 'modals.ai.change-v98-store-key' }}', arguments: { functionKey: 'suncatcher' } })" class="inline-flex h-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700">{{ ($selectedAiProvider ?? null) === 'cheapkeyai' ? 'Change API CheapKeyAI' : 'Change API v98' }}</button>
+                        @endif
+                    </div>
 
                     @if (count($textModelOptions) > 0)
                         <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
@@ -229,26 +240,9 @@
     <livewire:modals.suncatcher.psd-mockup-template />
     <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
+    <livewire:modals.ai.change-v98-store-key function-key="suncatcher" />
+    <livewire:modals.ai.change-cheap-key-ai-key function-key="suncatcher" />
 
-    <button
-        type="button"
-        x-cloak
-        x-show="showScrollTop"
-        x-on:scroll.window="showScrollTop = window.scrollY > 500"
-        x-on:click="scrollToTop()"
-        x-transition:enter="transition duration-200 ease-out"
-        x-transition:enter-start="translate-y-2 opacity-0"
-        x-transition:enter-end="translate-y-0 opacity-100"
-        x-transition:leave="transition duration-150 ease-in"
-        x-transition:leave-start="translate-y-0 opacity-100"
-        x-transition:leave-end="translate-y-2 opacity-0"
-        aria-label="Len dau trang"
-        title="Len dau trang"
-        class="fixed bottom-6 right-6 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full bg-cyan-600 text-white shadow-lg shadow-cyan-950/20 ring-1 ring-cyan-700/20 transition hover:-translate-y-0.5 hover:bg-cyan-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600"
-    >
-        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m5 15 7-7 7 7" />
-        </svg>
-    </button>
+
 
 </div>

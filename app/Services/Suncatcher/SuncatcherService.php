@@ -14,7 +14,9 @@ use App\Models\UserApiCredential;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use App\Repositories\Product\ProductRepository;
 use App\Repositories\Prompt\PromptRepository;
+use App\Services\Ai\AiProviderModelService;
 use App\Services\Ai\ApiKeyImageGenerator;
+use App\Services\Ai\CheapKeyAiImageGenerator;
 use App\Services\Product\ProductBackgroundRemovalService;
 use App\Services\Product\ProductDesignAssetFileCleanupService;
 use App\Services\Product\ProductDriveUploadQueueService;
@@ -83,6 +85,7 @@ class SuncatcherService
         private readonly PromptRepository $prompts,
         private readonly VertexImageGenerator $generator,
         private readonly ApiKeyImageGenerator $apiKeyGenerator,
+        private readonly CheapKeyAiImageGenerator $cheapKeyAiGenerator,
         private readonly ProductBackgroundRemovalService $backgroundRemoval,
         private readonly ProductDriveUploadQueueService $driveUploadQueue,
         private readonly ProductDesignAssetFileCleanupService $fileCleanup,
@@ -128,19 +131,18 @@ class SuncatcherService
      */
     public function providerOptionsForUser(User $user): array
     {
-        $providerOptions = config('ai_providers.providers', []);
-        $allowedProviderKeys = ['v98store'];
+        $configured = config('ai_providers.providers', []);
+        $options = [];
 
-        return $user->enabledAiProviders()
-            ->pluck('provider_key')
-            ->map(fn (string $providerKey): string => Str::lower(trim($providerKey)))
-            ->unique()
-            ->filter(fn (string $providerKey): bool => in_array($providerKey, $allowedProviderKeys, true))
-            ->filter(fn (string $providerKey): bool => array_key_exists($providerKey, $providerOptions))
-            ->mapWithKeys(fn (string $providerKey): array => [
-                $providerKey => $providerOptions[$providerKey]['label'] ?? $providerKey,
-            ])
-            ->all();
+        foreach (['v98store', 'cheapkeyai'] as $providerKey) {
+            if (UserApiCredential::query()->where('provider_key', $providerKey)->where('function_key', 'suncatcher')->where('is_active', true)->where(function ($query) use ($user): void {
+                $query->where('user_id', $user->id)->orWhereNull('user_id');
+            })->exists()) {
+                $options[$providerKey] = $configured[$providerKey]['label'] ?? $providerKey;
+            }
+        }
+
+        return $options;
     }
 
     /**
@@ -172,6 +174,7 @@ class SuncatcherService
 
         $credential = UserApiCredential::query()
             ->where('provider_key', 'v98store')
+            ->where('function_key', 'suncatcher')
             ->where('is_active', true)
             ->where(function ($query) use ($user): void {
                 $query->where('user_id', $user->id)
@@ -2813,6 +2816,18 @@ class SuncatcherService
             );
         }
 
+        if ($providerKey === 'cheapkeyai') {
+            return $this->cheapKeyAiGenerator->generate(
+                user: $user,
+                imageUri: $imageUri,
+                prompt: $prompt,
+                folder: $folder,
+                removeBackground: $removeBackground,
+                model: $imageModel,
+                functionKey: 'suncatcher',
+            );
+        }
+
         return $this->apiKeyGenerator->generate(
             user: $user,
             providerKey: $providerKey,
@@ -2821,6 +2836,7 @@ class SuncatcherService
             folder: $folder,
             removeBackground: $removeBackground,
             model: $imageModel,
+            functionKey: 'suncatcher',
         );
     }
 
@@ -2859,13 +2875,13 @@ PROMPT;
             return $fallback;
         }
 
-        throw new RuntimeException('Tai khoan nay chua duoc cau hinh v98Store active de tao text/image.');
+        throw new RuntimeException('Tai khoan nay chua cau hinh v98Store hoac CheapKeyAI active cho Suncatcher.');
     }
 
     private function ensureApiKeyProvider(string $providerKey): void
     {
-        if ($providerKey !== 'v98store') {
-            throw new RuntimeException('Workflow Suncatcher chi dung v98Store.');
+        if (! in_array($providerKey, ['v98store', 'cheapkeyai'], true)) {
+            throw new RuntimeException('Workflow Suncatcher chi dung v98Store hoac CheapKeyAI.');
         }
     }
 
@@ -2941,13 +2957,24 @@ PROMPT;
     private function modelOptionsForProvider(?string $providerKey, string $key): array
     {
         $providerKey = trim((string) $providerKey);
-        $options = config("ai_providers.providers.{$providerKey}.{$key}", []);
+        $fallback = [];
 
-        return is_array($options)
-            ? collect($options)
-                ->filter(fn (mixed $label, mixed $model): bool => is_string($model) && is_string($label))
-                ->all()
-            : [];
+        if ($key === 'text_models') {
+            $fallback = ['gpt-4.1-nano' => 'GPT-4.1 Nano'];
+        } else {
+            $options = config("ai_providers.providers.{$providerKey}.{$key}", []);
+            $fallback = is_array($options)
+                ? collect($options)
+                    ->filter(fn (mixed $label, mixed $model): bool => is_string($model) && is_string($label))
+                    ->all()
+                : [];
+        }
+
+        return app(AiProviderModelService::class)->options(
+            $providerKey,
+            $key === 'text_models' ? 'text' : 'image',
+            $fallback,
+        );
     }
 
     public function clearProviderPause(User $user, ?string $providerKey = 'v98store'): void

@@ -58,7 +58,7 @@ class ProxyMonitorService
             ->findOrFail($itemId);
 
         $port = $this->resetPortForItem($item);
-        $response = Http::timeout(30)->get('http://offorest.ddns.net/reset', [
+        $response = Http::timeout(30)->get('http://offorest.duckdns.org/reset', [
             'proxy' => $port,
         ]);
         $response->throw();

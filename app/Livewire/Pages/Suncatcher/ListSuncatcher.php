@@ -69,6 +69,22 @@ class ListSuncatcher extends Component
         //
     }
 
+    #[On('v98store-key-updated')]
+    public function v98StoreKeyUpdated(): void
+    {
+        $this->selectedAiProvider = 'v98store';
+        $this->selectedImageModel = null;
+        $this->selectedTextModel = null;
+    }
+
+    #[On('cheapkeyai-key-updated')]
+    public function cheapKeyAiKeyUpdated(): void
+    {
+        $this->selectedAiProvider = 'cheapkeyai';
+        $this->selectedImageModel = null;
+        $this->selectedTextModel = null;
+    }
+
     #[On('psd-mockup-template-updated')]
     public function psdMockupTemplateUpdated(): void
     {

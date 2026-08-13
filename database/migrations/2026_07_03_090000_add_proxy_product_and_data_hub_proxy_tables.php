@@ -55,7 +55,7 @@ return new class extends Migration
 
         $proxyId = DB::table('data_hub_proxy')->insertGetId([
             'name' => 'Offorest Proxy List',
-            'source_url' => 'http://offorest.ddns.net:16869/proxy_list',
+            'source_url' => 'http://offorest.duckdns.org/proxy_list',
             'is_active' => true,
             'created_at' => $now,
             'updated_at' => $now,
