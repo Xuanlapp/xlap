@@ -5469,3 +5469,23 @@ Doi hostname proxy cu `offorest.ddns.net` sang `offorest.duckdns.org` trong toan
 - Proxy Data Hub source URL chuan la `http://offorest.duckdns.org/proxy_list`.
 - Proxy reset URL giu `http://offorest.duckdns.org/reset?proxy={port}`.
 - Khong doi database schema hay queue worker.
+
+### 2026-08-13
+
+**Muc tieu:**
+Cap nhat record DB dang hien tren trang Proxy List vi UI van hien URL cu `offorest.ddns.net:16869`.
+
+**Thay doi:**
+- Update local DB bang Eloquent: `data_hub_proxy.source_url` tu `http://offorest.ddns.net:16869/proxy_list` sang `http://offorest.duckdns.org/proxy_list`.
+
+**Root cause:**
+- UI Proxy List doc URL tu database `data_hub_proxy.source_url`.
+- Sua migration chi anh huong moi truong tao moi, khong tu thay doi record da seed san.
+
+**Affected modules:**
+- Trang Proxy List.
+- Proxy refresh source URL.
+
+**Deploy / DB impact:**
+- Can chay SQL/Eloquent update tuong tu tren VPS neu VPS van con URL cu.
+- Khong doi schema, khong doi queue.
