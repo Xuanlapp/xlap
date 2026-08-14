@@ -2632,7 +2632,7 @@ class SuncatcherService
                     'GenerateSuncatcherWorkflowImage',
                     'RegenerateSuncatcherPreviewImage',
                 ]) && Str::contains($payload, $assetIdMarkers);
-            })();
+            });
     }
 
     private function markQueuedPreviewSlotsAsFailed(ProductDesignAsset $asset, string $message): void

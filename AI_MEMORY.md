@@ -5997,3 +5997,23 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Validation:**
 - PHP lint pass cho ca hai modal.
+## 2026-08-14 - Fix Suncatcher bool is not callable in pending job check
+
+**Root cause:**
+- SuncatcherService::hasPendingAutomationJob() ket thuc Eloquent Collection contains(...) bang })(); thay vi });.
+- contains() tra ve bool, dau () thua co gang goi bool nhu function va gay Value of type bool is not callable tai dong 2635.
+
+**File da sua:**
+- pp/Services/Suncatcher/SuncatcherService.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**
+- Doi ->contains(function (...) {...})(); thanh ->contains(function (...) {...});.
+- Ham tiep tuc tra ve boolean de UI biet item co job Suncatcher dang cho hay khong.
+
+**Deploy/queue impact:**
+- Khong migration.
+- Deploy file va chay php artisan optimize:clear; khong can restart worker de fix render/Livewire nay.
+
+**Validation:**
+- PHP lint pass va da kiem tra body ham hasPendingAutomationJob().
