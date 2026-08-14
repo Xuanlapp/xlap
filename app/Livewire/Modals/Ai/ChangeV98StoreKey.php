@@ -4,6 +4,7 @@ namespace App\Livewire\Modals\Ai;
 
 use App\Models\UserApiCredential;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;

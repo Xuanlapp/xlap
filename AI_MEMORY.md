@@ -5976,3 +5976,24 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 **Validation:**
 - php -l app/Services/Marketplace/MarketplaceListingMetadataService.php pass.
 - Da xac minh dong 529 khong con hard-code model cho tat ca provider.
+## 2026-08-14 - Fix missing DB facade import in API key modals
+
+**Root cause:**
+- ChangeCheapKeyAiKey va ChangeV98StoreKey da dung DB::transaction() nhung thieu use Illuminate\Support\Facades\DB;.
+- PHP hieu DB thanh App\Livewire\Modals\Ai\DB, gay loi Class not found khi save key tren VPS.
+
+**File da sua:**
+- pp/Livewire/Modals/Ai/ChangeCheapKeyAiKey.php
+- pp/Livewire/Modals/Ai/ChangeV98StoreKey.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**
+- Them import DB facade cho ca hai modal.
+- Logic transaction xoa key cu va tao key moi duoc giu nguyen.
+
+**Deploy/queue impact:**
+- Khong migration va khong anh huong queue.
+- Deploy 2 file, chay php artisan optimize:clear; khong can restart worker cho loi nay.
+
+**Validation:**
+- PHP lint pass cho ca hai modal.
