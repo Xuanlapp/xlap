@@ -117,7 +117,7 @@ return [
             'image_timeout_seconds' => env('V98STORE_IMAGE_TIMEOUT_SECONDS', 120),
         ],
         'cheapkeyai' => [
-            'balance_endpoint' => env('CHEAPKEYAI_BALANCE_ENDPOINT', 'https://cheapkeyai.shop/check-balance'),
+            'balance_endpoint' => env('CHEAPKEYAI_BALANCE_ENDPOINT', 'https://cheapkeyai.shop/v1/balance'),
             'image_generation_endpoint' => env('CHEAPKEYAI_IMAGE_GENERATION_ENDPOINT', 'https://cheapkeyai.shop/v1/images/generations'),
             'image_edit_endpoint' => env('CHEAPKEYAI_IMAGE_EDIT_ENDPOINT', 'https://cheapkeyai.shop/v1/images/edits'),
             'image_endpoint' => env('CHEAPKEYAI_IMAGE_ENDPOINT'),

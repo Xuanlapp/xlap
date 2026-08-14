@@ -136,22 +136,36 @@ class StickerService
             return ['ok' => false, 'message' => 'No key'];
         }
 
-        return Cache::remember("cheapkeyai-balance:{$credential->id}", now()->addSeconds(15), function () use ($credential): array {
+        return (function () use ($credential): array {
             try {
                 $key = trim((string) $credential->key_api);
                 $endpoint = trim((string) config('services.api_key_providers.cheapkeyai.balance_endpoint'));
-                $response = Http::timeout(10)->get($endpoint, ['key' => $key]);
+                $response = Http::timeout(10)->withToken($key)->get($endpoint);
                 $payload = $response->json();
 
-                if ($response->failed() || ! is_array($payload) || ! is_numeric($payload['remain_quota'] ?? null)) {
+                $data = is_array($payload) ? ($payload['data'] ?? null) : null;
+                $userBalance = is_array($data) && is_numeric($data['user_balance'] ?? null) ? (float) $data['user_balance'] : null;
+                $keyRemainQuota = is_array($data) && is_numeric($data['key_remain_quota'] ?? null) ? (float) $data['key_remain_quota'] : null;
+                $keyUnlimitedQuota = is_array($data) && ($data['key_unlimited_quota'] ?? false) === true;
+
+                if ($response->failed() || ($payload['success'] ?? false) !== true || ! is_array($data) || $userBalance === null || (! $keyUnlimitedQuota && $keyRemainQuota === null)) {
                     return ['ok' => false, 'message' => 'Balance unavailable'];
                 }
 
-                return ['ok' => true, 'remain_quota' => $payload['remain_quota'] + 0];
+                $balance = $keyUnlimitedQuota || $keyRemainQuota === null
+                    ? $userBalance
+                    : $keyRemainQuota / 500000;
+
+                return [
+                    'ok' => true,
+                    'balance' => $balance,
+                    'name' => is_string($data['key_name'] ?? null) ? $data['key_name'] : null,
+                    'key_unlimited_quota' => $keyUnlimitedQuota,
+                ];
             } catch (Throwable) {
                 return ['ok' => false, 'message' => 'Balance unavailable'];
             }
-        });
+        })();
     }
 
     /** @return array<string, string> */
@@ -188,14 +202,28 @@ class StickerService
             try {
                 $key = trim((string) $credential->key_api);
                 $endpoint = trim((string) config('services.api_key_providers.v98store.balance_endpoint'));
-                $response = Http::timeout(10)->get($endpoint, ['key' => $key]);
+                $response = Http::timeout(10)->withToken($key)->get($endpoint);
                 $payload = $response->json();
 
-                if ($response->failed() || ! is_array($payload) || ! is_numeric($payload['remain_quota'] ?? null)) {
+                $data = is_array($payload) ? ($payload['data'] ?? null) : null;
+                $userBalance = is_array($data) && is_numeric($data['user_balance'] ?? null) ? (float) $data['user_balance'] : null;
+                $keyRemainQuota = is_array($data) && is_numeric($data['key_remain_quota'] ?? null) ? (float) $data['key_remain_quota'] : null;
+                $keyUnlimitedQuota = is_array($data) && ($data['key_unlimited_quota'] ?? false) === true;
+
+                if ($response->failed() || ($payload['success'] ?? false) !== true || ! is_array($data) || $userBalance === null || (! $keyUnlimitedQuota && $keyRemainQuota === null)) {
                     return ['ok' => false, 'message' => 'Balance unavailable'];
                 }
 
-                return ['ok' => true, 'remain_quota' => $payload['remain_quota'] + 0];
+                $balance = $keyUnlimitedQuota || $keyRemainQuota === null
+                    ? $userBalance
+                    : $keyRemainQuota / 500000;
+
+                return [
+                    'ok' => true,
+                    'balance' => $balance,
+                    'name' => is_string($data['key_name'] ?? null) ? $data['key_name'] : null,
+                    'key_unlimited_quota' => $keyUnlimitedQuota,
+                ];
             } catch (Throwable) {
                 return ['ok' => false, 'message' => 'Balance unavailable'];
             }
@@ -320,7 +348,9 @@ class StickerService
             throw new RuntimeException('Dong nay chua co image_link.');
         }
 
-        return $this->assets->updateRedesign(
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+
+        return $this->assets->updateRedesignWithProvider(
             $asset,
             $this->generateImage(
                 user: $user,
@@ -331,6 +361,7 @@ class StickerService
                 removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
                 imageModel: $imageModel,
             ),
+            $providerKey,
         );
     }
 
@@ -637,6 +668,7 @@ class StickerService
         return $content;
     }
 }
+
 
 
 

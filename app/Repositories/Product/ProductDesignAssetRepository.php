@@ -374,6 +374,34 @@ class ProductDesignAssetRepository
      *
      * @param  array<string, string|null>  $fields
      */
+    public function updateRedesignWithProvider(ProductDesignAsset $asset, string $redesign, ?string $providerKey = null): ProductDesignAsset
+    {
+        $candidates = collect($asset->redesign_candidates ?: [])
+            ->push($asset->redesign)
+            ->push($redesign)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $asset->update([
+            'redesign' => $redesign,
+            'redesign_candidates' => $candidates,
+            'ai_provider_key' => is_string($providerKey) && trim($providerKey) !== '' ? trim($providerKey) : $asset->ai_provider_key,
+        ]);
+
+        return $asset->refresh();
+    }
+
+    public function updateAiProviderKey(ProductDesignAsset $asset, ?string $providerKey): ProductDesignAsset
+    {
+        $asset->update([
+            'ai_provider_key' => is_string($providerKey) && trim($providerKey) !== '' ? trim($providerKey) : null,
+        ]);
+
+        return $asset->refresh();
+    }
+
     public function updateListingMetadata(ProductDesignAsset $asset, array $fields): ProductDesignAsset
     {
         $allowedFields = [

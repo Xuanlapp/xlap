@@ -43,7 +43,7 @@
                 wire:model.live.debounce.400ms="search"
                 type="text"
                 class="mt-1 w-full rounded-md border-slate-300 bg-white text-slate-950"
-                placeholder="Asset id, keyword{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? ', user email' : '' }}..."
+                placeholder="STT, keyword{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? ', user email' : '' }}..."
             >
         </div>
 
@@ -88,8 +88,8 @@
                             @endphp
                             <tr wire:key="drive-upload-row-{{ $upload->id }}">
                                 <td class="px-4 py-4 align-top">
-                                    <p class="font-semibold text-slate-950">#{{ $upload->product_design_asset_id }}</p>
-                                    <p class="mt-1 text-xs text-slate-400">{{ $upload->product?->name }} | {{ $upload->asset?->keyword }}</p>
+                                    <p class="font-semibold text-slate-950">{{ $upload->asset?->item_number ?? $upload->product_design_asset_id }} - {{ $upload->asset?->keyword ?: '-' }}</p>
+                                    <p class="mt-1 text-xs text-slate-400">{{ $upload->product?->name }}</p>
                                 </td>
                                 @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                                     <td class="px-4 py-4 align-top">
@@ -194,7 +194,7 @@
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
                             <h2 id="drive-upload-links-title" class="text-lg font-semibold text-slate-950">
-                                Drive links table for #{{ $selectedUpload->product_design_asset_id }}
+                                Drive links table for {{ $selectedUpload->asset?->item_number ?? $selectedUpload->product_design_asset_id }}
                             </h2>
                             <span class="rounded-full bg-cyan-100 px-2.5 py-1 text-xs font-semibold text-cyan-800">
                                 {{ $selectedFiles->count() }} files

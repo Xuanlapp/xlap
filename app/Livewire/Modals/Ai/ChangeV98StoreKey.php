@@ -135,20 +135,22 @@ class ChangeV98StoreKey extends Component
 
         $user = auth()->user();
 
-        UserApiCredential::query()
-            ->where('user_id', $user->id)
-            ->where('provider_key', 'v98store')
-            ->where('function_key', $this->functionKey)
-            ->update(['is_active' => false]);
+        DB::transaction(function () use ($user): void {
+            UserApiCredential::query()
+                ->where('user_id', $user->id)
+                ->where('provider_key', 'v98store')
+                ->where('function_key', $this->functionKey)
+                ->delete();
 
-        UserApiCredential::query()->create([
-            'user_id' => $user->id,
-            'provider_key' => 'v98store',
-            'function_key' => $this->functionKey,
-            'name' => 'v98Store - '.$user->email,
-            'key_api' => trim($this->apiKey),
-            'is_active' => true,
-        ]);
+            UserApiCredential::query()->create([
+                'user_id' => $user->id,
+                'provider_key' => 'v98store',
+                'function_key' => $this->functionKey,
+                'name' => 'v98Store - '.$user->email,
+                'key_api' => trim($this->apiKey),
+                'is_active' => true,
+            ]);
+        });
 
         $user->aiProviders()->updateOrCreate(
             ['provider_key' => 'v98store'],

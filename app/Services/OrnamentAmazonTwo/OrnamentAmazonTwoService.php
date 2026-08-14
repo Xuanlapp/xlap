@@ -127,7 +127,7 @@ class OrnamentAmazonTwoService
     public function providerOptionsForUser(User $user): array
     {
         $providerOptions = config('ai_providers.providers', []);
-        $allowedProviderKeys = ['v98store'];
+        $allowedProviderKeys = ['v98store', 'cheapkeyai'];
 
         return $user->enabledAiProviders()
             ->pluck('provider_key')
@@ -154,7 +154,7 @@ class OrnamentAmazonTwoService
      */
     public function textModelOptionsForProvider(?string $providerKey): array
     {
-        return $this->modelOptionsForProvider($providerKey, 'text_models');
+        return ['gpt-5.4-nano' => 'GPT-5.4 Nano'];
     }
 
     /**
@@ -193,6 +193,58 @@ class OrnamentAmazonTwoService
         }
     }
 
+    /** @return array{ok: bool, balance?: float|int, name?: string|null, message?: string}|null */
+    public function cheapKeyAiBalanceForUser(User $user, ?string $providerKey): ?array
+    {
+        if ($providerKey !== 'cheapkeyai') {
+            return null;
+        }
+
+        $credential = UserApiCredential::query()
+            ->where('provider_key', 'cheapkeyai')
+            ->where('function_key', $this->product()->slug)
+            ->where('is_active', true)
+            ->where(function ($query) use ($user): void {
+                $query->where('user_id', $user->id)->orWhereNull('user_id');
+            })
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->first();
+
+        if (! $credential) {
+            return ['ok' => false, 'message' => 'No key'];
+        }
+
+        return (function () use ($credential): array {
+            try {
+                $key = trim((string) $credential->key_api);
+                $endpoint = trim((string) config('services.api_key_providers.cheapkeyai.balance_endpoint'));
+                $response = Http::timeout(10)->withToken($key)->get($endpoint);
+                $payload = $response->json();
+                $data = is_array($payload) ? ($payload['data'] ?? null) : null;
+
+                $userBalance = is_numeric($data['user_balance'] ?? null) ? (float) $data['user_balance'] : null;
+                $keyRemainQuota = is_numeric($data['key_remain_quota'] ?? null) ? (float) $data['key_remain_quota'] : null;
+                $keyUnlimitedQuota = ($data['key_unlimited_quota'] ?? false) === true;
+
+                if ($response->failed() || ($payload['success'] ?? false) !== true || ! is_array($data) || $userBalance === null || (! $keyUnlimitedQuota && $keyRemainQuota === null)) {
+                    return ['ok' => false, 'message' => 'Balance unavailable'];
+                }
+
+                $balance = $keyUnlimitedQuota || $keyRemainQuota === null
+                    ? $userBalance
+                    : $keyRemainQuota / 500000;
+
+                return [
+                    'ok' => true,
+                    'balance' => $balance,
+                    'name' => is_string($data['key_name'] ?? null) ? $data['key_name'] : null,
+                    'key_unlimited_quota' => $keyUnlimitedQuota,
+                ];
+            } catch (Throwable) {
+                return ['ok' => false, 'message' => 'Balance unavailable'];
+            }
+        })();
+    }
     /**
      * @return array{ok: bool, remain_quota?: float|int, used_quota?: float|int, name?: string|null, message?: string}
      */
@@ -342,7 +394,9 @@ class OrnamentAmazonTwoService
             throw new RuntimeException('Dong nay chua co image_link.');
         }
 
-        return $this->assets->updateRedesign(
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+
+        return $this->assets->updateRedesignWithProvider(
             $asset,
             $this->generateImage(
                 user: $user,
@@ -353,6 +407,7 @@ class OrnamentAmazonTwoService
                 removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
                 imageModel: $imageModel,
             ),
+            $providerKey,
         );
     }
 
@@ -1820,9 +1875,10 @@ class OrnamentAmazonTwoService
         }
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $this->assets->updateAiProviderKey($asset, $providerKey);
 
         if ($this->isProviderPausedForUser($user, $providerKey)) {
-            throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
+            throw new RuntimeException($this->providerLabel($providerKey).' cua user nay dang tam dung do het tien/het quota. Hay nap tien roi bam Retry/Continue.');
         }
 
         $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
@@ -1862,9 +1918,11 @@ class OrnamentAmazonTwoService
     public function queueAutomationPipeline(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null, bool $manual = false): void
     {
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $asset = $this->assetForUser($user, $assetId);
+        $this->assets->updateAiProviderKey($asset, $providerKey);
 
         if ($this->isProviderPausedForUser($user, $providerKey)) {
-            throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
+            throw new RuntimeException($this->providerLabel($providerKey).' cua user nay dang tam dung do het tien/het quota. Hay nap tien roi bam Retry/Continue.');
         }
 
         RunOrnamentAmazonTwoItemPipeline::dispatch($user->id, $assetId, $providerKey, $imageModel, $textModel, $manual)
@@ -1874,9 +1932,11 @@ class OrnamentAmazonTwoService
     public function runAutomationItemPipeline(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void
     {
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $asset = $this->assetForUser($user, $assetId);
+        $this->assets->updateAiProviderKey($asset, $providerKey);
 
         if ($this->isProviderPausedForUser($user, $providerKey)) {
-            throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
+            throw new RuntimeException($this->providerLabel($providerKey).' cua user nay dang tam dung do het tien/het quota. Hay nap tien roi bam Retry/Continue.');
         }
 
         $assetLock = Cache::lock("ornament-amazon-two:item-pipeline:{$assetId}", 3600);
@@ -2382,7 +2442,7 @@ class OrnamentAmazonTwoService
 
                 return filled($freshAsset->{$column} ?? null)
                     || filled($workflow['images'][$slot]['url'] ?? null);
-            });
+            })();
     }
 
     private function missingWorkflowMockupMessage(ProductDesignAsset $asset, ?array $workflow = null): string
@@ -2525,7 +2585,7 @@ PROMPT;
             return $fallback;
         }
 
-        throw new RuntimeException('Tai khoan nay chua duoc cau hinh v98Store active de tao text/image.');
+        throw new RuntimeException('Tai khoan nay chua duoc cau hinh v98Store hoac CheapKeyAI active de tao text/image.');
     }
 
     private function ensureApiKeyProvider(string $providerKey): void

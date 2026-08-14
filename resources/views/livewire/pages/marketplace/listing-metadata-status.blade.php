@@ -90,7 +90,7 @@
                             @endphp
                             <tr wire:key="listing-metadata-row-{{ $asset->id }}">
                                 <td class="px-4 py-4 align-top">
-                                    <p class="font-semibold text-slate-950">#{{ $asset->id }} - {{ $asset->keyword }}</p>
+                                    <p class="font-semibold text-slate-950">{{ $asset->item_number }} - {{ $asset->keyword }}</p>
                                     <p class="mt-1 text-xs text-slate-400">{{ $asset->product?->name }} | approved {{ optional($asset->approved_at)->format('Y-m-d H:i') }}</p>
                                 </td>
                                 @if ((auth()->user()->is_admin || auth()->user()->isManager()))

@@ -94,7 +94,13 @@
                                 <option value="" disabled>Ch?n API</option>
                             @endforelse
                         </select>
-                    </label>
+                                                    @if (($selectedAiProvider ?? null) === 'cheapkeyai' && ! empty($cheapKeyAiBalance))
+                                    @if ($cheapKeyAiBalance['ok'] ?? false)
+                                        <span class="inline-flex h-7 items-center rounded-md bg-emerald-50 px-2 text-xs font-bold text-emerald-700" title="{{ $cheapKeyAiBalance['name'] ?? 'CheapKeyAI balance' }}">${{ number_format((float) ($cheapKeyAiBalance['balance'] ?? 0), 3, '.', '') }}</span>
+                                    @else
+                                        <span class="inline-flex h-7 items-center rounded-md bg-amber-50 px-2 text-xs font-bold text-amber-700" title="{{ $cheapKeyAiBalance['message'] ?? 'Balance unavailable' }}">N/A</span>
+                                    @endif
+                                @endif</label>
                     <div x-data="{ open: false }" class="relative z-20">
                         <button type="button" x-on:click="open = !open" x-on:keydown.escape.window="open = false" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700" title="Them API" aria-label="Them API">
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14" /></svg>

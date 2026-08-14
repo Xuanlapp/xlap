@@ -5489,3 +5489,490 @@ Cap nhat record DB dang hien tren trang Proxy List vi UI van hien URL cu `offore
 **Deploy / DB impact:**
 - Can chay SQL/Eloquent update tuong tu tren VPS neu VPS van con URL cu.
 - Khong doi schema, khong doi queue.
+
+### 2026-08-14
+
+**Muc tieu:**
+Tu dong thu hoi Suncatcher automation bi stale dang `running`/`waiting` de tranh Catalog bi treo gia.
+
+**File da sua:**
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `app/Livewire/Pages/Suncatcher/AutomationCatalog.php`
+- `tests/Feature/SuncatcherCatalogRecoveryTest.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `SuncatcherService::recoverStaleAutomationRecords()` de quet automation `waiting`/`running` qua han va chuyen an toan sang `failed`.
+- Catalog page goi helper recovery nay truoc khi render danh sach, de UI khong con hien `running` gia.
+- Khi recover, service danh dau step hien tai failed va ghi message goi Retry/Continue, khong ep ve `waiting` de tranh job trung.
+- Them test unit/feature de xac nhan stale `running` se bi thu hoi thanh `failed`.
+
+**Root cause:**
+- Queue job Suncatcher co the bi timeout/treo o API, trong khi DB van giu `workflow_status = running`.
+- Catalog doc truc tiep tu DB nen co the hien `running` keo dai ma khong co tien trinh that.
+
+**Affected modules:**
+- Suncatcher automation service.
+- Suncatcher Catalog UI.
+- Recovery path cho stale queue item.
+
+**Deploy impact:**
+- Khong doi schema DB.
+- Nen deploy kem `php artisan optimize:clear` va, neu can, restart queue worker.
+
+**Queue impact:**
+- Item stale se khong bi ep ve `waiting`; se ve `failed` de user retry an toan.
+- Giam nguy co job trung/queue nghen.
+
+**Follow-up notes:**
+- Cong viec nay chi la self-heal cho stale logs; neu muon xu ly rong hon tren VPS, co the them command cron de quet stale ngoai Catalog.
+
+### 2026-08-14
+
+**Muc tieu:**
+Doi Suncatcher Catalog hien STT thay vi ID database o dong chinh.
+
+**File da sua:**
+- `resources/views/livewire/pages/suncatcher/automation-catalog.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Dong chinh cua cot Item/ID gio hien `STT ...`.
+- ID database van giu o dong phu de debug.
+- Placeholder search doi tu `ID, keyword, status...` sang `STT, keyword, status...`.
+
+**Deploy impact:**
+- Khong doi DB/queue.
+- Blade cache da compile pass.
+
+### 2026-08-14
+
+**Muc tieu:**
+Doi cot Item trong Marketplace Listing metadata logs tu database ID sang STT cua item.
+
+**File da sua:**
+- `resources/views/livewire/pages/marketplace/listing-metadata-status.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Hien `STT {item_number} - {keyword}` thay cho `#{asset_id} - {keyword}`.
+- Khong doi logic retry, metadata, DB hoac queue.
+- Blade cache compile pass.
+
+### 2026-08-14
+
+**Muc tieu:**
+Dong bo hien thi item tren Marketplace Listing metadata logs va Image upload logs theo `item_number - keyword`, khong hien chu `STT` va khong uu tien database ID.
+
+**File da sua:**
+- `resources/views/livewire/pages/marketplace/listing-metadata-status.blade.php`
+- `resources/views/livewire/pages/drive/drive-uploads.blade.php`
+- `app/Livewire/Pages/Drive/DriveUploads.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Marketplace Item: doi tu `STT {item_number} - {keyword}` thanh `{item_number} - {keyword}`.
+- Image upload logs Item: doi tu `#{asset_id}` thanh `{item_number} - {keyword}`.
+- Drive links modal title doi sang `item_number` thay vi database ID.
+- Drive upload search placeholder doi sang `STT, keyword...` va search ho tro `asset.item_number`.
+- Retry upload success/empty message doi sang `item_number` thay vi `product_design_asset_id`.
+
+**Deploy impact:**
+- Khong doi DB/queue.
+- PHP syntax va Blade cache deu pass.
+## 2026-08-14
+
+**Muc tieu:**
+Cho Listing metadata dung dung AI provider da tao anh cua tung item, thay vi co dinh theo product.
+
+**File da sua/tao:**
+- `database/migrations/2026_08_14_000080_add_ai_provider_key_to_product_design_assets_table.php`
+- `app/Models/ProductDesignAsset.php`
+- `app/Repositories/Product/ProductDesignAssetRepository.php`
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `app/Services/Sticker/StickerService.php`
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `app/Services/OrnamentAmazonTwo/OrnamentAmazonTwoService.php`
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+
+**Thay doi chinh:**
+- Them cot `ai_provider_key` vao `product_design_assets` de luu provider da dung luc tao anh / automation.
+- Khi tao redesign o Suncatcher, Sticker, Ornament Etsy va Ornament Amazon 2, he thong luu kem provider key vao asset.
+- Marketplace Listing metadata uu tien dung `ai_provider_key` cua item; neu item cu chua co thi fallback ve luong cu (Suncatcher/Ornament Amazon 2 -> CheapKeyAI, Sticker/Ornament Etsy -> Vertex).
+- Fix luong Vertex goi sai so tham so trong `generateAmazonListingText`.
+- Fix repository de luu `redesign_candidates` khi update redesign kem provider.
+
+**Loi da gap va cach xu ly:**
+- `php artisan migrate --force` da chay thanh cong tren local.
+- `php -l` pass cho toan bo file thay doi.
+- Da phat hien va sua 2 cho luong automation `queueAutomationPipeline` / `runAutomationItemPipeline` bi tham chieu `$asset` chua khai bao.
+
+**Deploy impact:**
+- Can chay migration moi tren VPS.
+- Nen chay `php artisan optimize:clear` sau deploy.
+
+**Queue impact:**
+- Khong doi queue topology.
+- Queue nay chi luu provider key vao asset de listing metadata chay dung provider ve sau.
+
+**Follow-up notes:**
+- Nen test 1 item tao bang Vertex, 1 item tao bang v98/CheapKeyAI, sau do bam Listing metadata de xac nhan provider khop item.
+- Data cu khong co `ai_provider_key` van chay fallback nhu cu.
+
+## 2026-08-14 - Dong bo pause quota giua Listing va Auto
+
+**Muc tieu:**
+Khi CheapKeyAI hoac v98Store het tien/quota, tam dung toan bo Listing metadata va Auto workflow cua dung user + provider do, khong anh huong provider/user khac.
+
+**Root cause:**
+- API generator truoc day chi throw loi response, khong ghi provider pause chung.
+- Listing metadata tiep tuc claim item sau khi provider het quota.
+- Auto co cache pause `provider-pause:{provider}:user:{id}` nhung chu yeu duoc set boi pre-check v98Store, chua duoc set tu loi quota CheapKeyAI/API response.
+
+**File da sua:**
+- `app/Services/Ai/ApiKeyImageGenerator.php`
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `app/Services/OrnamentAmazonTwo/OrnamentAmazonTwoService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- `ApiKeyImageGenerator` nhan dien response 400/402/403/429 co noi dung quota, credit, balance, billing, insufficient, het tien/het quota.
+- Khi phat hien het tien, ghi cache pause 6 gio theo `provider-pause:{provider}:user:{user_id}` va throw message ro rang: Listing metadata va Auto cua user/provider da tam dung.
+- Listing metadata kiem tra pause truoc khi goi API va bo qua item cua provider dang pause khi claim batch, nen provider/user khac van tiep tuc chay.
+- Auto Suncatcher va Ornament Amazon 2 doc cung cache key, nen job sau cua cung user/provider bi chan va hien thong bao nap tien roi Retry/Continue.
+- Provider khac cua cung user va cung provider cua user khac khong bi anh huong.
+
+**Web behavior:**
+- Item dang goi API khi het quota se chuyen `Failed` va luu message vao `marketplace_listing_error` tren Listing metadata logs.
+- Cac item Listing khac cung user/provider khong bi claim trong luc pause.
+- Auto card/job cung user/provider se dung va tra message provider dang tam dung do het tien/quota.
+
+**Deploy impact:**
+- Khong co migration moi cho thay doi nay.
+- Chay `php artisan optimize:clear` va restart Supervisor workers de worker nap code moi.
+
+**Queue impact:**
+- Khong doi ten/so luong queue.
+- Pause cache TTL 6 gio; Retry/Continue hien co se clear pause cho provider cua user.
+
+**Validation:**
+- `php -l` pass cho 4 service thay doi.
+- `git diff --check` pass.
+
+## 2026-08-14 - Hien so du CheapKeyAI tren cac trang API selector
+
+**Muc tieu:**
+Khi user da add CheapKeyAI va chon provider cheapkeyai, hien so du con lai ngay canh dropdown API tren Suncatcher, Ornament Amazon 2, Ornament Etsy va Sticker.
+
+**Root cause:**
+- UI truoc day chi co badge so du cho v98Store.
+- CheapKeyAI balance endpoint moi dung `GET https://cheapkeyai.shop/v1/balance` voi `Authorization: Bearer sk-...`, response nam trong `data.user_balance`.
+- Ornament Amazon 2 service dang gioi han provider options chi `v98store`, nen user co CheapKeyAI khong thay option.
+
+**File da sua:**
+- `config/services.php`
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `app/Services/OrnamentAmazonTwo/OrnamentAmazonTwoService.php`
+- `app/Livewire/Pages/Suncatcher/ListSuncatcher.php`
+- `app/Livewire/Pages/OrnamentAmazonTwo/ListOrnamentAmazonTwo.php`
+- `app/Livewire/Pages/OrnamentEtsy/ListOrnamentEtsy.php`
+- `app/Livewire/Pages/Sticker/ListSticker.php`
+- `resources/views/livewire/pages/suncatcher/list-suncatcher.blade.php`
+- `resources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php`
+- `resources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php`
+- `resources/views/livewire/pages/sticker/list-sticker.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Doi default `CHEAPKEYAI_BALANCE_ENDPOINT` sang `https://cheapkeyai.shop/v1/balance`.
+- Them `cheapKeyAiBalanceForUser()` cho Suncatcher va Ornament Amazon 2, dung Bearer token va doc `data.user_balance`.
+- List components truyen `cheapKeyAiBalance` sang view.
+- Cac Blade selector API hien badge `$x.xx` khi selected provider la `cheapkeyai`; neu loi balance thi hien `N/A`.
+- Ornament Amazon 2 mo provider option cho `cheapkeyai` va cho workflow dung v98Store hoac CheapKeyAI.
+
+**Deploy impact:**
+- Khong co migration moi cho thay doi nay.
+- Sau deploy chay `php artisan optimize:clear` de clear config/view cache.
+
+**Queue impact:**
+- Khong doi queue topology.
+- Ornament Amazon 2 co the nhan provider `cheapkeyai` trong job workflow neu user chon provider nay.
+
+**Validation:**
+- `php -l` pass cho List components va 2 service lien quan.
+- `php artisan view:cache` pass, sau do `php artisan view:clear`.
+- `git diff --check` pass.
+
+## 2026-08-14 - Fix CheapKeyAI balance hien N/A
+
+**Root cause:**
+- `config/services.php` van dang default CheapKeyAI balance endpoint cu `https://cheapkeyai.shop/check-balance` trong khi API dung `https://cheapkeyai.shop/v1/balance`.
+- Sticker va Ornament Etsy dang gui key qua query string va parse schema cu `remain_quota`, trong khi endpoint moi can Bearer token va tra `data.user_balance`.
+
+**File da sua:**
+- `config/services.php`
+- `app/Services/Sticker/StickerService.php`
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Default balance endpoint CheapKeyAI doi sang `/v1/balance`.
+- Balance reader Sticker/Ornament Etsy dung `Http::withToken($key)->get($endpoint)`.
+- Parse `success=true`, `data.user_balance`, `data.key_name` de hien badge so du.
+- Da chay `php artisan optimize:clear` local.
+
+**Follow-up:**
+- Neu VPS co khai bao `CHEAPKEYAI_BALANCE_ENDPOINT` trong `.env`, bien do uu tien hon default config va phai la `https://cheapkeyai.shop/v1/balance`.
+
+## 2026-08-14 - Tu dong recovery Listing metadata bi ket Running
+
+**Root cause:**
+- Listing metadata item co status `processing` qua stale timeout van hien `Running` tren trang logs cho den khi batch worker claim lai item.
+- Hai item tren man hinh co `Started` ngay 2026-08-03, do do da stale so voi timeout mac dinh 10 phut.
+
+**File da sua:**
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `app/Livewire/Pages/Marketplace/ListingMetadataStatus.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `recoverStaleProcessingAssets()` vao Marketplace service.
+- Record approved, chua co title, status `processing`, va `started_at` qua stale cutoff se duoc chuyen sang `failed`.
+- Error message: `Listing metadata bi ket qua lau khong cap nhat. He thong da tu dong chuyen ve Failed, hay bam Retry de chay lai.`
+- Batch command goi recovery truoc khi claim item moi.
+- Listing Metadata Logs goi recovery khi render/refresh va truoc khi Retry, nen counters/card cap nhat ngay khong can doi worker.
+- Da goi recovery local qua Artisan Tinker va clear Laravel caches.
+
+**Deploy impact:**
+- Khong migration, khong doi queue.
+- VPS can `php artisan optimize:clear` va restart worker de batch worker nap code moi.
+
+## 2026-08-14 - Cong thuc so du CheapKeyAI theo key_remain_quota
+
+**Muc tieu:**
+Tinh tien con lai cua CheapKeyAI dung theo quota rieng cua key neu co gioi han key, con key unlimited thi dung user balance.
+
+**File da sua:**
+- `app/Services/Suncatcher/SuncatcherService.php`
+- `app/Services/OrnamentAmazonTwo/OrnamentAmazonTwoService.php`
+- `app/Services/Sticker/StickerService.php`
+- `app/Services/OrnamentEtsy/OrnamentEtsyService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Parse CheapKeyAI `/v1/balance` fields: `data.user_balance`, `data.key_remain_quota`, `data.key_unlimited_quota`, `data.key_name`.
+- Neu `key_unlimited_quota=true` hoac khong co `key_remain_quota` thi balance hien thi = `user_balance`.
+- Neu `key_unlimited_quota=false` va co `key_remain_quota` thi balance hien thi = `key_remain_quota / 500000`.
+- `user_balance` khong chia; chi `key_remain_quota` moi chia 500000.
+
+**Validation:**
+- `php -l` pass cho 4 service.
+- Da chay `php artisan optimize:clear` local.
+
+## 2026-08-14 - Chuyen toan bo Listing metadata Waiting sang Failed
+
+**Muc tieu:**
+Theo yeu cau admin, chuyen tat ca item dang Waiting trong Listing metadata logs sang Failed.
+
+**Thao tac du lieu:**
+- Dieu kien: approved, chua co title, `marketplace_listing_status` null hoac `waiting`.
+- Truoc khi cap nhat: 34 item.
+- Da cap nhat: 34 item.
+- Con lai Waiting: 0 item.
+- Gan `marketplace_listing_completed_at = now()` va error message de item co the Retry sau nay.
+
+**Deploy/queue impact:**
+- Khong thay doi code, migration hay queue.
+- Da clear Laravel optimize caches local.
+
+### 2026-08-14
+
+**Muc tieu:**
+- Khi user thay API key v98Store hoac CheapKeyAI, xoa key cu trong database de tranh key cu bi lay nham.
+
+**File da sua:**
+- pp/Livewire/Modals/Ai/ChangeV98StoreKey.php
+- pp/Livewire/Modals/Ai/ChangeCheapKeyAiKey.php
+- AI_MEMORY.md
+
+**Root cause:**
+- Logic cu chi dat is_active = false cho credential cu, nen cac dong key cu van ton tai trong user_api_credentials.
+
+**Thay doi chinh:**
+- Luu key moi trong transaction.
+- Truoc khi tao key moi, xoa tat ca credential cu dung user_id, provider_key va unction_key cua trang hien tai.
+- Khong xoa credential dung chung, vi truy van chi xoa dong co user_id cua user dang dang nhap.
+
+**Anh huong deploy/queue:**
+- Khong can migration va khong anh huong queue.
+- Khi deploy chi can php artisan optimize:clear neu app dang cache code/config.
+
+**Viec can lam tiep:**
+- Thu thay key tren tung trang; DB phai con dung mot key moi active cho provider va function dang thay.
+## 2026-08-14 - Khong lam tron so du CheapKeyAI
+
+**Root cause:**
+- Badge CheapKeyAI trong Blade dung 
+umber_format(balance, 2), vi vay 0.995 bi lam tron thanh 1.00.
+
+**File da sua:**
+- esources/views/livewire/pages/suncatcher/list-suncatcher.blade.php
+- esources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php
+- esources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php
+- esources/views/livewire/pages/sticker/list-sticker.blade.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**
+- Truoc khi format, so du CheapKeyAI duoc cat xuong 2 chu so thap phan bang loor(balance * 100) / 100.
+- Vi du 0.995 hien .99, khong lam tron len .00.
+
+**Deploy/queue impact:**
+- Khong migration va khong anh huong queue.
+- Sau deploy chay php artisan optimize:clear neu Blade view dang cache.
+
+**Validation:**
+- php -l pass cho 4 Blade files.
+## 2026-08-14 - CheapKeyAI hien thi dung 0.995 va reload lay balance moi
+
+**Root cause:**
+- Suncatcher va cac trang lien quan van con cho hien badge CheapKeyAI bang 
+umber_format(..., 2) nen 0.995 bi thanh 1.00.
+- CheapKeyAI balance con bi giu qua Cache::remember(...) nen reload trang van co the thay so cu.
+- Sticker/Ornament Etsy con mot so request balance dung query ?key= thay vi Bearer token.
+
+**File da sua:**
+- pp/Services/Suncatcher/SuncatcherService.php
+- pp/Services/OrnamentAmazonTwo/OrnamentAmazonTwoService.php
+- pp/Services/OrnamentEtsy/OrnamentEtsyService.php
+- pp/Services/Sticker/StickerService.php
+- esources/views/livewire/pages/suncatcher/list-suncatcher.blade.php
+- esources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php
+- esources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php
+- esources/views/livewire/pages/sticker/list-sticker.blade.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**
+- Bo cache CheapKeyAI balance de moi lan render/reload se goi lai API balance.
+- Chuan hoa request CheapKeyAI balance sang Http::withToken()->get().
+- Badge CheapKeyAI hien 
+umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
+- Sua lai 2 closure workflow bi doi nham trong qua trinh bo cache.
+
+**Deploy/queue impact:**
+- Khong migration.
+- Queue khong doi, nhung can deploy day du service files de tranh code local/VPS lech nhau.
+- Sau deploy can php artisan optimize:clear.
+
+**Validation:**
+- php -l pass cho 4 service va 4 Blade files.
+- Da xac nhan khong con pattern cache CheapKeyAI, query ?key=, hoac format 2 chu so thap phan cho badge CheapKeyAI.
+## 2026-08-14 - Listing metadata fallback khi CheapKeyAI khong co channel model
+
+**Root cause:**
+- MarketplaceListingMetadataService hard-code text model gpt-5.4 cho v98/CheapKeyAI.
+- CheapKeyAI tra HTTP 503: No available channel for model gpt-5.4 under group auto, day khong phai loi het tien hay API key sai.
+
+**File da sua:**
+- pp/Services/Marketplace/MarketplaceListingMetadataService.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**
+- Listing metadata voi CheapKeyAI thu lan luot gpt-5.4, gpt-5.4-mini, gpt-5.4-nano.
+- Chi fallback khi loi noi ro No available channel for model hoac HTTP 503 lien quan model.
+- Cac loi key sai, quota, het tien, timeout hoac loi khac van throw nhu cu de xu ly dung.
+- Provider v98Store van giu model gpt-5.4 hien tai.
+
+**Deploy/queue impact:**
+- Khong migration.
+- Listing retry se co the thu them model fallback; khong doi queue topology.
+- Sau deploy chay php artisan optimize:clear; retry lai item 1941.
+
+**Validation:**
+- php -l app/Services/Marketplace/MarketplaceListingMetadataService.php pass.
+## 2026-08-14 - Lock text model for Suncatcher and Ornament Amazon 2 to GPT-5.4 Nano
+
+**Muc tieu:**
+- Dong bo Suncatcher va Ornament Amazon 2 de chi dung GPT-5.4 Nano cho text/non-image, giu nguyen image model.
+
+**File da sua:**
+- pp/Services/Suncatcher/SuncatcherService.php
+- pp/Services/OrnamentAmazonTwo/OrnamentAmazonTwoService.php
+- pp/Services/Marketplace/MarketplaceListingMetadataService.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**
+- 	extModelOptionsForProvider() cua Suncatcher va Ornament Amazon 2 tra ve duy nhat gpt-5.4-nano.
+- modelOptionsForProvider() cua Ornament Amazon 2 khong con mo rong text_models tu config chung.
+- Listing metadata cho suncatcher va ornament-amazon-2 chi thu gpt-5.4-nano.
+- Cac provider/text model khac khong bi dong cham, image model van giu nguyen.
+
+**Deploy/queue impact:**
+- Khong migration.
+- Sau deploy can php artisan optimize:clear de view/config khong giu model cu.
+- Queue topology khong doi.
+
+**Validation:**
+- php -l pass cho 3 file da sua.
+## 2026-08-14 - Fix Suncatcher text dropdown still showing old models
+
+**Root cause:**
+- UI cua Suncatcher va Ornament Amazon 2 van goi modelOptionsForProvider(..., 'text_models'), nen config chung tiep tuc tra ve GPT-5.4, Mini, Nano, GPT-5.2, GPT-5.1 va GPT-5.
+- Patch truoc chua vao dung doan code hien tai.
+
+**File da sua:**
+- pp/Services/Suncatcher/SuncatcherService.php
+- pp/Services/OrnamentAmazonTwo/OrnamentAmazonTwoService.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**
+- 	extModelOptionsForProvider() cua ca hai service tra ve duy nhat ['gpt-5.4-nano' => 'GPT-5.4 Nano'].
+- Image model va cac logic tao anh khong thay doi.
+
+**Deploy impact:**
+- Khong migration.
+- Chay php artisan optimize:clear sau deploy, sau do hard refresh trinh duyet.
+
+**Validation:**
+- PHP lint pass cho ca hai service.
+## 2026-08-14 - Listing metadata cheapkeyai dung GPT-5.4 Nano, v98 giu normal
+
+**Root cause:**
+- Listing metadata van hard-code gpt-5.4 cho tat ca provider API-key.
+
+**File da sua:**
+- pp/Services/Marketplace/MarketplaceListingMetadataService.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**
+- providerKey === 'cheapkeyai' thi generateText() dung gpt-5.4-nano.
+- providerKey === 'v98store' van dung gpt-5.4 nhu cu.
+- Cac provider khac khong thay doi.
+
+**Deploy/queue impact:**
+- Khong migration.
+- Sau deploy chay php artisan optimize:clear va hard refresh trang Listing metadata.
+
+**Validation:**
+- php -l app/Services/Marketplace/MarketplaceListingMetadataService.php pass.
+## 2026-08-14 - Fix Listing metadata van goi gpt-5.4 cho CheapKeyAI
+
+**Root cause:**
+- Log retry van bao model gpt-5.4 vi MarketplaceListingMetadataService.php thuc te con hard-code model: 'gpt-5.4'; patch truoc chua ghi vao file hien tai.
+
+**File da sua:**
+- pp/Services/Marketplace/MarketplaceListingMetadataService.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**
+- Dong 529 dung model:  === 'cheapkeyai' ? 'gpt-5.4-nano' : 'gpt-5.4'.
+- CheapKeyAI Listing metadata se dung Nano; v98Store van dung gpt-5.4.
+
+**Deploy/queue impact:**
+- Khong migration.
+- Local/VPS can deploy dung file nay va chay php artisan optimize:clear.
+- Queue/Retry job cu da fail voi model cu; phai Retry lai sau khi clear cache.
+
+**Validation:**
+- php -l app/Services/Marketplace/MarketplaceListingMetadataService.php pass.
+- Da xac minh dong 529 khong con hard-code model cho tat ca provider.

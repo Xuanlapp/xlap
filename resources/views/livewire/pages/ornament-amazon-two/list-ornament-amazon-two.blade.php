@@ -122,7 +122,13 @@
                                     </span>
                                 @endif
                             @endif
-                        </label>
+                                                        @if (($selectedAiProvider ?? null) === 'cheapkeyai' && ! empty($cheapKeyAiBalance))
+                                    @if ($cheapKeyAiBalance['ok'] ?? false)
+                                        <span class="inline-flex h-7 items-center rounded-md bg-emerald-50 px-2 text-xs font-bold text-emerald-700" title="{{ $cheapKeyAiBalance['name'] ?? 'CheapKeyAI balance' }}">${{ number_format((float) ($cheapKeyAiBalance['balance'] ?? 0), 3, '.', '') }}</span>
+                                    @else
+                                        <span class="inline-flex h-7 items-center rounded-md bg-amber-50 px-2 text-xs font-bold text-amber-700" title="{{ $cheapKeyAiBalance['message'] ?? 'Balance unavailable' }}">N/A</span>
+                                    @endif
+                                @endif</label>
                     @endif
 
                     @if (count($textModelOptions) > 0)

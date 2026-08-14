@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Suncatcher;
 
 use App\Models\DataSuncatcher;
+use App\Services\Suncatcher\SuncatcherService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema;
@@ -44,6 +45,8 @@ class AutomationCatalog extends Component
                 'missingTable' => true,
             ])->layout('layouts.app');
         }
+
+        app(SuncatcherService::class)->recoverStaleAutomationRecords(auth()->user());
 
         return view('livewire.pages.suncatcher.automation-catalog', [
             'rows' => $this->baseQuery()->latest('updated_at')->paginate(15),

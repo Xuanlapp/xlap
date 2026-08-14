@@ -108,6 +108,7 @@ class ListOrnamentEtsy extends Component
         $this->syncProviderSelection($providerOptions);
         $imageModelOptions = $service->imageModelOptionsForProvider($this->selectedAiProvider);
         $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);
+        $cheapKeyAiBalance = $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider);
 
         return view('livewire.pages.ornament-etsy.list-ornament-etsy', [
             'statusCounts' => $service->statusCountsForUser(auth()->user()),

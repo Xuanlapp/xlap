@@ -17,6 +17,7 @@ class ProductDesignAsset extends Model
         'image_link',
         'image_sub',
         'data_item_add',
+        'ai_provider_key',
         'title',
         'description',
         'bullet_point_1',

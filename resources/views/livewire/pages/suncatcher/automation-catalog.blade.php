@@ -14,7 +14,7 @@
                 <input
                     type="text"
                     wire:model.live.debounce.400ms="search"
-                    placeholder="ID, keyword, status..."
+                    placeholder="STT, keyword, status..."
                     class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-100 lg:w-80"
                 >
             </label>
@@ -98,8 +98,8 @@
                             @endphp
                             <tr wire:key="suncatcher-automation-row-{{ $row->id }}">
                                 <td class="px-4 py-4 align-top">
-                                    <p class="font-semibold text-slate-950">#{{ $row->product_design_asset_id }}</p>
-                                    <p class="mt-1 text-xs text-slate-400">STT {{ $asset?->item_number ?? '-' }}</p>
+                                    <p class="font-semibold text-slate-950">STT {{ $asset?->item_number ?? '-' }}</p>
+                                    <p class="mt-1 text-xs text-slate-400">ID #{{ $row->product_design_asset_id }}</p>
                                 </td>
                                 <td class="px-4 py-4 align-top">
                                     <p class="max-w-md font-medium text-slate-950">{{ $asset?->keyword ?: '-' }}</p>

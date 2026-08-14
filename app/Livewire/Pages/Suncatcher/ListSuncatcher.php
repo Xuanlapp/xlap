@@ -130,6 +130,7 @@ class ListSuncatcher extends Component
         $this->selectedImageModel = $this->validModelKey($this->selectedImageModel, 'image', $imageModelOptions);
         $this->selectedTextModel = $this->validModelKey($this->selectedTextModel, 'text', $textModelOptions);
         $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);
+        $cheapKeyAiBalance = $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider);
 
         return view('livewire.pages.suncatcher.list-suncatcher', [
             'statusCounts' => $service->statusCountsForUser(auth()->user()),
@@ -142,6 +143,7 @@ class ListSuncatcher extends Component
             'selectedImageModel' => $this->selectedImageModel,
             'selectedTextModel' => $this->selectedTextModel,
             'v98StoreBalance' => $v98StoreBalance,
+            'cheapKeyAiBalance' => $cheapKeyAiBalance,
             'product' => $service->product(),
             'pageTitle' => $this->pageTitle,
             'pageSubtitle' => $this->pageSubtitle,

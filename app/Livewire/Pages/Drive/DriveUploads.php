@@ -70,9 +70,10 @@ class DriveUploads extends Component
                 'manual',
             );
 
+            $itemNumber = $upload->asset?->item_number ?? $upload->product_design_asset_id;
             $this->retryMessage = $count > 0
-                ? "Da upload lai {$count} anh cho item #{$upload->product_design_asset_id}."
-                : "Item #{$upload->product_design_asset_id} khong con anh local de upload.";
+                ? "Da upload lai {$count} anh cho item {$itemNumber}."
+                : "Item {$itemNumber} khong con anh local de upload.";
         } catch (Throwable $exception) {
             $this->retryError = $exception->getMessage();
         }
@@ -104,7 +105,11 @@ class DriveUploads extends Component
                 $query->where(function (Builder $query) use ($search): void {
                     $query
                         ->where('product_design_asset_id', ctype_digit($search) ? (int) $search : -1)
-                        ->orWhereHas('asset', fn (Builder $query) => $query->where('keyword', 'like', '%'.$this->escapeLike($search).'%'));
+                        ->orWhereHas('asset', function (Builder $query) use ($search): void {
+                            $query
+                                ->when(ctype_digit($search), fn (Builder $query) => $query->where('item_number', (int) $search))
+                                ->orWhere('keyword', 'like', '%'.$this->escapeLike($search).'%');
+                        });
 
                     if (auth()->user()->is_admin || auth()->user()->isManager()) {
                         $query->orWhereHas('user', function (Builder $query) use ($search): void {

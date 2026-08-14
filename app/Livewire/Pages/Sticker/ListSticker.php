@@ -95,6 +95,7 @@ class ListSticker extends Component
         $imageModelOptions = $service->imageModelOptionsForProvider($this->selectedAiProvider);
         $this->selectedImageModel = array_key_exists((string) $this->selectedImageModel, $imageModelOptions) ? $this->selectedImageModel : array_key_first($imageModelOptions);
         $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);
+        $cheapKeyAiBalance = $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider);
 
         return view('livewire.pages.sticker.list-sticker', [
             'statusCounts' => $service->statusCountsForUser(auth()->user(), $this->search),

@@ -74,7 +74,7 @@ class ApiKeyImageGenerator
         ]);
 
         if ($response->failed()) {
-            throw new RuntimeException($this->errorMessage($providerKey, $response));
+            throw $this->providerFailure($user, $providerKey, $response);
         }
 
         $imageBytes = $this->extractImageBytes($response);
@@ -132,7 +132,7 @@ class ApiKeyImageGenerator
         );
 
         if ($response->failed()) {
-            throw new RuntimeException($this->errorMessage($providerKey, $response));
+            throw $this->providerFailure($user, $providerKey, $response);
         }
 
         $imageBytes = $this->extractImageBytes($response);
@@ -196,7 +196,7 @@ class ApiKeyImageGenerator
         );
 
         if ($response->failed()) {
-            throw new RuntimeException($this->errorMessage($providerKey, $response));
+            throw $this->providerFailure($user, $providerKey, $response);
         }
 
         $content = $response->json('choices.0.message.content');
@@ -657,6 +657,44 @@ class ApiKeyImageGenerator
         return config("ai_providers.providers.{$providerKey}.label", $providerKey);
     }
 
+    private function providerFailure(User $user, string $providerKey, Response $response): RuntimeException
+    {
+        $message = $this->errorMessage($providerKey, $response);
+
+        if ($this->isBalanceExhaustedResponse($response, $message)) {
+            Cache::put(
+                'provider-pause:'.$providerKey.':user:'.$user->id,
+                [
+                    'reason' => $message,
+                    'paused_at' => now()->toIso8601String(),
+                ],
+                now()->addHours(6),
+            );
+
+            return new RuntimeException(
+                $this->providerLabel($providerKey).' da het tien/het quota. Listing metadata va Auto cua user nay da tam dung cho provider nay.',
+            );
+        }
+
+        return new RuntimeException($message);
+    }
+
+    private function isBalanceExhaustedResponse(Response $response, string $message): bool
+    {
+        if (! in_array($response->status(), [400, 402, 403, 429], true)) {
+            return false;
+        }
+
+        $normalized = mb_strtolower($message);
+
+        foreach (['insufficient', 'quota', 'credit', 'balance', 'billing', 'payment required', 'het tien', 'het quota'] as $needle) {
+            if (str_contains($normalized, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
     private function errorMessage(string $providerKey, Response $response): string
     {
         $message = $response->json('error.message')

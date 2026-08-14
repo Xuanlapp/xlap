@@ -316,6 +316,8 @@ PROMPT;
      */
     public function generatePendingApprovedAssets(int $limit = 0, int $delaySeconds = 0): int
     {
+        $this->recoverStaleProcessingAssets();
+
         $processed = 0;
         $claimed = 0;
 
@@ -349,12 +351,32 @@ PROMPT;
         return $processed;
     }
 
+    public function recoverStaleProcessingAssets(): int
+    {
+        return ProductDesignAsset::query()
+            ->where('is_approved', true)
+            ->whereNull('title')
+            ->where('marketplace_listing_status', 'processing')
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereNull('marketplace_listing_started_at')
+                    ->orWhere('marketplace_listing_started_at', '<=', $this->staleProcessingCutoff());
+            })
+            ->update([
+                'marketplace_listing_status' => 'failed',
+                'marketplace_listing_completed_at' => now(),
+                'marketplace_listing_error' => 'Listing metadata bi ket qua lau khong cap nhat. He thong da tu dong chuyen ve Failed, hay bam Retry de chay lai.',
+            ]);
+    }
+
     private function claimNextPendingApprovedAsset(): ?ProductDesignAsset
     {
         return DB::transaction(function (): ?ProductDesignAsset {
             $asset = $this->eligiblePendingApprovedAssetsQuery()
+                ->limit(500)
                 ->lockForUpdate()
-                ->first();
+                ->get()
+                ->first(fn (ProductDesignAsset $asset): bool => ! $this->isProviderPausedForAsset($asset));
 
             if (! $asset) {
                 return null;
@@ -443,23 +465,70 @@ PROMPT;
 
     private function generateAmazonListingText(ProductDesignAsset $asset): string
     {
-        $prompt = $this->prompt($this->amazonPromptTemplate($asset), $asset);
+        return $this->generateListingText($asset, $this->prompt($this->amazonPromptTemplate($asset), $asset));
+    }
 
-        $productSlug = $asset->product?->slug ?? null;
+    private function isProviderPausedForAsset(ProductDesignAsset $asset): bool
+    {
+        $providerKey = $this->listingProviderKey($asset);
 
-        if (in_array($productSlug, ['suncatcher', 'ornament-amazon-2'], true)) {
-            $this->ensureUserOwnsApiCredential($asset->user, 'cheapkeyai', $productSlug);
+        if (! in_array($providerKey, ['v98store', 'cheapkeyai'], true)) {
+            return false;
+        }
 
-            return $this->apiKeyGenerator->generateText(
-                user: $asset->user,
-                providerKey: 'cheapkeyai',
-                prompt: $prompt,
-                model: 'gpt-5.4',
-                functionKey: $productSlug,
+        return Cache::has('provider-pause:'.$providerKey.':user:'.$asset->user_id);
+    }
+
+    private function providerLabel(string $providerKey): string
+    {
+        return (string) config("ai_providers.providers.{$providerKey}.label", $providerKey);
+    }
+    private function listingProviderKey(ProductDesignAsset $asset): string
+    {
+        $providerKey = trim((string) $asset->ai_provider_key);
+
+        if ($providerKey !== '') {
+            return $providerKey;
+        }
+
+        return in_array($asset->product?->slug, ['suncatcher', 'ornament-amazon-2'], true)
+            ? 'cheapkeyai'
+            : 'vertex';
+    }
+
+    private function generateListingText(ProductDesignAsset $asset, string $prompt): string
+    {
+        $providerKey = $this->listingProviderKey($asset);
+
+        if ($this->isProviderPausedForAsset($asset)) {
+            throw new RuntimeException(
+                $this->providerLabel($providerKey).' cua user nay dang tam dung do het tien/het quota. Hay nap tien va Retry/Continue.',
             );
         }
 
-        return $this->generator->generateText($asset->user, $prompt, true);
+        if ($providerKey === 'vertex') {
+            return $this->generator->generateText($asset->user, $prompt, true);
+        }
+
+        if (! in_array($providerKey, ['v98store', 'cheapkeyai'], true)) {
+            throw new RuntimeException("AI provider '{$providerKey}' khong duoc ho tro cho Listing metadata.");
+        }
+
+        $functionKey = trim((string) $asset->product?->slug);
+
+        if ($functionKey === '') {
+            throw new RuntimeException('Khong xac dinh duoc trang san pham de chay Listing metadata.');
+        }
+
+        $this->ensureUserOwnsApiCredential($asset->user, $providerKey, $functionKey);
+
+        return $this->apiKeyGenerator->generateText(
+            user: $asset->user,
+            providerKey: $providerKey,
+            prompt: $prompt,
+            model: $providerKey === 'cheapkeyai' ? 'gpt-5.4-nano' : 'gpt-5.4',
+            functionKey: $functionKey,
+        );
     }
 
     private function ensureUserOwnsApiCredential(User $user, string $providerKey, string $functionKey): void
@@ -472,7 +541,7 @@ PROMPT;
             ->exists();
 
         if (! $hasCredential) {
-            throw new RuntimeException("User chua cau hinh CheapKeyAI active cho trang {$functionKey} de tao Listing metadata.");
+            throw new RuntimeException("User chua cau hinh {$providerKey} active cho trang {$functionKey} de tao Listing metadata.");
         }
     }
 
@@ -619,7 +688,7 @@ PROMPT;
     private function generateEtsyMetadata(ProductDesignAsset $asset): ProductDesignAsset
     {
         $payload = $this->jsonPayload(
-            $this->generator->generateText($asset->user, $this->prompt(self::ETSY_PROMPT_TEMPLATE, $asset), true),
+            $this->generateListingText($asset, $this->prompt(self::ETSY_PROMPT_TEMPLATE, $asset)),
         );
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [

@@ -43,6 +43,8 @@ class ListingMetadataStatus extends Component
 
     public function retryListing(int $assetId): void
     {
+        app(MarketplaceListingMetadataService::class)->recoverStaleProcessingAssets();
+
         $this->retryMessage = null;
         $this->retryError = null;
 
@@ -62,6 +64,8 @@ class ListingMetadataStatus extends Component
 
     public function render(): View
     {
+        app(MarketplaceListingMetadataService::class)->recoverStaleProcessingAssets();
+
         return view('livewire.pages.marketplace.listing-metadata-status', [
             'assets' => $this->baseQuery()
                 ->latest('approved_at')

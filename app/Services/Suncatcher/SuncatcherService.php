@@ -158,7 +158,7 @@ class SuncatcherService
      */
     public function textModelOptionsForProvider(?string $providerKey): array
     {
-        return $this->modelOptionsForProvider($providerKey, 'text_models');
+        return ['gpt-5.4-nano' => 'GPT-5.4 Nano'];
     }
 
     /**
@@ -198,6 +198,58 @@ class SuncatcherService
         }
     }
 
+    /** @return array{ok: bool, balance?: float|int, name?: string|null, message?: string}|null */
+    public function cheapKeyAiBalanceForUser(User $user, ?string $providerKey): ?array
+    {
+        if ($providerKey !== 'cheapkeyai') {
+            return null;
+        }
+
+        $credential = UserApiCredential::query()
+            ->where('provider_key', 'cheapkeyai')
+            ->where('function_key', $this->product()->slug)
+            ->where('is_active', true)
+            ->where(function ($query) use ($user): void {
+                $query->where('user_id', $user->id)->orWhereNull('user_id');
+            })
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->first();
+
+        if (! $credential) {
+            return ['ok' => false, 'message' => 'No key'];
+        }
+
+        return (function () use ($credential): array {
+            try {
+                $key = trim((string) $credential->key_api);
+                $endpoint = trim((string) config('services.api_key_providers.cheapkeyai.balance_endpoint'));
+                $response = Http::timeout(10)->withToken($key)->get($endpoint);
+                $payload = $response->json();
+                $data = is_array($payload) ? ($payload['data'] ?? null) : null;
+
+                $userBalance = is_numeric($data['user_balance'] ?? null) ? (float) $data['user_balance'] : null;
+                $keyRemainQuota = is_numeric($data['key_remain_quota'] ?? null) ? (float) $data['key_remain_quota'] : null;
+                $keyUnlimitedQuota = ($data['key_unlimited_quota'] ?? false) === true;
+
+                if ($response->failed() || ($payload['success'] ?? false) !== true || ! is_array($data) || $userBalance === null || (! $keyUnlimitedQuota && $keyRemainQuota === null)) {
+                    return ['ok' => false, 'message' => 'Balance unavailable'];
+                }
+
+                $balance = $keyUnlimitedQuota || $keyRemainQuota === null
+                    ? $userBalance
+                    : $keyRemainQuota / 500000;
+
+                return [
+                    'ok' => true,
+                    'balance' => $balance,
+                    'name' => is_string($data['key_name'] ?? null) ? $data['key_name'] : null,
+                    'key_unlimited_quota' => $keyUnlimitedQuota,
+                ];
+            } catch (Throwable) {
+                return ['ok' => false, 'message' => 'Balance unavailable'];
+            }
+        })();
+    }
     /**
      * @return array{ok: bool, remain_quota?: float|int, used_quota?: float|int, name?: string|null, message?: string}
      */
@@ -350,7 +402,9 @@ class SuncatcherService
             throw new RuntimeException('Dong nay chua co Link Ipnut Main Image hoac image_link.');
         }
 
-        return $this->assets->updateRedesign(
+        $providerKey = $this->normalizeProviderKey($user, $providerKey);
+
+        return $this->assets->updateRedesignWithProvider(
             $asset,
             $this->generateImage(
                 user: $user,
@@ -361,6 +415,7 @@ class SuncatcherService
                 removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
                 imageModel: $imageModel,
             ),
+            $providerKey,
         );
     }
 
@@ -1865,9 +1920,10 @@ class SuncatcherService
         }
 
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $this->assets->updateAiProviderKey($asset, $providerKey);
 
         if ($this->isProviderPausedForUser($user, $providerKey)) {
-            throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
+            throw new RuntimeException($this->providerLabel($providerKey).' cua user nay dang tam dung do het tien/het quota. Hay nap tien roi bam Retry/Continue.');
         }
 
         $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
@@ -1908,9 +1964,11 @@ class SuncatcherService
     public function queueAutomationPipeline(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null, bool $manual = false): void
     {
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $asset = $this->assetForUser($user, $assetId);
+        $this->assets->updateAiProviderKey($asset, $providerKey);
 
         if ($this->isProviderPausedForUser($user, $providerKey)) {
-            throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
+            throw new RuntimeException($this->providerLabel($providerKey).' cua user nay dang tam dung do het tien/het quota. Hay nap tien roi bam Retry/Continue.');
         }
 
         RunSuncatcherItemPipeline::dispatch($user->id, $assetId, $providerKey, $imageModel, $textModel, $manual)
@@ -1920,9 +1978,11 @@ class SuncatcherService
     public function runAutomationItemPipeline(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null, ?string $textModel = null): void
     {
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
+        $asset = $this->assetForUser($user, $assetId);
+        $this->assets->updateAiProviderKey($asset, $providerKey);
 
         if ($this->isProviderPausedForUser($user, $providerKey)) {
-            throw new RuntimeException('v98Store cua user nay dang het tien/quota. Hay nap tien roi bam Retry.');
+            throw new RuntimeException($this->providerLabel($providerKey).' cua user nay dang tam dung do het tien/het quota. Hay nap tien roi bam Retry/Continue.');
         }
 
         $assetLock = Cache::lock("suncatcher:item-pipeline:{$assetId}", 3600);
@@ -2012,6 +2072,59 @@ class SuncatcherService
         }
     }
 
+    public function recoverStaleAutomationRecords(User $user): int
+    {
+        if (! Schema::hasTable('data_ornament_amazon')) {
+            return 0;
+        }
+
+        $query = DataSuncatcher::query()
+            ->where('product_slug', 'suncatcher')
+            ->when(! $user->is_admin && ! $user->isManager(), fn ($builder) => $builder->where('user_id', $user->id))
+            ->whereIn('workflow_status', ['waiting', 'running']);
+
+        $count = 0;
+
+        foreach ($query->get() as $automation) {
+            $currentStep = $this->currentAutomationStep($automation);
+            $steps = is_array($automation->step_data) ? $automation->step_data : [];
+            $stepState = $currentStep ? ($steps[$currentStep] ?? []) : [];
+            $stepStartedAt = $stepState['started_at'] ?? null;
+            $hasPendingJob = $this->hasPendingAutomationJob($automation->product_design_asset_id);
+
+            $isRunningTooLong = ($stepState['status'] ?? null) === 'running'
+                && filled($stepStartedAt)
+                && Carbon::parse($stepStartedAt)->lt(now()->subMinutes(self::RUNNING_STEP_TIMEOUT_MINUTES));
+            $isQueuedWithoutJob = ($automation->workflow_status ?? null) === 'waiting'
+                && $automation->updated_at
+                && $automation->updated_at->lt(now()->subSeconds(self::MISSING_QUEUED_JOB_GRACE_SECONDS))
+                && ! $hasPendingJob;
+
+            if (! $isRunningTooLong && ! $isQueuedWithoutJob) {
+                continue;
+            }
+
+            $asset = $automation->asset()->first();
+
+            if (! $asset) {
+                continue;
+            }
+
+            $message = $isQueuedWithoutJob
+                ? 'Automation da bi mat job trong queue. Hay bam Retry/Continue de tao lai job.'
+                : 'Automation bi ket qua lau khong cap nhat. Hay bam Retry/Continue de chay lai.';
+
+            $this->markQueuedPreviewSlotsAsFailed($asset, $message);
+            $this->markAutomationStepFinished(
+                $asset,
+                $currentStep ?: (filled($asset->redesign) ? 'script' : 'main'),
+                $message,
+            );
+            $count++;
+        }
+
+        return $count;
+    }
     public function automationForUser(User $user, int $assetId): ?DataSuncatcher
     {
         $asset = $this->assetForUser($user, $assetId);
@@ -2519,7 +2632,7 @@ class SuncatcherService
                     'GenerateSuncatcherWorkflowImage',
                     'RegenerateSuncatcherPreviewImage',
                 ]) && Str::contains($payload, $assetIdMarkers);
-            });
+            })();
     }
 
     private function markQueuedPreviewSlotsAsFailed(ProductDesignAsset $asset, string $message): void
