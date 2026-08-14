@@ -118,10 +118,10 @@ return [
         ],
         'cheapkeyai' => [
             'balance_endpoint' => env('CHEAPKEYAI_BALANCE_ENDPOINT', 'https://cheapkeyai.shop/v1/balance'),
-            'image_generation_endpoint' => env('CHEAPKEYAI_IMAGE_GENERATION_ENDPOINT', 'https://cheapkeyai.shop/v1/images/generations'),
-            'image_edit_endpoint' => env('CHEAPKEYAI_IMAGE_EDIT_ENDPOINT', 'https://cheapkeyai.shop/v1/images/edits'),
+            'image_generation_endpoint' => env('CHEAPKEYAI_IMAGE_GENERATION_ENDPOINT') ?: 'https://cheapkeyai.shop/v1/images/generations',
+            'image_edit_endpoint' => env('CHEAPKEYAI_IMAGE_EDIT_ENDPOINT') ?: 'https://cheapkeyai.shop/v1/images/edits',
             'image_endpoint' => env('CHEAPKEYAI_IMAGE_ENDPOINT'),
-            'text_endpoint' => env('CHEAPKEYAI_TEXT_ENDPOINT', 'https://cheapkeyai.shop/v1/chat/completions'),
+            'text_endpoint' => env('CHEAPKEYAI_TEXT_ENDPOINT') ?: 'https://cheapkeyai.shop/v1/chat/completions',
             'model' => env('CHEAPKEYAI_IMAGE_MODEL', 'gpt-image-2'),
             'text_model' => env('CHEAPKEYAI_TEXT_MODEL', 'gpt-5.4'),
             'image_min_interval_ms' => env('CHEAPKEYAI_IMAGE_MIN_INTERVAL_MS', 2500),

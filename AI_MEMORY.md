@@ -6017,3 +6017,23 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Validation:**
 - PHP lint pass va da kiem tra body ham hasPendingAutomationJob().
+## 2026-08-14 - CheapKeyAI key co nhung image endpoint bi rong
+
+**Root cause:**
+- config/services.php co default endpoint, nhung neu VPS khai bao bien .env CHEAPKEYAI_IMAGE_GENERATION_ENDPOINT= hoac CHEAPKEYAI_IMAGE_EDIT_ENDPOINT= rong, env() tra chuoi rong va ghi de default.
+- ApiKeyImageGenerator::imageEndpoint() thay endpoint rong nen bao provider da co key nhung chua cau hinh endpoint tao anh.
+
+**File da sua:**
+- config/services.php
+- AI_MEMORY.md
+
+**Thay doi chinh:**
+- CheapKeyAI image generation, image edit va text endpoint dung env(...) ?: URL mac dinh.
+- Bien .env rong khong con lam mat endpoint mac dinh.
+
+**Deploy/queue impact:**
+- Khong migration.
+- Deploy config, chay php artisan optimize:clear va restart worker neu loi xay ra trong queue.
+
+**Validation:**
+- php -l config/services.php pass.
