@@ -77,6 +77,69 @@ class ApprovedAssetDriveExportService
         return $summary;
     }
 
+    /**
+     * Claim and upload exactly one database-backed waiting record.
+     *
+     * @return array{claimed: bool, assets: int, images: int}
+     */
+    public function exportNextWaitingUpload(?User $actor = null, string $trigger = 'scheduled'): array
+    {
+        $this->markStaleProcessingUploadsAsFailed();
+
+        $upload = DB::transaction(function (): ?ProductDriveUpload {
+            $upload = ProductDriveUpload::query()
+                ->where('status', 'waiting')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $upload) {
+                return null;
+            }
+
+            $upload->update([
+                'status' => 'processing',
+                'error' => null,
+                'started_at' => now(),
+                'completed_at' => null,
+            ]);
+
+            return $upload;
+        });
+
+        if (! $upload) {
+            return ['claimed' => false, 'assets' => 0, 'images' => 0];
+        }
+
+        $asset = ProductDesignAsset::query()
+            ->with(['product', 'user'])
+            ->find($upload->product_design_asset_id);
+
+        if (! $asset || ! $asset->is_approved) {
+            $upload->update([
+                'status' => 'failed',
+                'error' => 'Item khong ton tai hoac chua duyet.',
+                'completed_at' => now(),
+            ]);
+
+            return ['claimed' => true, 'assets' => 0, 'images' => 0];
+        }
+
+        try {
+            $images = $this->exportAsset($asset, $actor, $trigger);
+        } catch (\Throwable $exception) {
+            $upload->update([
+                'status' => 'failed',
+                'error' => mb_substr($exception->getMessage(), 0, 2000),
+                'completed_at' => now(),
+            ]);
+
+            throw $exception;
+        }
+
+        return ['claimed' => true, 'assets' => $images > 0 ? 1 : 0, 'images' => $images];
+    }
+
     public function exportAssetById(int $assetId, ?User $actor = null, string $trigger = 'manual'): int
     {
         $this->markStaleProcessingUploadsAsFailed();

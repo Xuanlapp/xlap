@@ -8,6 +8,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Throwable;
 
@@ -18,7 +19,7 @@ class RunSuncatcherItemPipeline implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    public int $tries = 1;
+    public int $tries = 0;
 
     public int $timeout = 3600;
 
@@ -30,6 +31,15 @@ class RunSuncatcherItemPipeline implements ShouldQueue
         public ?string $textModel = null,
         public bool $manual = false,
     ) {}
+
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping("suncatcher-user:{$this->userId}"))
+                ->releaseAfter(15)
+                ->expireAfter($this->timeout + 300),
+        ];
+    }
 
     public function handle(SuncatcherService $service): void
     {

@@ -6037,3 +6037,38 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Validation:**
 - php -l config/services.php pass.
+## 2026-08-14 - Queue worker fanout va daemon lien tuc cho Suncatcher/Ornament Amazon 2
+
+**Root cause:**
+- Queue truoc do chua khoa theo user nen cung 1 user co the bi day nhieu item vao hang doi, de gay nghen hoac chay song song sai mong muon.
+- Listing metadata dang chay theo batch command mot lan, chua co che do daemon lien tuc va chua chan truong hop 1 user co nhieu listing `processing` cung luc.
+- Drive upload dang quet tat ca asset moi lan, chua claim tung ban ghi `waiting` trong `product_drive_uploads`.
+- VPS supervisor cu chi co 2 worker Suncatcher + 3 worker Ornament pipeline, chua dung mo hinh 5 worker moi san pham nhu yeu cau.
+
+**File da sua:**
+- `app/Jobs/RunSuncatcherItemPipeline.php`
+- `app/Jobs/RunOrnamentAmazonTwoItemPipeline.php`
+- `app/Console/Commands/GenerateMarketplaceListingMetadata.php`
+- `app/Console/Commands/UploadApprovedImagesToDrive.php`
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `app/Services/Product/ApprovedAssetDriveExportService.php`
+- `docs/xlap-vps-workers-supervisor.conf`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `WithoutOverlapping` theo `userId` cho job pipeline Suncatcher va Ornament Amazon 2 de moi user chi chay 1 item/luc tren moi product queue.
+- Chuyen 2 job pipeline sang `tries = 0` de tranh roi vao `MaxAttemptsExceededException` khi job bi release do user dang co item khac dang chay.
+- Them che do `--daemon` cho command listing metadata, xu ly lien tuc tung item mot (`limit=1`) va ngu ngan khi khong con viec.
+- Chan retry listing neu user da co item listing `processing`; claim job listing moi cung bo qua nhung user dang co listing dang chay.
+- Them `exportNextWaitingUpload()` de Drive upload claim tung record `waiting` trong `product_drive_uploads`, phu hop mo hinh daemon lien tuc.
+- Them che do `--daemon` cho command upload Drive de xu ly lien tuc cac record cho upload.
+- Tao file supervisor mau `docs/xlap-vps-workers-supervisor.conf` voi 5 worker Suncatcher, 5 worker Ornament Amazon 2, 1 daemon listing metadata va 1 daemon upload Drive.
+
+**Deploy/queue impact:**
+- Khong co migration database.
+- Can deploy code, chay `php artisan optimize:clear`, sau do `supervisorctl reread && supervisorctl update && supervisorctl restart all` tren VPS.
+- Worker moi de xuat: 5 process poll `suncatcher-priority,suncatcher-pipeline`; 5 process poll `ornament-priority,ornament-pipeline`; 1 daemon listing; 1 daemon drive upload.
+
+**Follow-up notes:**
+- Neu VPS van co worker cu trong `/etc/supervisor/conf.d/xlap-workers.conf` thi can thay bang file moi hoac sua lai dung queue order uu tien truoc pipeline.
+- Neu muon chong stale running manh hon nua, co the them lenh artisan de reset record `waiting/running/processing` bi treo theo thoi gian.

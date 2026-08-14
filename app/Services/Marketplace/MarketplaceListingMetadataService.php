@@ -300,6 +300,16 @@ PROMPT;
             return $asset;
         }
 
+        $otherProcessing = ProductDesignAsset::query()
+            ->where('user_id', $asset->user_id)
+            ->where('id', '!=', $asset->id)
+            ->where('marketplace_listing_status', 'processing')
+            ->exists();
+
+        if ($otherProcessing) {
+            throw new RuntimeException('User nay dang co mot listing metadata running. Hay doi item hien tai hoan tat roi thu lai.');
+        }
+
         $processing = $this->assets->markListingProcessing($asset, $this->marketplaceForAsset($asset));
 
         try {
@@ -372,7 +382,14 @@ PROMPT;
     private function claimNextPendingApprovedAsset(): ?ProductDesignAsset
     {
         return DB::transaction(function (): ?ProductDesignAsset {
+            $runningUserIds = ProductDesignAsset::query()
+                ->where('marketplace_listing_status', 'processing')
+                ->pluck('user_id')
+                ->filter()
+                ->all();
+
             $asset = $this->eligiblePendingApprovedAssetsQuery()
+                ->when($runningUserIds !== [], fn (Builder $query): Builder => $query->whereNotIn('user_id', $runningUserIds))
                 ->limit(500)
                 ->lockForUpdate()
                 ->get()
