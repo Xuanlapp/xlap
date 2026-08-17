@@ -106,6 +106,7 @@ class ListSticker extends Component
             'selectedAiProvider' => $this->selectedAiProvider,
             'selectedImageModel' => $this->selectedImageModel,
             'v98StoreBalance' => $v98StoreBalance,
+            'cheapKeyAiBalance' => $cheapKeyAiBalance,
             'product' => $service->product(),
         ])->layout('layouts.app');
     }

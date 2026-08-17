@@ -117,6 +117,7 @@ class ListOrnamentEtsy extends Component
             'providerOptions' => $providerOptions,
             'imageModelOptions' => $imageModelOptions,
             'v98StoreBalance' => $v98StoreBalance,
+            'cheapKeyAiBalance' => $cheapKeyAiBalance,
             'product' => $service->product(),
             'pageTitle' => $this->pageTitle,
             'pageSubtitle' => $this->pageSubtitle,

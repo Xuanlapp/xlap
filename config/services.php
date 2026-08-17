@@ -123,6 +123,7 @@ return [
             'image_endpoint' => env('CHEAPKEYAI_IMAGE_ENDPOINT'),
             'text_endpoint' => env('CHEAPKEYAI_TEXT_ENDPOINT') ?: 'https://cheapkeyai.shop/v1/chat/completions',
             'model' => env('CHEAPKEYAI_IMAGE_MODEL', 'gpt-image-2'),
+            'image_size' => env('CHEAPKEYAI_IMAGE_SIZE', '2000x2000'),
             'text_model' => env('CHEAPKEYAI_TEXT_MODEL', 'gpt-5.4'),
             'image_min_interval_ms' => env('CHEAPKEYAI_IMAGE_MIN_INTERVAL_MS', 2500),
             'text_min_interval_ms' => env('CHEAPKEYAI_TEXT_MIN_INTERVAL_MS', 700),

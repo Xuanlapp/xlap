@@ -6072,3 +6072,51 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 **Follow-up notes:**
 - Neu VPS van co worker cu trong `/etc/supervisor/conf.d/xlap-workers.conf` thi can thay bang file moi hoac sua lai dung queue order uu tien truoc pipeline.
 - Neu muon chong stale running manh hon nua, co the them lenh artisan de reset record `waiting/running/processing` bi treo theo thoi gian.
+
+## 2026-08-17 - CheapKeyAI gui size 1:1 2K cho image requests
+
+**Root cause:**
+- CheapKeyAI image generation/edit payload truoc do chi gui `model` va `prompt`, chua gui kich thuoc output nen provider tu quyet dinh size.
+- User muon output CheapKeyAI co ti le 1:1 va do phan giai 2K khi tao/chinh anh.
+
+**File da sua:**
+- `app/Services/Ai/ApiKeyImageGenerator.php`
+- `config/services.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them config `services.api_key_providers.cheapkeyai.image_size` mac dinh `2048x2048`.
+- Them helper `imageOutputOptions()` trong `ApiKeyImageGenerator`.
+- Khi provider la `cheapkeyai`, ca `generateFromPrompt()` va `generateWithReferences()` deu gui them payload `size=2048x2048`.
+- Cac provider khac nhu `v98store` va `vertex` khong bi anh huong.
+
+**Deploy/queue impact:**
+- Khong co migration.
+- Can deploy code va chay `php artisan optimize:clear` de config moi co hieu luc.
+
+**Validation:**
+- `php -l app/Services/Ai/ApiKeyImageGenerator.php` pass.
+- `php -l config/services.php` pass.
+
+## 2026-08-17 - Hien thi so du CheapKeyAI tren tat ca trang dang dung provider nay
+
+**Root cause:**
+- Cac Blade cua Sticker, Ornament Etsy va Ornament Amazon 2 da co block hien thi `cheapKeyAiBalance`, nhung Livewire component render khong truyen bien nay ra view.
+- Vi vay Suncatcher hien duoc tien CheapKeyAI, con cac trang kia khong hien du du service da goi API balance.
+
+**File da sua:**
+- `app/Livewire/Pages/Sticker/ListSticker.php`
+- `app/Livewire/Pages/OrnamentEtsy/ListOrnamentEtsy.php`
+- `app/Livewire/Pages/OrnamentAmazonTwo/ListOrnamentAmazonTwo.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `'cheapKeyAiBalance' => $cheapKeyAiBalance` vao data tra ve view cho Sticker, Ornament Etsy va Ornament Amazon 2.
+- Giu nguyen UI/logic hien thi hien co trong Blade, nen sau khi render du lieu se tu dong hien so du/N-A giong Suncatcher.
+
+**Deploy/queue impact:**
+- Khong migration, khong anh huong queue.
+- Deploy code va chay `php artisan optimize:clear` neu giao dien VPS chua cap nhat ngay.
+
+**Validation:**
+- PHP lint pass cho 4 Livewire page component lien quan.

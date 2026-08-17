@@ -126,6 +126,7 @@ class ListOrnamentAmazonTwo extends Component
             'selectedImageModel' => $this->selectedImageModel,
             'selectedTextModel' => $this->selectedTextModel,
             'v98StoreBalance' => $v98StoreBalance,
+            'cheapKeyAiBalance' => $cheapKeyAiBalance,
             'product' => $service->product(),
             'pageTitle' => $this->pageTitle,
             'pageSubtitle' => $this->pageSubtitle,

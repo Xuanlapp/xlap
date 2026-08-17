@@ -69,8 +69,9 @@ class ApiKeyImageGenerator
         $credential = $this->credentialFor($user, $providerKey, $functionKey);
         $response = $this->postImageJsonWithRetries($providerKey, $this->credentialKeyApi($credential, $providerKey), $endpoint, [
             'model' => $this->imageModel($providerKey, $model),
-            'prompt' => $prompt,
+            'prompt' => $this->imagePromptWithOutputRequirements($providerKey, $prompt),
             'response_format' => 'b64_json',
+            ...$this->imageOutputOptions($providerKey),
         ]);
 
         if ($response->failed()) {
@@ -127,7 +128,8 @@ class ApiKeyImageGenerator
             images: $images->all(),
             payload: [
                 'model' => $this->imageModel($providerKey, $model),
-                'prompt' => $prompt,
+                'prompt' => $this->imagePromptWithOutputRequirements($providerKey, $prompt),
+                ...$this->imageOutputOptions($providerKey),
             ],
         );
 
@@ -464,6 +466,30 @@ class ApiKeyImageGenerator
         return is_string($endpoint) && trim($endpoint) !== '' ? trim($endpoint) : null;
     }
 
+    private function imagePromptWithOutputRequirements(string $providerKey, string $prompt): string
+    {
+        if ($this->normalizeProviderKey($providerKey) !== 'cheapkeyai') {
+            return $prompt;
+        }
+
+        return trim($prompt)."
+
+OUTPUT REQUIREMENT (non-negotiable): Create one square Etsy listing image at exactly 2000 x 2000 pixels (1:1 aspect ratio). Keep the product sharp, fully visible, and do not create a collage.";
+    }
+
+    /**
+     * @return array{size?: string}
+     */
+    private function imageOutputOptions(string $providerKey): array
+    {
+        if ($this->normalizeProviderKey($providerKey) !== 'cheapkeyai') {
+            return [];
+        }
+
+        $size = config('services.api_key_providers.cheapkeyai.image_size', '2000x2000');
+
+        return is_string($size) && preg_match('/^\\d+x\\d+$/', $size) ? ['size' => $size] : [];
+    }
     private function imageModel(string $providerKey, ?string $model = null): string
     {
         $providerKey = $this->normalizeProviderKey($providerKey);
