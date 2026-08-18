@@ -1,4 +1,4 @@
-﻿<section
+<section
     class="min-h-[calc(100vh-4rem)] bg-[#f4f6fb] px-4 py-6 text-slate-950 sm:px-6 lg:px-8"
     x-data="{
         targetProducts: @js($targetProducts),
@@ -1079,7 +1079,7 @@
                 <div x-show="!bridgeReady" class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                     <p class="font-semibold">Chua ket noi duoc Etsy Crawler Bridge.</p>
                     <p class="mt-1">Web se tu check khi mo trang va khi bam Submit. Chrome khong cho website tu bat Developer mode hoac tu cai extension cho user.</p>
-                    <a href="{{ route('offorest.idea-etsy.extension.download') }}" class="mt-3 inline-flex items-center justify-center rounded-md bg-amber-600 px-3 py-2 text-xs font-bold text-red-700 transition hover:bg-amber-700">
+                    <a href="{{ route('offorest.idea-etsy.extension.download') }}" class="mt-3 inline-flex items-center justify-center rounded-md bg-amber-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-amber-700">
                         Tai Etsy Crawler Bridge (.zip)
                     </a>
                     <p class="mt-2">Lan dau tren moi may: tai file zip, giai nen, vao <span class="font-mono">chrome://extensions</span>, bat Developer mode, chon Load unpacked folder da giai nen, roi refresh trang nay.</p>

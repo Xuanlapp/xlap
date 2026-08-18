@@ -1911,16 +1911,6 @@ class SuncatcherService
         $asset = $this->assetForUser($user, $assetId);
         $currentAutomation = $this->automationForAsset($asset);
 
-        $hasOtherActiveAutomation = DataSuncatcher::query()
-            ->where('user_id', $user->id)
-            ->where('product_slug', 'suncatcher')
-            ->where('product_design_asset_id', '!=', $asset->id)
-            ->whereIn('workflow_status', ['waiting', 'running'])
-            ->exists();
-
-        if ($hasOtherActiveAutomation) {
-            throw new RuntimeException('User nay dang co mot item waiting/running. Hay doi item hien tai chay xong.');
-        }
 
         if (in_array(($currentAutomation?->workflow_status ?? null), ['waiting', 'running'], true)) {
             if ($this->hasAllWorkflowMockupImages($asset)) {
@@ -4167,7 +4157,7 @@ Analyze the TARGET AUDIENCE for this product:
 
 ===SECTION:PERSON_A===
 Describe Person A for reference image generation.
-- 2â€“3 sentences.
+- 2Ã¢â‚¬â€œ3 sentences.
 - Include age, gender, body type, hair color/texture, eye color, facial expression, clothing, natural standing pose, and general setting.
 - Person A represents the target gift recipient described in the audience analysis.
 - Describe only the person's appearance and identity.
@@ -4177,7 +4167,7 @@ Describe Person A for reference image generation.
 
 ===SECTION:PERSON_B===
 Describe Person B for reference image generation.
-- 2â€“3 sentences.
+- 2Ã¢â‚¬â€œ3 sentences.
 - Must be clearly different from Person A in at least two visual traits.
 - Include age, gender, body type, hair color/texture, eye color, facial expression, clothing, natural standing pose, and general setting.
 - Person B represents the target gift giver described in the audience analysis.

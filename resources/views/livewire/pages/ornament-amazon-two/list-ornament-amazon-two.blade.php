@@ -131,6 +131,15 @@
                                 @endif</label>
                     @endif
 
+                    @if (($selectedAiProvider ?? null) === 'cheapkeyai')
+                        <button type="button" wire:click="$dispatch('openModal', { component: 'modals.ai.change-cheap-key-ai-key', arguments: { functionKey: 'ornament-amazon-2' } })" class="inline-flex h-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700">
+                            Change API CheapKeyAI
+                        </button>
+                    @elseif (($selectedAiProvider ?? null) === 'v98store')
+                        <button type="button" wire:click="$dispatch('openModal', { component: 'modals.ai.change-v98-store-key', arguments: { functionKey: 'ornament-amazon-2' } })" class="inline-flex h-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700">
+                            Change API v98
+                        </button>
+                    @endif
                     @if (count($textModelOptions) > 0)
                         <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
                             <span>Text</span>
@@ -240,5 +249,7 @@
     <livewire:modals.ornament-amazon-two.psd-mockup-template />
     <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
+    <livewire:modals.ai.change-v98-store-key function-key="ornament-amazon-2" />
+    <livewire:modals.ai.change-cheap-key-ai-key function-key="ornament-amazon-2" />
 
 </div>

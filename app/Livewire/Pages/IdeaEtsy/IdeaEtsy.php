@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\IdeaEtsy;
 
 use App\Services\Image\ImageLinkPreviewService;
+use App\Services\Idea\SharedIdeaHistoryService;
 use App\Services\Suncatcher\SuncatcherService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
@@ -16,7 +17,18 @@ use Livewire\Component;
 
 class IdeaEtsy extends Component
 {
+
     /**
+     * @param array<int, array<string, mixed>> $items
+     * @return array{new_items: array<int, array<string, mixed>>, saved_count: int, duplicate_count: int}
+     */
+    public function storeCrawledEtsyIdeas(array $items, string $searchKeyword = ''): array
+    {
+        $user = auth()->user();
+        abort_unless($user, 403);
+
+        return app(SharedIdeaHistoryService::class)->storeCrawl($user, 'etsy', $items, $searchKeyword);
+    }    /**
      * Save one selected Etsy idea into a product workspace the current user can access.
      *
      * @return array{ok: bool, message: string, requiresConfirmation?: bool}
@@ -108,6 +120,7 @@ class IdeaEtsy extends Component
 
         return view('livewire.pages.idea-test.idea-etsy', [
             'targetProducts' => $targetProducts,
+            'ideaHistory' => auth()->user() ? app(SharedIdeaHistoryService::class)->historyForUser(auth()->user(), 'etsy') : [],
         ])->layout('layouts.app');
     }
 }

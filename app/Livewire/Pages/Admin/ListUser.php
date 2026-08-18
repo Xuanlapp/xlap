@@ -130,11 +130,34 @@ class ListUser extends Component
                 ->where('is_active', true)
                 ->first(),
             'googleDriveConnection' => app(GoogleDriveOAuthService::class)->activeConnection(),
+            'bridgeExtension' => $this->bridgeExtension(),
             'importTemplates' => $this->importTemplates(),
         ])->layout('layouts.app');
     }
 
     /**
+     * @return array{label: string, filename: string, exists: bool, path: string, updated_at: ?int, download_url: string}
+     */
+    private function bridgeExtension(): array
+    {
+        $uploadedZipPath = storage_path('app/extension-downloads/amazon-vsdt-extension.zip');
+        $uploadedRarPath = storage_path('app/extension-downloads/amazon-vsdt-extension.rar');
+        $bundledPath = public_path('downloads/amazon-vsdt-extension.zip');
+        $activePath = File::exists($uploadedZipPath)
+            ? $uploadedZipPath
+            : (File::exists($uploadedRarPath) ? $uploadedRarPath : $bundledPath);
+        $exists = File::exists($activePath);
+
+        return [
+            'label' => 'Amazon + Etsy Bridge',
+            'filename' => $exists ? basename($activePath) : 'amazon-vsdt-extension.zip',
+            'exists' => $exists,
+            'path' => $activePath,
+            'updated_at' => $exists ? File::lastModified($activePath) : null,
+            'download_url' => route('offorest.idea-amazon.extension.download'),
+        ];
+    }
+/**
      * @return array<int, array{key: string, label: string, filename: string, exists: bool, size: int, updated_at: ?string}>
      */
     private function importTemplates(): array

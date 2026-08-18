@@ -6120,3 +6120,269 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Validation:**
 - PHP lint pass cho 4 Livewire page component lien quan.
+
+## 2026-08-17 - Fix Undefined cheapKeyAiBalance Ornament Amazon 2
+
+**Root cause:**
+- `ListOrnamentAmazonTwo` da truyen `cheapKeyAiBalance` vao Blade nhung chua goi service de khai bao bien trong `render()`.
+- Trang Ornament Amazon 2 loi `Undefined variable $cheapKeyAiBalance` tai render.
+
+**File da sua:**
+- `app/Livewire/Pages/OrnamentAmazonTwo/ListOrnamentAmazonTwo.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them `$cheapKeyAiBalance = $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider);` truoc khi render view.
+
+**Deploy/queue impact:**
+- Khong migration, khong anh huong queue.
+- Deploy file va chay `php artisan optimize:clear` tren VPS.
+
+**Validation:**
+- PHP lint pass.
+
+## 2026-08-17 - Fix download Amazon VSDT Bridge zip
+
+**Root cause:**
+- Nut `Tai Amazon VSDT Bridge (.zip)` tren trang Idea Amazon dang de `href="#"`, nen bam khong tai gi ca.
+- Controller download Amazon lai tro toi `extensions/amazon-vsdt-extension`, nhung folder nay khong ton tai trong repo. Source extension thuc te nam trong `extensions/etsy-crawler-extension` va co file `amazon-vsdt.js`.
+
+**File da sua:**
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `app/Http/Controllers/IdeaAmazonExtensionDownloadController.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Doi link nut tai zip sang `route('offorest.idea-amazon.extension.download')`.
+- Doi controller Amazon download lay source tu `extensions/etsy-crawler-extension`, nhung van nen zip folder trong file download la `amazon-vsdt-extension` va ten file la `amazon-vsdt-extension.zip`.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue.
+- Deploy code va chay `php artisan optimize:clear` neu route/view cache con giu ban cu.
+
+**Follow-up notes:**
+- Neu muon tach rieng brand, co the tao folder `extensions/amazon-vsdt-extension` rieng sau nay.
+
+**Validation:**
+- PHP lint pass cho controller.
+
+## 2026-08-17 - Them Change API CheapKeyAI cho Ornament Amazon 2
+
+**Root cause:**
+- Trang Ornament Amazon 2 co dropdown provider va balance, nhung khong co nut mo modal doi API key nhu Suncatcher.
+- Component cung chua lang nghe event `cheapkeyai-key-updated`/`v98store-key-updated` de chuyen provider ngay sau khi save key.
+
+**File da sua:**
+- `app/Livewire/Pages/OrnamentAmazonTwo/ListOrnamentAmazonTwo.php`
+- `resources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them nut `Change API CheapKeyAI` khi provider dang la CheapKeyAI; khi provider la v98Store thi hien `Change API v98`.
+- Modal dung `functionKey: ornament-amazon-2` de key tach rieng dung trang.
+- Them listener event cap nhat provider/model ngay sau khi save key.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue.
+- Deploy va chay `php artisan optimize:clear` tren VPS.
+
+**Validation:**
+- PHP lint pass.
+
+## 2026-08-17 - Fix Change API modal khong mo tren Ornament Amazon 2
+
+**Root cause:**
+- Nut `wire:click` da dispatch dung event, nhung Blade page Ornament Amazon 2 chua mount hai Livewire AI modal o cuoi component.
+- Suncatcher co `<livewire:modals.ai.change-...>` nen mo duoc; Ornament Amazon 2 thieu nen bam nut khong hien modal.
+
+**File da sua:**
+- `resources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them modal v98 voi `function-key="ornament-amazon-2"`.
+- Them modal CheapKeyAI voi `function-key="ornament-amazon-2"`.
+- Giup hai key cua Ornament Amazon 2 tach rieng khoi Suncatcher, Sticker va cac trang khac.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue.
+- Deploy code va chay `php artisan optimize:clear`; co the khong can restart worker.
+
+**Validation:**
+- `php artisan view:cache` pass.
+
+## 2026-08-17 - Download Amazon VSDT Bridge khong can PHP ZipArchive
+
+**Root cause:**
+- Web PHP 8.3 chua bat extension `zip`, nen controller dung `new ZipArchive()` gay loi `Class ZipArchive not found` khi user bam tai extension.
+
+**File da sua/tao:**
+- `app/Http/Controllers/IdeaAmazonExtensionDownloadController.php`
+- `public/downloads/amazon-vsdt-extension.zip`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Tao san file zip Amazon VSDT Bridge trong repo.
+- Controller chi tra file zip san bang `response()->download()`, khong tao zip luc request va khong phu thuoc PHP extension zip.
+- File zip gom extension hien co trong `extensions/etsy-crawler-extension`, bao gom `amazon-vsdt.js`, bridge, background, popup va manifest.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue.
+- Can push ca binary `public/downloads/amazon-vsdt-extension.zip` len Git/VPS va chay `php artisan optimize:clear`.
+- Khong can cai `php8.3-zip` de tai file nua.
+
+**Validation:**
+- PHP lint controller pass.
+- Zip mo duoc va co manifest/amazon-vsdt.js.
+
+## 2026-08-17 - Admin upload Amazon VSDT Bridge ZIP
+
+**Root cause:**
+- Amazon Bridge ZIP truoc do la file tinh trong public va muon cap nhat phai deploy lai code/file.
+- Web PHP khong co ZipArchive nen khong nen tao ZIP moi trong request.
+
+**File da sua:**
+- `app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `app/Http/Controllers/IdeaAmazonExtensionDownloadController.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them upload ZIP chi cho admin ngay tren trang Idea Amazon.
+- Validate file ZIP, gioi han 50MB, kiem tra signature `PK`.
+- Luu file override tai `storage/app/extension-downloads/amazon-vsdt-extension.zip`.
+- Controller uu tien file admin upload; neu chua co thi dung file bundled trong `public/downloads`.
+- Hien thong bao upload va thoi gian cap nhat gan nhat cho admin.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue.
+- Deploy code, chay `php artisan optimize:clear`; thu muc `storage/app/extension-downloads` phai cho phep user web ghi.
+
+**Validation:**
+- PHP lint pass controller va component.
+- `php artisan view:cache` pass.
+
+## 2026-08-17 - Dung chung mot extension Amazon + Etsy tren trang user
+
+**Root cause:**
+- Amazon va Etsy la hai chuc nang trong cung mot Chrome extension, nhung hai controller download truoc do tao/tra hai file rieng.
+- Idea Etsy van dung ZipArchive, se loi tren PHP khong co extension zip.
+
+**File da sua:**
+- `app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `app/Http/Controllers/IdeaAmazonExtensionDownloadController.php`
+- `app/Http/Controllers/IdeaEtsyExtensionDownloadController.php`
+- `resources/views/livewire/pages/idea-test/idea-etsy.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Form upload nam ngay trang user Idea Amazon, chi admin thay va duoc phep ghi de file chung.
+- Ca route download Amazon va Etsy deu uu tien cung file `storage/app/extension-downloads/amazon-vsdt-extension.zip`, fallback sang bundled zip.
+- Hai trang doi label thanh `Offorest Amazon + Etsy Bridge` de user biet chi can cai mot extension.
+- Controller Etsy khong con dung ZipArchive.
+
+**Deploy/queue impact:**
+- Khong migration/queue.
+- Deploy, `php artisan optimize:clear`, dam bao web user ghi duoc `storage/app/extension-downloads`.
+
+**Validation:**
+- PHP lint Etsy controller pass; Blade view cache pass.
+
+## 2026-08-17 - Doi vi tri upload extension vao Admin User access
+
+**Root cause:**
+- Upload ZIP dang hien trong Profile, trong khi admin can quan ly tap trung tai trang User access.
+- Nhan tai Amazon/Etsy da duoc rollback ve ten rieng theo yeu cau.
+
+**File da sua:**
+- `resources/views/livewire/pages/admin/list-user.blade.php`
+- `resources/views/profile.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Tai su dung component `livewire:profile.bridge-extension-form` tai Admin User access.
+- Xoa component upload khoi Profile.
+- Khong thay doi logic key/file chung: admin upload mot ZIP, Amazon va Etsy cung tai file override.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue.
+- Deploy code va chay `php artisan optimize:clear`.
+
+**Validation:**
+- `php artisan view:cache` pass.
+
+## 2026-08-17 - Quan ly ZIP Amazon + Etsy tai Admin User access
+
+**Root cause:**
+- Khu vuc upload extension chung bi trung card va chua hien theo dang bang nhu Import Templates; modal cung chua duoc mount trong trang Admin User access.
+
+**Files changed:**
+- `app/Livewire/Pages/Admin/ListUser.php`
+- `resources/views/livewire/pages/admin/list-user.blade.php`
+
+**Changes:**
+- Them thong tin file ZIP chung dang dung, trang thai Ready/Missing, thoi gian cap nhat va link tai.
+- Doi khu vuc Extension Template thanh bang 3 cot Template/File/Status.
+- Bam vao dong de mo modal upload file ZIP moi.
+- Xoa card Extension Template bi lap.
+- Mount `modals.admin.edit-bridge-extension` o cuoi trang Admin User access.
+
+**Affected modules:**
+- Admin User access, Amazon VSDT Bridge download, Etsy Bridge download.
+
+**Deploy impact:**
+- Khong migration, khong queue. Deploy code va chay `php artisan optimize:clear`; thu muc `storage/app/extension-downloads` can quyen ghi cho user web neu admin upload ZIP tren VPS.
+
+**Queue impact:**
+- Khong thay doi.
+
+**Follow-up:**
+- Admin vao User access > Extension Template, xem file hien tai, bam dong file va upload ZIP moi.
+
+## 2026-08-17 - Cho phep upload RAR cho Amazon + Etsy Bridge
+
+**Root cause:**
+- Modal Bridge chi validate duoi `.zip`, nen admin upload `.rar` bi bao loi extension.
+
+**Files changed:**
+- `app/Livewire/Modals/Admin/EditBridgeExtension.php`
+- `resources/views/livewire/modals/admin/edit-bridge-extension.blade.php`
+- `app/Http/Controllers/IdeaAmazonExtensionDownloadController.php`
+- `app/Http/Controllers/IdeaEtsyExtensionDownloadController.php`
+
+**Changes:**
+- Chap nhan ZIP hoac RAR, toi da 50 MB; kiem tra signature PK cho ZIP va Rar! cho RAR.
+- Luu dung duoi file da upload, dong thoi xoa archive cu cua dinh dang con lai de khong bi nham.
+- Hai nut download Amazon/Etsy tra dung archive dang active va Content-Type tuong ung.
+- Modal hien File ZIP/RAR moi va cho chon `.zip`/`.rar`.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue. Deploy code va `php artisan optimize:clear`.
+
+**Validation:**
+- PHP lint 3 file PHP pass.
+- `php artisan view:cache` pass.
+
+## 2026-08-17 - Cho phep mot user chay nhieu auto Ornament Amazon 2
+
+**Root cause:**
+- `OrnamentAmazonTwoService::startAutomation()` co guard chan neu cung user da co bat ky item khac o trang thai `waiting`/`running`.
+
+**File changed:**
+- `app/Services/OrnamentAmazonTwo/OrnamentAmazonTwoService.php`
+
+**Changes:**
+- Xoa guard user-level `User nay dang co mot item waiting/running`.
+- Van giu guard cho chinh item dang `running`, tranh bam trung mot item va dispatch duplicate.
+- Moi item van dispatch mot job `RunOrnamentAmazonTwoItemPipeline` vao queue `ornament-pipeline`.
+
+**Queue/deploy impact:**
+- Khong migration. VPS supervisor hien da co 5 process cho `ornament-priority,ornament-pipeline`, nen nhieu item cung user co the duoc xu ly song song toi da 5 job.
+- Sau khi deploy chay `git pull`, `php artisan optimize:clear`, `sudo supervisorctl reread`, `sudo supervisorctl update`, `sudo supervisorctl restart xlap-ornament-amazon-two-pipeline:*` hoac restart dung group theo ten tren VPS.
+
+**Validation:**
+- PHP lint pass.
+
+**Follow-up:**
+- Neu bam item thu 6 khi 5 worker dang ban, job se nam waiting trong database queue va tu chay khi co worker trong.

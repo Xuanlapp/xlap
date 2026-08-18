@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\IdeaAmazon;
 
 use App\Services\Image\ImageLinkPreviewService;
+use App\Services\Idea\SharedIdeaHistoryService;
 use App\Services\Suncatcher\SuncatcherService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
@@ -10,13 +11,67 @@ use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class IdeaAmazon extends Component
 {
+    use WithFileUploads;
+    public ?TemporaryUploadedFile $bridgeZip = null;
+
+    public ?string $bridgeUploadMessage = null;
+
+    public function uploadAmazonBridgeZip(): void
+    {
+        $user = auth()->user();
+        abort_unless($user && ((bool) $user->is_admin || $user->role === 'admin'), 403);
+
+        $this->validate([
+            'bridgeZip' => ['required', 'file', 'extensions:zip', 'max:51200'],
+        ]);
+
+        $temporaryPath = $this->bridgeZip?->getRealPath();
+
+        if (! $temporaryPath || ! is_file($temporaryPath)) {
+            $this->addError('bridgeZip', 'Khong doc duoc file ZIP tam thoi. Hay chon lai file.');
+
+            return;
+        }
+
+        $signature = file_get_contents($temporaryPath, false, null, 0, 4);
+
+        if (! is_string($signature) || ! str_starts_with($signature, "PK")) {
+            $this->addError('bridgeZip', 'File da chon khong phai ZIP hop le.');
+
+            return;
+        }
+
+        $destination = storage_path('app/extension-downloads/amazon-vsdt-extension.zip');
+        File::ensureDirectoryExists(dirname($destination));
+
+        if (! File::copy($temporaryPath, $destination)) {
+            throw new InvalidArgumentException('Khong luu duoc file ZIP Amazon VSDT Bridge.');
+        }
+
+        $this->bridgeZip = null;
+        $this->bridgeUploadMessage = 'Da cap nhat file Amazon VSDT Bridge. Nut tai ZIP se dung ban moi.';
+    }
+
     /**
+     * @param array<int, array<string, mixed>> $items
+     * @return array{new_items: array<int, array<string, mixed>>, saved_count: int, duplicate_count: int}
+     */
+    public function storeCrawledAmazonIdeas(array $items, string $searchKeyword = ''): array
+    {
+        $user = auth()->user();
+        abort_unless($user, 403);
+
+        return app(SharedIdeaHistoryService::class)->storeCrawl($user, 'amazon', $items, $searchKeyword);
+    }    /**
      * Save one selected Amazon idea into a product workspace the current user can access.
      *
      * @return array{ok: bool, message: string, requiresConfirmation?: bool}
@@ -106,8 +161,13 @@ class IdeaAmazon extends Component
                 ->all()
             : [];
 
+        $bridgeZipPath = storage_path('app/extension-downloads/amazon-vsdt-extension.zip');
+
         return view('livewire.pages.idea-amazon.idea-amazon', [
             'targetProducts' => $targetProducts,
+            'ideaHistory' => auth()->user() ? app(SharedIdeaHistoryService::class)->historyForUser(auth()->user(), 'amazon') : [],
+            'canManageBridge' => auth()->user() && ((bool) auth()->user()->is_admin || auth()->user()->role === 'admin'),
+            'bridgeZipUpdatedAt' => is_file($bridgeZipPath) ? filemtime($bridgeZipPath) : null,
         ])->layout('layouts.app');
     }
 }

@@ -85,6 +85,21 @@ class ListOrnamentAmazonTwo extends Component
 
     }
 
+    #[On('v98store-key-updated')]
+    public function v98StoreKeyUpdated(): void
+    {
+        $this->selectedAiProvider = 'v98store';
+        $this->selectedImageModel = null;
+        $this->selectedTextModel = null;
+    }
+
+    #[On('cheapkeyai-key-updated')]
+    public function cheapKeyAiKeyUpdated(): void
+    {
+        $this->selectedAiProvider = 'cheapkeyai';
+        $this->selectedImageModel = null;
+        $this->selectedTextModel = null;
+    }
     public function updatedSelectedAiProvider(?string $providerKey): void
     {
         $this->selectedAiProvider = $this->validProviderKey($providerKey);
@@ -114,6 +129,7 @@ class ListOrnamentAmazonTwo extends Component
         $this->selectedImageModel = $this->validModelKey($this->selectedImageModel, 'image', $imageModelOptions);
         $this->selectedTextModel = $this->validModelKey($this->selectedTextModel, 'text', $textModelOptions);
         $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);
+        $cheapKeyAiBalance = $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider);
 
         return view('livewire.pages.ornament-amazon-two.list-ornament-amazon-two', [
             'statusCounts' => $service->statusCountsForUser(auth()->user()),

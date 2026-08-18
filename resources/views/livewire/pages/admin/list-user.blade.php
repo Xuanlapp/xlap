@@ -99,6 +99,50 @@
 
 
 
+
+        <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div>
+                <h2 class="text-base font-bold text-slate-950">Extension Template</h2>
+                <p class="mt-1 text-sm text-slate-500">Xem file ZIP hien tai va upload lai file moi dung chung cho Amazon va Etsy.</p>
+            </div>
+
+            <div class="mt-4 overflow-hidden rounded-lg border border-slate-200">
+                <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                        <tr>
+                            <th class="px-4 py-3">Template</th>
+                            <th class="px-4 py-3">File</th>
+                            <th class="px-4 py-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 bg-white">
+                        <tr
+                            wire:click="$dispatch('openModal', { component: 'modals.admin.edit-bridge-extension' })"
+                            class="cursor-pointer transition hover:bg-cyan-50"
+                        >
+                            <td class="px-4 py-3 font-semibold text-slate-900">{{ $bridgeExtension['label'] }}</td>
+                            <td class="px-4 py-3 text-slate-600">
+                                @if ($bridgeExtension['exists'])
+                                    <a href="{{ $bridgeExtension['download_url'] }}" wire:click.stop class="font-semibold text-cyan-600 underline decoration-cyan-200 underline-offset-4 hover:text-cyan-700">
+                                        {{ $bridgeExtension['filename'] }}
+                                    </a>
+                                @else
+                                    {{ $bridgeExtension['filename'] }}
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                @if ($bridgeExtension['exists'])
+                                    <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Ready</span>
+                                    <div class="mt-1 text-[11px] text-slate-400">{{ date('Y-m-d H:i', $bridgeExtension['updated_at']) }}</div>
+                                @else
+                                    <span class="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">Missing</span>
+                                @endif
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
         <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div class="flex items-start justify-between gap-3">
                 <div>
@@ -320,4 +364,5 @@
     <livewire:modals.admin.edit-user />
     <livewire:modals.admin.edit-product-background-removal />
     <livewire:modals.admin.edit-import-template />
+    <livewire:modals.admin.edit-bridge-extension />
 </section>
