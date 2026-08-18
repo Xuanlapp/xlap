@@ -871,6 +871,15 @@
             }
         },
 
+        async persistCrawlResults() {
+            if (!Array.isArray(this.products) || this.products.length === 0) {
+                return { new_items: [], saved_count: 0, duplicate_count: 0 };
+            }
+
+            const result = await this.$wire.storeCrawledEtsyIdeas(this.products, this.keyword);
+            this.persistTabState();
+            return result || { new_items: [], saved_count: 0, duplicate_count: 0 };
+        },
         async pollJob() {
             if (!this.requestId) {
                 return;
@@ -903,9 +912,12 @@
 
                 this.clearPoll();
                 this.running = false;
-                this.statusText = this.status === 'finished'
-                    ? `Hoan tat ${this.products.length} listing.`
-                    : this.normalizeReason(this.errors[0]?.reason || this.heyEtsyReason || this.status);
+                if (this.status === 'finished') {
+                    const saved = await this.persistCrawlResults();
+                    this.statusText = 'Da luu ' + (saved.saved_count || 0) + ' idea Etsy vao database. An trung: ' + (saved.duplicate_count || 0) + '.';
+                } else {
+                    this.statusText = this.normalizeReason(this.errors[0]?.reason || this.heyEtsyReason || this.status);
+                }
             } catch (error) {
                 this.clearPoll();
                 this.running = false;
@@ -1275,7 +1287,7 @@
                 <div class="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="text-base font-semibold text-slate-950">Bang ket qua</h2>
-                        <p class="mt-1 text-sm text-slate-500">Ket qua khong luu database va se bi thay the o lan submit tiep theo.</p>
+                        <p class="mt-1 text-sm text-slate-500">Ket qua se tu dong luu vao database; listing da crawl truoc do se khong hien lai.</p>
                     </div>
 
                     <div class="flex gap-2">
@@ -1390,7 +1402,7 @@
                                                 x-bind:class="selectedKeys.includes(productKey(product)) ? 'text-white ring-emerald-300 bg-emerald-600' : 'text-slate-500'"
                                                 aria-label="Chon item"
                                             >
-                                                <span x-show="selectedKeys.includes(productKey(product))">✓</span>
+                                                <span x-show="selectedKeys.includes(productKey(product))">âœ“</span>
                                             </button>
                                             <button
                                                 type="button"
@@ -1469,5 +1481,24 @@
 
         @include('livewire.modals.idea-etsy.duye-idea-modal')
     </div>
-</section>
+
+    <div class="mx-auto max-w-[1520px]">
+        <details class="mt-4 rounded-lg border border-slate-200 bg-white shadow-sm">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-900">
+            <span>Etsy History <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{{ count($ideaHistory) }}</span></span>
+            <span class="text-xs font-normal text-slate-500">Bam de xem</span>
+        </summary>
+        <div class="max-h-96 overflow-auto border-t border-slate-200">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead class="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-2">Title</th><th class="px-4 py-2">Listing ID</th><th class="px-4 py-2">Link</th><th class="px-4 py-2">Last Seen</th></tr></thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                    @forelse ($ideaHistory as $historyItem)
+                        <tr class="hover:bg-slate-50"><td class="px-4 py-2 font-semibold text-slate-900">{{ $historyItem['title'] ?? $historyItem['keyword'] ?? $historyItem['listingId'] ?? '-' }}</td><td class="px-4 py-2">{{ $historyItem['listingId'] ?? '-' }}</td><td class="px-4 py-2">@if (! empty($historyItem['productUrl']))<a href="{{ $historyItem['productUrl'] }}" target="_blank" rel="noopener" class="text-cyan-700 underline">Open</a>@else-@endif</td><td class="px-4 py-2 text-xs text-slate-500">{{ isset($historyItem['_lastSeenAt']) ? \Illuminate\Support\Carbon::parse($historyItem['_lastSeenAt'])->format('Y-m-d H:i') : '-' }}</td></tr>
+                    @empty
+                        <tr><td colspan="4" class="px-4 py-6 text-center text-sm text-slate-500">Chua co history.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </details></section>
 

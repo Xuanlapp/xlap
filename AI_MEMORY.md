@@ -6386,3 +6386,149 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Follow-up:**
 - Neu bam item thu 6 khi 5 worker dang ban, job se nam waiting trong database queue va tu chay khi co worker trong.
+
+## 2026-08-18 - Crawl Idea Amazon/Etsy tu dong luu database khi xong
+
+**Root cause:**
+- Hai trang Idea Amazon va Etsy da co service/history backend nhung UI crawl xong van chi hien ket qua tam tren browser, chua goi Livewire de luu vao DB.
+
+**Files changed:**
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `resources/views/livewire/pages/idea-test/idea-etsy.blade.php`
+- `database/migrations/2026_08_17_160000_create_shared_idea_history_tables.php`
+- `app/Models/IdeaItem.php`
+- `app/Models/UserIdeaHistory.php`
+- `app/Services/Idea/SharedIdeaHistoryService.php`
+- `app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `app/Livewire/Pages/IdeaEtsy/IdeaEtsy.php`
+
+**Changes:**
+- Amazon: khi nhan `VSDT_DONE`/`VSDT_STOPPED`, trang goi `storeCrawledAmazonIdeas()` de luu ket qua vao `idea_items` va `user_idea_histories`.
+- Etsy: khi poll job xong `finished`, trang goi `storeCrawledEtsyIdeas()` de luu ket qua vao DB.
+- Cap nhat copy UI thanh "Ket qua se tu dong luu vao database...".
+- Migration tao 2 bang history dung chung cho user/role.
+- Rule duplicate: Amazon theo keyword normalize; Etsy theo keyword normalize + source URL normalize. Hai user trung idea chi tao 1 `idea_items`, moi user co 1 dong history rieng.
+
+**Deploy/queue impact:**
+- Can chay migration tren moi moi truong: `php artisan migrate --force`.
+- Khong anh huong queue.
+
+**Validation:**
+- PHP lint pass cho model/service/page.
+- `php artisan view:cache` pass.
+- Test bang Tinker: 2 user luu cung 1 Amazon keyword => `idea_items` = 1, `user_idea_histories` = 2.
+
+**Follow-up:**
+- Chua hoan tat phan history panel tren UI; hien tai uu tien da dam bao crawl xong se luu DB that.
+
+## 2026-08-18 - Hien thi history Idea Amazon va Etsy, fix ParseError Etsy
+
+**Root cause:**
+- View Etsy history dung `\\Illuminate\\Support\\Carbon` trong Blade, tao token backslash khong hop le va gay `ParseError unexpected token "\\"`.
+
+**Files changed:**
+- `resources/views/livewire/pages/idea-test/idea-etsy.blade.php`
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+
+**Changes:**
+- Fix namespace Carbon trong history rows ve `\Illuminate\Support\Carbon`, giup Blade compile dung.
+- Hai trang co panel `Amazon Idea History` va `Etsy Idea History`, lay `ideaHistory` theo user hien tai/role tu service va hien keyword/title, metrics/link, last seen.
+
+**Deploy impact:**
+- Khong migration, khong queue. Chay `php artisan optimize:clear` sau deploy de clear view cache.
+
+**Validation:**
+- `php artisan view:cache` pass.
+- PHP lint hai Blade view pass.
+
+## 2026-08-18 - Fix Blade History Idea Amazon/Etsy
+
+**Root cause:**
+- Hai bang Amazon Idea History va Etsy Idea History da duoc render, nhung Blade dung `\\Illuminate\\Support\\Carbon` trong expression nen parse error `unexpected token "\\"` khi mo Idea Etsy.
+
+**Files changed:**
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `resources/views/livewire/pages/idea-test/idea-etsy.blade.php`
+
+**Changes:**
+- Doi namespace Carbon ve dung `\Illuminate\Support\Carbon::parse(...)` trong Blade.
+- History table da hien duoi bang ket qua cua tung trang: Amazon hien keyword/metrics/time; Etsy hien title/listing/link/time.
+
+**Deploy/queue impact:**
+- Khong migration moi, khong queue. Deploy va chay `php artisan optimize:clear`.
+
+**Validation:**
+- `php artisan view:cache` pass.
+
+## 2026-08-18 - Thu gon Idea History UI
+
+**Root cause:**
+- Bang Amazon/Etsy Idea History dang render mo san, chiem qua nhieu chieu cao trang va lam UI roi.
+
+**Files changed:**
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `resources/views/livewire/pages/idea-test/idea-etsy.blade.php`
+
+**Changes:**
+- Doi history thanh `<details>` dong mac dinh.
+- Header gon hien `Amazon History/Etsy History` va so luong item.
+- Bam header moi xo table trong vung cuon `max-h-96`.
+- Giam padding row tu `py-3` xuong `py-2`, doi label Last Seen gọn.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue. Deploy va `php artisan optimize:clear`.
+
+**Validation:**
+- `php artisan view:cache` pass.
+
+## 2026-08-18 - Gioi han so luong database backup local
+
+**Root cause:**
+- Scheduler tao backup moi moi 30 phut va chi xoa file theo tuoi 14 ngay; khoang thoi gian nay tao ra nhieu file `.sql.gz`, lam `storage/app/backups/database` tang len 2.5G.
+
+**Files changed:**
+- `app/Console/Commands/BackupDatabase.php`
+- `routes/console.php`
+
+**Changes:**
+- Them option `--keep-count=10`.
+- Sau moi backup, command xoa cac file cu de chi giu 10 backup moi nhat.
+- Scheduler doc `OFFOREST_DATABASE_BACKUP_KEEP_COUNT`, mac dinh 10.
+- Van giu cleanup theo `--keep-days`, ca hai rule cung ap dung.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue.
+- Deploy code va chay `php artisan optimize:clear`; scheduler se ap dung sau lan chay tiep theo.
+
+**Validation:**
+- PHP lint `BackupDatabase.php` va `routes/console.php` pass.
+
+**Follow-up:**
+- Tren VPS co the chay mot lan `php artisan offorest:backup-database --keep-days=14 --keep-count=10 --drive` de tao backup moi va don file cu. Neu khong muon tao backup moi thi can xoa/di chuyen file cu sau khi xem danh sach.
+
+## 2026-08-18 - Them lenh don anh generated mo coi
+
+**Root cause:**
+- Thu muc `storage/app/public/generated` tang lon vi anh output cu/replaced khong duoc xoa khi DB khong con tham chieu.
+- Git commit khong day anh storage len neu file khong tracked, nhung VPS van bi nang do file runtime trong `storage`.
+
+**Files changed:**
+- `app/Console/Commands/CleanupOrphanImages.php`
+
+**Changes:**
+- Them command `php artisan offorest:cleanup-orphan-images`.
+- Mac dinh la dry-run, chi thong ke file mo coi va dung lu?ng; phai them `--execute` moi xoa.
+- Chi scan public disk path mac dinh `generated`, co `--path=` de gioi han tung thu muc.
+- Bao ve file con tham chieu trong `product_design_assets`, `data_ornament_amazon`, `sub_product_design_assets`, `psd_mockup_templates`.
+- Co `--older-than-days=14` de tranh xoa file moi vua tao.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue. Deploy va chay `php artisan optimize:clear` neu can.
+- Tren VPS nen chay dry-run truoc, sau do moi chay `--execute` neu danh sach dung.
+
+**Validation:**
+- `php -l app/Console/Commands/CleanupOrphanImages.php` pass.
+- Local dry-run pass va bao 725 file, 1.33 GB candidate, chua xoa file nao.
+
+**Follow-up:**
+- Sau khi user xac nhan retention an toan, co the them scheduler chay dinh ky voi `--execute`.

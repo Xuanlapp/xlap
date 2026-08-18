@@ -23,6 +23,7 @@ if ((bool) env('OFFOREST_SCHEDULER_ENABLED', true)) {
 
     if ((bool) env('OFFOREST_DATABASE_BACKUP_ENABLED', true)) {
         $backupCommand = 'offorest:backup-database --keep-days='.(int) env('OFFOREST_DATABASE_BACKUP_KEEP_DAYS', 14);
+        $backupCommand .= ' --keep-count='.(int) env('OFFOREST_DATABASE_BACKUP_KEEP_COUNT', 10);
         $backupEveryMinutes = max(1, (int) env('OFFOREST_DATABASE_BACKUP_EVERY_MINUTES', 30));
 
         if ((bool) env('OFFOREST_DATABASE_BACKUP_TO_DRIVE', true)) {

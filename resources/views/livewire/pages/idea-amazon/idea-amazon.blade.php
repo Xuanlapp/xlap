@@ -234,7 +234,16 @@
             return [product?.sheetName, product?.batch, product?.row, product?.keywordPhrase || product?.title || product?.asin || product?.productUrl || ''].filter(Boolean).join('::');
         },
 
-        handleVsdtEvent(message) {
+        async persistCrawlResults() {
+            if (!Array.isArray(this.products) || this.products.length === 0) {
+                return { new_items: [], saved_count: 0, duplicate_count: 0 };
+            }
+
+            const result = await this.$wire.storeCrawledAmazonIdeas(this.products, this.keyword);
+            this.persistTabState();
+            return result || { new_items: [], saved_count: 0, duplicate_count: 0 };
+        },
+        async handleVsdtEvent(message) {
             if (message.type === 'VSDT_PROGRESS') {
                 this.status = 'running';
                 this.statusText = message.text || 'Dang crawl Amazon trong tab Chrome cua extension...';
@@ -249,10 +258,11 @@
                 this.cerebroSheets = this.buildCerebroSheets(this.cerebroResult);
                 this.cerebroRows = [...this.cerebroSheets.FBA, ...this.cerebroSheets.FBM];
                 this.products = this.applyCrawlFilters(this.cerebroRows.length > 0 ? this.cerebroRows : this.flattenVsdtProducts(message.result || {}));
+                const saved = await this.persistCrawlResults();
                 this.productsFound = this.products.length;
                 this.statusText = this.status === 'finished'
-                    ? `Hoan tat ${this.products.length} row ket qua.`
-                    : `Da dung, hien co ${this.products.length} row ket qua.`;
+                    ? 'Hoan tat ' + this.products.length + ' row ket qua. Da luu ' + (saved.saved_count || 0) + ' idea Amazon vao database. An trung: ' + (saved.duplicate_count || 0) + '.'
+                    : 'Da dung, hien co ' + this.products.length + ' row ket qua. Da luu ' + (saved.saved_count || 0) + ' idea Amazon vao database. An trung: ' + (saved.duplicate_count || 0) + '.';
                 return;
             }
 
@@ -1133,7 +1143,7 @@
                 this.errors = Array.isArray(job.errors) ? job.errors : [];
 
                 if (job.result) {
-                    this.handleVsdtEvent({
+                    await this.handleVsdtEvent({
                         type: job.status === 'failed' ? 'VSDT_ERROR' : 'VSDT_DONE',
                         text: job.statusText || '',
                         result: job.result,
@@ -1167,7 +1177,7 @@
                 const response = await this.sendToExtension({ type: 'AMAZON_GET_LAST_RESULT' }, 10000);
 
                 if (response?.result) {
-                    this.handleVsdtEvent({
+                    await this.handleVsdtEvent({
                         type: response.isRunning ? 'VSDT_PROGRESS' : 'VSDT_DONE',
                         text: response.statusText || '',
                         result: response.result,
@@ -1403,7 +1413,7 @@
                         <div class="mt-8 space-y-9">
                             <div>
                                 <label for="filter_keyword_phrase" class="block text-lg font-medium text-slate-950">Keyword Phrase</label>
-                                <x-input id="filter_keyword_phrase" x-model.debounce.250ms="columnFilters.product" x-on:input="currentPage = 1" class="mt-4 block h-16 w-full rounded-md border-slate-900 px-5 text-lg text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900" placeholder="Nháº­p tá»« khÃ³a..." />
+                                <x-input id="filter_keyword_phrase" x-model.debounce.250ms="columnFilters.product" x-on:input="currentPage = 1" class="mt-4 block h-16 w-full rounded-md border-slate-900 px-5 text-lg text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900" placeholder="NhÃ¡ÂºÂ­p tÃ¡Â»Â« khÃƒÂ³a..." />
                             </div>
 
                             <div class="grid gap-8 md:grid-cols-3">
@@ -1429,7 +1439,7 @@
                 <div class="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="text-base font-semibold text-slate-950">Bang ket qua</h2>
-                        <p class="mt-1 text-sm text-slate-500">Ket qua khong luu database va se bi thay the o lan submit tiep theo.</p>
+                        <p class="mt-1 text-sm text-slate-500">Ket qua se tu dong luu vao database; idea da crawl truoc do se khong hien lai.</p>
                         <div class="mt-3 inline-flex w-full rounded-md border border-slate-200 bg-slate-100 p-1 sm:w-auto">
                             <button type="button" x-on:click="activeSheetTab = 'FBA'; currentPage = 1" class="flex-1 rounded px-4 py-2 text-sm font-semibold transition sm:flex-none" x-bind:class="activeSheetTab === 'FBA' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800'">
                                 FBA
@@ -1578,7 +1588,26 @@
 
         @include('livewire.modals.idea-amazon.duye-idea-modal')
     </div>
-</section>
+
+    <div class="mx-auto max-w-[1520px]">
+        <details class="mt-4 rounded-lg border border-slate-200 bg-white shadow-sm">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-900">
+            <span>Amazon History <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{{ count($ideaHistory) }}</span></span>
+            <span class="text-xs font-normal text-slate-500">Bam de xem</span>
+        </summary>
+        <div class="max-h-96 overflow-auto border-t border-slate-200">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead class="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-2">Keyword</th><th class="px-4 py-2">Volume</th><th class="px-4 py-2">Sales</th><th class="px-4 py-2">Density</th><th class="px-4 py-2">Last Seen</th></tr></thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                    @forelse ($ideaHistory as $historyItem)
+                        <tr class="hover:bg-slate-50"><td class="px-4 py-2 font-semibold text-slate-900">{{ $historyItem['keywordPhrase'] ?? $historyItem['keyword'] ?? $historyItem['title'] ?? '-' }}</td><td class="px-4 py-2">{{ $historyItem['searchVolume'] ?? '-' }}</td><td class="px-4 py-2">{{ $historyItem['keywordSales'] ?? '-' }}</td><td class="px-4 py-2">{{ $historyItem['titleDensity'] ?? '-' }}</td><td class="px-4 py-2 text-xs text-slate-500">{{ isset($historyItem['_lastSeenAt']) ? \Illuminate\Support\Carbon::parse($historyItem['_lastSeenAt'])->format('Y-m-d H:i') : '-' }}</td></tr>
+                    @empty
+                        <tr><td colspan="5" class="px-4 py-6 text-center text-sm text-slate-500">Chua co history.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </details></section>
 
 
 
