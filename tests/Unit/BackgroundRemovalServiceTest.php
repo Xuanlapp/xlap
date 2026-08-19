@@ -60,6 +60,20 @@ class BackgroundRemovalServiceTest extends TestCase
         imagedestroy($image);
     }
 
+    public function test_it_skips_expensive_alpha_cleanup_for_large_images(): void
+    {
+        config([
+            'services.background_removal.clean_alpha' => true,
+            'services.background_removal.max_cleanup_pixels' => 100,
+        ]);
+
+        $service = new BackgroundRemovalService;
+        $reflection = new ReflectionMethod($service, 'cleanAlphaNoise');
+        $png = $this->solidPng(11, 11);
+
+        $this->assertSame($png, $reflection->invoke($service, $png));
+    }
+
     public function test_it_removes_small_alpha_noise_components(): void
     {
         config([
@@ -140,6 +154,24 @@ class BackgroundRemovalServiceTest extends TestCase
         $this->assertSame(127, $this->opacityAt($image, 8, 8));
 
         imagedestroy($image);
+    }
+
+    private function solidPng(int $width, int $height): string
+    {
+        $image = imagecreatetruecolor($width, $height);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+        imagefill($image, 0, 0, imagecolorallocatealpha($image, 20, 20, 20, 0));
+
+        ob_start();
+        $encoded = imagepng($image);
+        $bytes = ob_get_clean();
+        imagedestroy($image);
+
+        $this->assertTrue($encoded);
+        $this->assertIsString($bytes);
+
+        return $bytes;
     }
 
     private function noisyPng(): string

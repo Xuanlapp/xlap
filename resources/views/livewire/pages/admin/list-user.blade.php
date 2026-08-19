@@ -37,6 +37,29 @@
 
                     <button
                         type="button"
+                        wire:click="scanOrphanImages"
+                        wire:loading.attr="disabled"
+                        wire:target="scanOrphanImages,deleteOrphanImages"
+                        class="inline-flex h-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <span wire:loading.remove wire:target="scanOrphanImages">Quet anh rac</span>
+                        <span wire:loading wire:target="scanOrphanImages">Dang quet...</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        wire:click="deleteOrphanImages"
+                        wire:confirm="Se xoa moi anh local khong con duoc database tham chieu, khong can cho 14 ngay. Ban chac chan muon xoa?"
+                        wire:loading.attr="disabled"
+                        wire:target="scanOrphanImages,deleteOrphanImages"
+                        class="inline-flex h-9 items-center justify-center rounded-md bg-rose-500 px-3 text-xs font-bold text-white shadow-sm transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <span wire:loading.remove wire:target="deleteOrphanImages">Xoa anh rac</span>
+                        <span wire:loading wire:target="deleteOrphanImages">Dang xoa...</span>
+                    </button>
+
+                    <button
+                        type="button"
                         wire:click="$dispatch('openModal', { component: 'modals.admin.add-user' })"
                         class="inline-flex h-9 items-center justify-center rounded-md bg-cyan-500 px-3 text-xs font-bold text-white shadow-sm transition hover:bg-cyan-600 focus:outline-none focus:ring-4 focus:ring-cyan-200"
                     >
@@ -82,6 +105,13 @@
         @if ($driveUploadError)
             <div class="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {{ $driveUploadError }}
+            </div>
+        @endif
+
+        @if ($orphanImageCleanupOutput)
+            <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+                <div class="font-bold">Ket qua don dep anh</div>
+                <pre class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs leading-5">{{ $orphanImageCleanupOutput }}</pre>
             </div>
         @endif
 

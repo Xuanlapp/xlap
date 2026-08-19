@@ -9,6 +9,7 @@ use App\Services\Logging\ActivityLogService;
 use App\Services\Product\ApprovedAssetDriveExportService;
 use App\Services\User\UserAccessService;
 use App\Support\Traits\BuildsVertexCredentialPayload;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Contracts\View\View;
@@ -27,6 +28,8 @@ class ListUser extends Component
     public ?string $driveUploadStatus = null;
 
     public ?string $driveUploadError = null;
+
+    public ?string $orphanImageCleanupOutput = null;
 
     /**
      * Re-render product settings after an admin modal saves changes.
@@ -113,6 +116,39 @@ class ListUser extends Component
         }
     }
 
+    public function scanOrphanImages(): void
+    {
+        $this->authorizeAdmin();
+        $this->orphanImageCleanupOutput = $this->runOrphanImageCleanup(false);
+    }
+
+    public function deleteOrphanImages(): void
+    {
+        $this->authorizeAdmin();
+        $this->orphanImageCleanupOutput = $this->runOrphanImageCleanup(true);
+    }
+
+    private function runOrphanImageCleanup(bool $execute): string
+    {
+        $outputs = [];
+
+        foreach (['generated', 'psd-mockups'] as $path) {
+            Artisan::call('offorest:cleanup-orphan-images', array_filter([
+                '--older-than-days' => 0,
+                '--path' => $path,
+                '--execute' => $execute,
+            ], static fn (mixed $value): bool => $value !== false));
+
+            $outputs[] = '['.$path.']'.PHP_EOL.trim(Artisan::output());
+        }
+
+        return implode(PHP_EOL.PHP_EOL, $outputs);
+    }
+
+    private function authorizeAdmin(): void
+    {
+        abort_unless(auth()->user() && ((bool) auth()->user()->is_admin || auth()->user()->role === 'admin'), 403);
+    }
     public function render(): View
     {
         $service = app(UserAccessService::class);
@@ -196,3 +232,5 @@ class ListUser extends Component
         ];
     }
 }
+
+

@@ -146,6 +146,15 @@ class BackgroundRemovalService
 
         $width = imagesx($image);
         $height = imagesy($image);
+
+        $maxCleanupPixels = max(1, (int) config('services.background_removal.max_cleanup_pixels', 300000));
+
+        if ($width * $height > $maxCleanupPixels) {
+            imagedestroy($image);
+
+            return $pngBytes;
+        }
+
         $visible = array_fill(0, $height, array_fill(0, $width, false));
         $visited = array_fill(0, $height, array_fill(0, $width, false));
         $minimumOpacity = max(1, min(127, (int) config('services.background_removal.alpha_min_opacity', 45)));

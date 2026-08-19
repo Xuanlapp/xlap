@@ -6532,3 +6532,78 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Follow-up:**
 - Sau khi user xac nhan retention an toan, co the them scheduler chay dinh ky voi `--execute`.
+
+## 2026-08-19 - Ch?n tràn RAM khi tách n?n Sticker
+
+**Root cause:**
+- `BackgroundRemovalService::cleanAlphaNoise()` t?o nhi?u PHP array (`visible`, `visited`, `components`, `pixels`) theo t?ng pixel.
+- ?nh l?n làm vu?t gi?i h?n PHP 512MB t?i dòng x? lý `$pixels[]`, khi?n Livewire tr? HTTP 500 và giao di?n hi?n trang l?i/den.
+
+**Files changed:**
+- `app/Services/Image/BackgroundRemovalService.php`
+- `config/services.php`
+- `tests/Unit/BackgroundRemovalServiceTest.php`
+
+**Changes:**
+- Thêm gi?i h?n `services.background_removal.max_cleanup_pixels`, m?c d?nh `300000`.
+- N?u ?nh vu?t gi?i h?n, b? qua bu?c l?c alpha nâng cao nhung v?n gi? PNG d?u ra h?p l? t? engine, tránh làm s?p request.
+- Thêm unit test cho ?nh vu?t ngu?ng.
+
+**Deploy/queue impact:**
+- Không migration, không queue. Push code lên VPS, ch?y `php artisan optimize:clear`; worker không c?n d?i c?u hình.
+- Có th? di?u ch?nh b?ng env `OFFOREST_BACKGROUND_REMOVAL_MAX_CLEANUP_PIXELS`, nhung không c?n s?a env d? dùng m?c d?nh m?i.
+
+**Validation:**
+- PHP lint pass.
+- `php artisan test tests/Unit/BackgroundRemovalServiceTest.php` pass: 7 tests, 36 assertions.
+
+## 2026-08-19 - Bo moc 14 ngay cho nut don anh admin
+
+**Root cause:**
+- User muon xoa anh ngay khi DB khong con tham chieu, khong phu thuoc vao tuoi file.
+- Nut admin cu con truyen muc 14 ngay nen co the bo sot file moi vua tao nhung da mo coi.
+
+**Files changed:**
+- `app/Console/Commands/CleanupOrphanImages.php`
+- `app/Livewire/Pages/Admin/ListUser.php`
+- `resources/views/livewire/pages/admin/list-user.blade.php`
+
+**Changes:**
+- Nut admin `Quet anh rac` va `Xoa anh rac` hien tai quet `generated` va `psd-mockups`.
+- `--older-than-days=0` duoc dung de tat loc theo tuoi file; chi can file khong con duoc DB tham chieu la candidate xoa.
+- Cap nhat cau confirm de noi ro se xoa moi anh local mo coi, khong cho 14 ngay.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue. Push code + `php artisan optimize:clear` la du.
+- Tren VPS co the quet xem truoc, sau do bam xoa hoac chay command `offorest:cleanup-orphan-images --execute --older-than-days=0` neu can.
+
+**Validation:**
+- PHP lint pass cho command va Livewire page.
+- Blade cache pass.
+- Dry-run local hien 725 file mo coi trong `generated` va 4 file mo coi trong `psd-mockups`, deu la file co the xoa neu user chap nhan.
+
+## 2026-08-19 - Fix Livewire admin cleanup methods
+
+**Root cause:**
+- Trang `offorest/admin/users` render Blade có `$orphanImageCleanupOutput`, nhung Livewire component `ListUser` ban dau chua co public property/method tuong ung trong code dang chay.
+- Khi bam `scanOrphanImages`, Livewire nem `MethodNotFoundException`.
+
+**Files changed:**
+- `app/Livewire/Pages/Admin/ListUser.php`
+- `app/Console/Commands/CleanupOrphanImages.php`
+- `resources/views/livewire/pages/admin/list-user.blade.php`
+
+**Changes:**
+- Them public property `orphanImageCleanupOutput`.
+- Them methods `scanOrphanImages`, `deleteOrphanImages`, `runOrphanImageCleanup`, `authorizeAdmin` trong `ListUser`.
+- Nut admin quet/xoa anh mo coi tren `generated` va `psd-mockups`, khong con loc theo tuoi file.
+- Confirm copy cap nhat cho biet se xoa moi anh local khong con DB tham chieu.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue.
+- Push code + `php artisan optimize:clear` / `php artisan view:cache` la du.
+
+**Validation:**
+- `php -l app/Livewire/Pages/Admin/ListUser.php` pass.
+- `php artisan view:cache` pass.
+- `Select-String` da thay methods `scanOrphanImages`, `deleteOrphanImages`, `render` trong component.
