@@ -150,9 +150,10 @@ class BackgroundRemovalService
         $maxCleanupPixels = max(1, (int) config('services.background_removal.max_cleanup_pixels', 300000));
 
         if ($width * $height > $maxCleanupPixels) {
+            $cleaned = $this->cleanLargeImageWithScaledMask($image, $width, $height, $maxCleanupPixels);
             imagedestroy($image);
 
-            return $pngBytes;
+            return $cleaned;
         }
 
         $visible = array_fill(0, $height, array_fill(0, $width, false));
@@ -210,6 +211,61 @@ class BackgroundRemovalService
         return $encoded && is_string($cleaned) ? $cleaned : $pngBytes;
     }
 
+    private function cleanLargeImageWithScaledMask($image, int $width, int $height, int $maxCleanupPixels): string
+    {
+        $scale = min(1.0, sqrt($maxCleanupPixels / ($width * $height)));
+        $scaledWidth = max(1, (int) floor($width * $scale));
+        $scaledHeight = max(1, (int) floor($height * $scale));
+        $scaled = imagecreatetruecolor($scaledWidth, $scaledHeight);
+        imagealphablending($scaled, false);
+        imagesavealpha($scaled, true);
+        imagecopyresampled($scaled, $image, 0, 0, 0, 0, $scaledWidth, $scaledHeight, $width, $height);
+
+        ob_start();
+        $encoded = imagepng($scaled);
+        $scaledBytes = ob_get_clean();
+        imagedestroy($scaled);
+
+        if (! $encoded || ! is_string($scaledBytes)) {
+            return $this->encodePngFromImage($image);
+        }
+
+        $cleanedScaledBytes = $this->cleanAlphaNoise($scaledBytes);
+        $cleanedScaled = imagecreatefromstring($cleanedScaledBytes);
+
+        if ($cleanedScaled === false) {
+            return $this->encodePngFromImage($image);
+        }
+
+        $transparent = imagecolorallocatealpha($image, 0, 0, 0, 127);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+
+        for ($y = 0; $y < $height; $y++) {
+            $scaledY = min($scaledHeight - 1, (int) floor($y * $scaledHeight / $height));
+
+            for ($x = 0; $x < $width; $x++) {
+                $scaledX = min($scaledWidth - 1, (int) floor($x * $scaledWidth / $width));
+
+                if ($this->opacityAt($cleanedScaled, $scaledX, $scaledY) < 1) {
+                    imagesetpixel($image, $x, $y, $transparent);
+                }
+            }
+        }
+
+        imagedestroy($cleanedScaled);
+
+        return $this->encodePngFromImage($image);
+    }
+
+    private function encodePngFromImage($image): string
+    {
+        ob_start();
+        $encoded = imagepng($image);
+        $pngBytes = ob_get_clean();
+
+        return $encoded && is_string($pngBytes) ? $pngBytes : '';
+    }
     private function encodePng(string $imageBytes): string
     {
         if (str_starts_with($imageBytes, "\x89PNG\r\n\x1a\n")) {

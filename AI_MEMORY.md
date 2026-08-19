@@ -6607,3 +6607,24 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 - `php -l app/Livewire/Pages/Admin/ListUser.php` pass.
 - `php artisan view:cache` pass.
 - `Select-String` da thay methods `scanOrphanImages`, `deleteOrphanImages`, `render` trong component.
+
+## 2026-08-19 - Khoi phuc tach nen anh lon cho Sticker
+
+**Root cause:**
+- Ban fix tran RAM truoc day tra nguyen PNG khi anh vuot `max_cleanup_pixels`, nen Sticker khong con tach nen voi anh lon.
+
+**Files changed:**
+- `app/Services/Image/BackgroundRemovalService.php`
+- `tests/Unit/BackgroundRemovalServiceTest.php`
+
+**Changes:**
+- Anh lon nay dung anh thu nho de chay alpha cleanup/flood-fill, sau do ap mask alpha tro lai anh goc.
+- Van giu gioi han RAM, khong tao mang pixel khong lo tren kich thuoc goc.
+- Cap nhat test de xac nhan anh lon van duoc xu ly transparency.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue. Push code va chay `php artisan optimize:clear`; worker khong can doi.
+
+**Validation:**
+- PHP lint pass.
+- `php artisan test tests/Unit/BackgroundRemovalServiceTest.php` pass: 7 tests, 38 assertions.

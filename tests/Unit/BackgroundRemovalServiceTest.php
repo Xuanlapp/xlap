@@ -60,7 +60,7 @@ class BackgroundRemovalServiceTest extends TestCase
         imagedestroy($image);
     }
 
-    public function test_it_skips_expensive_alpha_cleanup_for_large_images(): void
+    public function test_it_uses_a_scaled_mask_for_large_images(): void
     {
         config([
             'services.background_removal.clean_alpha' => true,
@@ -69,9 +69,13 @@ class BackgroundRemovalServiceTest extends TestCase
 
         $service = new BackgroundRemovalService;
         $reflection = new ReflectionMethod($service, 'cleanAlphaNoise');
-        $png = $this->solidPng(11, 11);
+        $cleaned = $reflection->invoke($service, $this->solidPng(11, 11));
+        $image = imagecreatefromstring($cleaned);
 
-        $this->assertSame($png, $reflection->invoke($service, $png));
+        $this->assertInstanceOf(\GdImage::class, $image);
+        $this->assertSame(0, $this->opacityAt($image, 5, 5));
+
+        imagedestroy($image);
     }
 
     public function test_it_removes_small_alpha_noise_components(): void
