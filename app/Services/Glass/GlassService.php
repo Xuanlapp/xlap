@@ -386,17 +386,20 @@ class GlassService
         $this->ensureNotApproved($asset);
         $this->ensureMasterEditable($asset);
 
-        return $this->assets->updateRedesign(
+        $providerKey = $this->normalizeProviderKey($user, $asset->ai_provider_key);
+
+        return $this->assets->updateRedesignWithProvider(
             $asset,
-            $this->generator->generate(
+            $this->generateImage(
                 user: $user,
+                providerKey: $providerKey,
                 imageUri: $this->normalizeImageLink($imageLink),
                 prompt: $this->normalizeCustomPrompt($prompt),
                 folder: 'generated/glass/redesign',
                 removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
-                lockWaitSeconds: (int) config('services.vertex.priority_lock_wait_seconds', 600),
-                priority: true,
+                imageModel: null,
             ),
+            $providerKey,
         );
     }
 

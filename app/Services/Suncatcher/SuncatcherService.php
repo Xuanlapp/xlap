@@ -548,6 +548,8 @@ class SuncatcherService
             throw new InvalidArgumentException('Anh can sua khong hop le.');
         }
 
+        $providerKey = $this->normalizeProviderKey($user, $this->providerForPreviewImage($asset, $target, $providerKey));
+
         $imageUrl = $this->generateImage(
             user: $user,
             providerKey: $providerKey,
@@ -559,7 +561,7 @@ class SuncatcherService
         );
 
         if ($target === 'redesign') {
-            return $this->assets->updateRedesign($asset, $imageUrl);
+            return $this->assets->updateRedesignWithProvider($asset, $imageUrl, $providerKey);
         }
 
         $slot = $this->workflowSlotFromPreviewTarget($target);
@@ -594,6 +596,23 @@ class SuncatcherService
         unset($workflow['images_errors'][$slot]);
 
         return $this->saveWorkflowData($asset, $workflow);
+    }
+
+    private function providerForPreviewImage(ProductDesignAsset $asset, string $target, ?string $fallback): ?string
+    {
+        if ($target !== 'redesign') {
+            $workflow = $this->workflowData($asset);
+            $slot = $this->workflowSlotFromPreviewTarget($target);
+            $provider = $workflow['images'][$slot]['provider'] ?? $workflow['provider'] ?? null;
+
+            if (is_string($provider) && trim($provider) !== '') {
+                return trim($provider);
+            }
+        }
+
+        $provider = trim((string) $asset->ai_provider_key);
+
+        return $provider !== '' ? $provider : $fallback;
     }
 
     /**

@@ -342,17 +342,20 @@ class OrnamentEtsyService
             throw new InvalidArgumentException('Prompt tuy chinh khong duoc qua 5000 ky tu.');
         }
 
-        return $this->assets->updateRedesign(
+        $providerKey = $this->normalizeProviderKey($user, $asset->ai_provider_key);
+
+        return $this->assets->updateRedesignWithProvider(
             $asset,
             $this->generateImage(
                 user: $user,
-                providerKey: null,
+                providerKey: $providerKey,
                 imageUri: $this->normalizeImageLink($imageLink),
                 prompt: $customPrompt,
                 folder: 'generated/suncatcher-etsy/redesign',
                 removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
                 imageModel: null,
             ),
+            $providerKey,
         );
     }
 
