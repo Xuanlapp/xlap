@@ -67,6 +67,9 @@
         stateStorageKey: 'idea_amazon_tab_state',
 
         init() {
+            window.addEventListener('amazon-history-approval', (event) => {
+                this.approveHistoryItem(event.detail?.item || {});
+            });
             this.restoreFbaRule();
             this.restoreTabState();
 
@@ -840,6 +843,20 @@
             this.selectedKeys = this.selectedKeys.filter((selectedKey) => selectedKey !== key);
         },
 
+        approveHistoryItem(historyItem) {
+            const product = {
+                ...historyItem,
+                title: historyItem.keywordPhrase || historyItem.keyword || historyItem.title || '',
+                imageUrl: historyItem.imageUrl || historyItem.image || '',
+                historyIdeaId: historyItem._ideaId,
+            };
+            this.products = [...this.products.filter((item) => item.historyIdeaId !== product.historyIdeaId), product];
+            this.selectedKeys = [this.productKey(product)];
+            this.hiddenKeys = this.hiddenKeys.filter((key) => key !== this.productKey(product));
+            this.keyword = product.title || this.keyword;
+            this.openApproval();
+        },
+
         openApproval() {
             if (this.selectedProducts().length === 0) {
                 this.toast('error', 'Chua chon item', 'Hay tich chon it nhat 1 item Amazon truoc khi duyet.');
@@ -852,6 +869,10 @@
             }
 
             this.approvalTargetSlug = this.targetProducts[0].slug;
+            this.selectedProducts().forEach((product) => {
+                product.approvalSku = product.approvalSku || '';
+                product.approvalProductLink = product.approvalProductLink || '';
+            });
             this.approvalOpen = true;
             this.approvalConfirmOpen = false;
             this.approvalConfirmMessage = '';
@@ -922,6 +943,8 @@
                 product.title || this.keyword,
                 product.imageUrl,
                 forceKeyword,
+                product.approvalSku || '',
+                product.approvalProductLink || '',
             );
 
             if (response?.requiresConfirmation) {
@@ -931,6 +954,9 @@
             }
 
             this.removeProduct(product);
+            if (product.historyIdeaId) {
+                await $wire.removeAmazonHistoryItem(product.historyIdeaId);
+            }
             return true;
         },
 
@@ -939,25 +965,6 @@
 
             if (selectedProducts.length === 0 || !this.approvalTargetSlug) {
                 return;
-            }
-
-            if (!forceKeyword) {
-                const needConfirmationCount = selectedProducts.filter((product) => this.keywordNeedsConfirmation(product)).length;
-                const mismatchNames = Array.from(new Set(selectedProducts
-                    .map((product) => this.productMismatchLabel(product))
-                    .filter(Boolean)));
-
-                if (needConfirmationCount > 0) {
-                    const mismatchText = mismatchNames.length > 0
-                        ? ` Mot so item co ve thuoc ${mismatchNames.join(', ')}.`
-                        : '';
-                    const requiredKeyword = this.requiredKeywordForSlug(this.approvalTargetSlug);
-                    const targetName = this.targetProductName(this.approvalTargetSlug);
-
-                    this.approvalConfirmMessage = `${needConfirmationCount} item khong dung voi trang dang chon (${targetName}).${mismatchText} Bam Yes de van luu toan bo ${selectedProducts.length} item da chon va tu them '${requiredKeyword}' vao keyword khi can.`;
-                    this.approvalConfirmOpen = true;
-                    return;
-                }
             }
 
             this.approvalSaving = true;
@@ -981,15 +988,6 @@
                 this.toast('success', 'Da luu', `Da them ${savedCount} item moi.`);
             } catch (error) {
                 const message = error.message || 'Co loi khi them item.';
-
-                if (!forceKeyword && message.toLowerCase().includes('keyword')) {
-                    const requiredKeyword = this.requiredKeywordForSlug(this.approvalTargetSlug);
-
-                    this.approvalConfirmMessage = `${message} Bam Yes de van luu toan bo ${selectedProducts.length} item da chon va tu them '${requiredKeyword}' vao keyword khi can.`;
-                    this.approvalConfirmOpen = true;
-                    this.approvalSaving = false;
-                    return;
-                }
 
                 this.toast('error', 'Khong luu duoc', message);
                 this.approvalSaving = false;
@@ -1597,12 +1595,13 @@
         </summary>
         <div class="max-h-96 overflow-auto border-t border-slate-200">
             <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead class="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-2">Keyword</th><th class="px-4 py-2">Volume</th><th class="px-4 py-2">Sales</th><th class="px-4 py-2">Density</th><th class="px-4 py-2">Last Seen</th></tr></thead>
+                <thead class="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-2">Keyword</th><th class="px-4 py-2">Volume</th><th class="px-4 py-2">Sales</th><th class="px-4 py-2">Density</th><th class="px-4 py-2">Last Seen</th><th class="px-4 py-2 text-right">Action</th></tr></thead>
                 <tbody class="divide-y divide-slate-100 bg-white">
                     @forelse ($ideaHistory as $historyItem)
-                        <tr class="hover:bg-slate-50"><td class="px-4 py-2 font-semibold text-slate-900">{{ $historyItem['keywordPhrase'] ?? $historyItem['keyword'] ?? $historyItem['title'] ?? '-' }}</td><td class="px-4 py-2">{{ $historyItem['searchVolume'] ?? '-' }}</td><td class="px-4 py-2">{{ $historyItem['keywordSales'] ?? '-' }}</td><td class="px-4 py-2">{{ $historyItem['titleDensity'] ?? '-' }}</td><td class="px-4 py-2 text-xs text-slate-500">{{ isset($historyItem['_lastSeenAt']) ? \Illuminate\Support\Carbon::parse($historyItem['_lastSeenAt'])->format('Y-m-d H:i') : '-' }}</td></tr>
+                        @php($historyKeyword = $historyItem['keywordPhrase'] ?? $historyItem['keyword'] ?? $historyItem['title'] ?? '')
+                        <tr class="hover:bg-slate-50"><td class="px-4 py-2 font-semibold"><a href="https://www.amazon.com/s?k={{ urlencode($historyKeyword) }}" target="_blank" rel="noopener" class="text-cyan-700 underline hover:text-cyan-900">{{ $historyKeyword ?: '-' }}</a></td><td class="px-4 py-2">{{ $historyItem['searchVolume'] ?? '-' }}</td><td class="px-4 py-2">{{ $historyItem['keywordSales'] ?? '-' }}</td><td class="px-4 py-2">{{ $historyItem['titleDensity'] ?? '-' }}</td><td class="px-4 py-2 text-xs text-slate-500">{{ isset($historyItem['_lastSeenAt']) ? \Illuminate\Support\Carbon::parse($historyItem['_lastSeenAt'])->format('Y-m-d H:i') : '-' }}</td><td class="px-4 py-2"><div class="flex justify-end gap-2"><button type="button" wire:click="prepareAmazonHistoryApproval({{ $historyItem['_ideaId'] }})" class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-600 text-base font-bold text-white hover:bg-emerald-700" title="Duyet">&#10003;</button><button type="button" wire:click="removeAmazonHistoryItem({{ $historyItem['_ideaId'] }})" wire:confirm="Xoa item nay khoi Amazon History?" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-white text-base font-bold text-red-600 hover:bg-red-50" title="Xoa">&#215;</button></div></td></tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-6 text-center text-sm text-slate-500">Chua co history.</td></tr>
+                        <tr><td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">Chua co history.</td></tr>
                     @endforelse
                 </tbody>
             </table>

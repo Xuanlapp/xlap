@@ -11,12 +11,15 @@ use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\OrnamentEtsy\OrnamentEtsyStatusPanel;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
+use App\Livewire\Pages\Glass\ListGlass;
+use App\Livewire\Pages\Glass\GlassStatusPanel;
 use App\Models\ProductDesignAsset;
 use App\Services\Logging\ActivityLogService;
 use App\Services\Suncatcher\SuncatcherService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
+use App\Services\Glass\GlassService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
@@ -51,7 +54,7 @@ class DeleteIdeaConfirm extends Component
         $assetId = (int) ($arguments['assetId'] ?? 0);
         $productSlug = (string) ($arguments['productSlug'] ?? '');
 
-        if ($assetId < 1 || ! in_array($productSlug, ['sticker', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'], true)) {
+        if ($assetId < 1 || ! in_array($productSlug, ['sticker', 'glass', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'], true)) {
             return;
         }
 
@@ -112,6 +115,7 @@ class DeleteIdeaConfirm extends Component
     {
         return match ($this->productSlug) {
             'sticker' => app(StickerService::class)->deleteAsset(auth()->user(), $this->assetId),
+            'glass' => app(GlassService::class)->deleteAsset(auth()->user(), $this->assetId),
             'suncatcher' => app(SuncatcherService::class)->deleteAsset(auth()->user(), $this->assetId),
             'ornament-etsy' => app(OrnamentEtsyService::class)->deleteAsset(auth()->user(), $this->assetId),
             'ornament-amazon-2' => app(OrnamentAmazonTwoService::class)->deleteAsset(auth()->user(), $this->assetId),
@@ -123,6 +127,7 @@ class DeleteIdeaConfirm extends Component
     {
         return match ($productSlug) {
             'sticker' => 'Sticker Workspace',
+            'glass' => 'Glass Workspace',
             'suncatcher' => 'Suncatcher',
             'ornament-etsy' => 'Ornament Etsy',
             'ornament-amazon-2' => 'Ornament Amazon 2',
@@ -134,6 +139,7 @@ class DeleteIdeaConfirm extends Component
     {
         $event = match ($this->productSlug) {
             'sticker' => 'sticker.item_deleted',
+            'glass' => 'glass.item_deleted',
             'suncatcher' => 'suncatcher.item_deleted',
             'ornament-etsy' => 'ornament_etsy.item_deleted',
             'ornament-amazon-2' => 'ornament_amazon_2.item_deleted',
@@ -152,6 +158,7 @@ class DeleteIdeaConfirm extends Component
     {
         match ($this->productSlug) {
             'sticker' => $this->dispatchStickerEvents(),
+            'glass' => $this->dispatchGlassEvents(),
             'suncatcher' => $this->dispatchSuncatcherEvents(),
             'ornament-etsy' => $this->dispatchOrnamentEtsyEvents(),
             'ornament-amazon-2' => $this->dispatchOrnamentAmazonTwoEvents(),
@@ -165,6 +172,14 @@ class DeleteIdeaConfirm extends Component
         $this->dispatch('sticker-product-design-workflow-updated')->to(StickerStatusPanel::class);
         $this->dispatch('sticker-counts-updated')->to(ListSticker::class);
         $this->dispatch('sticker-counts-updated')->to(StickerStatusPanel::class);
+    }
+
+    private function dispatchGlassEvents(): void
+    {
+        $this->dispatch('glass-product-design-workflow-updated')->to(ListGlass::class);
+        $this->dispatch('glass-product-design-workflow-updated')->to(GlassStatusPanel::class);
+        $this->dispatch('glass-counts-updated')->to(ListGlass::class);
+        $this->dispatch('glass-counts-updated')->to(GlassStatusPanel::class);
     }
 
     private function dispatchSuncatcherEvents(): void

@@ -39,6 +39,7 @@ class VertexImageGenerator
         string $prompt,
         string $folder = 'generated',
         bool $removeBackground = false,
+        ?string $backgroundRemovalEngine = null,
         ?int $lockWaitSeconds = null,
         bool $priority = false,
     ): string
@@ -125,7 +126,7 @@ class VertexImageGenerator
             throw new RuntimeException('Vertex API không trả về ảnh.');
         }
 
-        return $this->storeGeneratedImage($imageBase64, $folder, $removeBackground);
+        return $this->storeGeneratedImage($imageBase64, $folder, $removeBackground, $backgroundRemovalEngine);
     }
 
     /**
@@ -898,7 +899,7 @@ class VertexImageGenerator
         return trim(implode("\n", $parts));
     }
 
-    private function storeGeneratedImage(string $imageBase64, string $folder, bool $removeBackground): string
+    private function storeGeneratedImage(string $imageBase64, string $folder, bool $removeBackground, ?string $backgroundRemovalEngine = null): string
     {
         $path = trim($folder, '/').'/'.uniqid('vertex_', true).'.png';
         $estimatedBytes = (int) floor(strlen($imageBase64) * 3 / 4);
@@ -914,7 +915,7 @@ class VertexImageGenerator
         }
 
         if ($removeBackground) {
-            $imageBytes = $this->backgroundRemoval()->remove($imageBytes);
+            $imageBytes = $this->backgroundRemoval()->remove($imageBytes, $backgroundRemovalEngine);
         }
 
         if (strlen($imageBytes) > self::MAX_OUTPUT_IMAGE_BYTES) {

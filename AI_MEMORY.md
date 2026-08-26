@@ -6628,3 +6628,564 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 **Validation:**
 - PHP lint pass.
 - `php artisan test tests/Unit/BackgroundRemovalServiceTest.php` pass: 7 tests, 38 assertions.
+
+## 2026-08-19 - Doi Sticker sang role Amazon cho listing metadata
+
+**Root cause:**
+- User muon Sticker khi chay listing metadata thi quy chieu ve Amazon thay vi di theo quyen Etsy/Amazon mac dinh cua user.
+
+**Files changed:**
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+
+**Changes:**
+- `generateForApprovedAsset()` coi `sticker` giong `ornament-amazon-2` khi quyet dinh generate Amazon metadata.
+- `marketplaceForAsset()` tra ve `amazon` cho `sticker`.
+- Khong gom `sticker` vao rule provider/job eligibility rieng cua `ornament-amazon-2`; Sticker van di theo luong listing thong thuong, chi doi marketplace output sang Amazon.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue. Push code va `php artisan optimize:clear` la du.
+
+**Validation:**
+- PHP lint `MarketplaceListingMetadataService.php` pass.
+- Da kiem tra mapping: `marketplaceForAsset()` tra `amazon` cho `sticker`.
+
+## 2026-08-19 - Them Financial Management cho Admin
+
+**Muc tieu:**
+- Tao trang Admin quan ly financial accounts va transactions theo platform/currency.
+
+**Root cause / pham vi:**
+- Project chua co data layer cho account tai chinh, transaction, permission theo account.
+
+**Files changed/added:**
+- `database/migrations/2026_08_19_000100_create_financial_management_tables.php`
+- `app/Models/FinancialAccount.php`
+- `app/Models/FinancialTransaction.php`
+- `app/Services/Financial/FinancialAccessService.php`
+- `app/Livewire/Pages/Admin/FinancialManagement.php`
+- `app/Livewire/Modals/Admin/FinancialAccountForm.php`
+- `app/Livewire/Modals/Admin/FinancialTransactionForm.php`
+- `resources/views/livewire/pages/admin/financial-management.blade.php`
+- `resources/views/livewire/modals/admin/financial-account-form.blade.php`
+- `resources/views/livewire/modals/admin/financial-transaction-form.blade.php`
+- `app/Models/User.php`
+- `routes/web.php`
+- `resources/views/livewire/layout/navigation.blade.php`
+- `tests/Unit/FinancialAccessServiceTest.php`
+
+**Changes:**
+- Them account Etsy/Amazon voi code, currency, status, description va soft delete.
+- Them transaction revenue/fulfillment/expense, category, amount, reference, creator/updater/deleter va ma `TXN-000001`.
+- Balance tinh tu transaction: Received - Fulfillment - Expenses; dashboard group theo currency, khong cong tron currency.
+- Admin co CRUD account/transaction, gan user theo account voi View/Add/Edit/Delete va audit activity log.
+- Them menu Admin desktop/mobile va route `offorest.admin.financial-management`.
+
+**Deploy/queue impact:**
+- Co migration moi, khong thay doi queue.
+- VPS: pull code, chay `php artisan migrate --force`, `php artisan optimize:clear`; restart PHP/web neu deploy process yeu cau.
+
+**Validation:**
+- PHP lint pass.
+- `php artisan view:cache` pass.
+- Migration local da chay.
+- FinancialAccessServiceTest pass: 1 test, 4 assertions.
+
+**Follow-up:**
+- User-facing financial page va export/import co the lam phase 2; hien tai route la Admin-only dung theo request hien tai.
+## 2026-08-19 - Hoan thien Financial Management
+
+**Changes:**
+- Disable account chi doi `status=disabled`, khong soft-delete hay xoa lich su giao dich.
+- Account disabled khong hien Add txn va validation cung chan tao giao dich moi.
+- Permission Add/Edit/Delete tu dong bat View de permission khong bi mau thuan.
+- Dashboard tong theo currency da ap dung ca filter account dang chon.
+- Sua lai nut xoa transaction bi doi nham thanh Disable.
+
+**Validation:**
+- PHP lint, `php artisan view:cache` va `FinancialAccessServiceTest` deu pass.
+
+**Deploy impact:**
+- Khong migration/queue moi o buoc polish. Deploy theo migration Financial Management da ghi truoc do.
+## 2026-08-19 - Financial Management theo account access
+
+**Changes:**
+- Them route user `offorest.financial-management` va middleware `financial`.
+- User khong co account co `can_view=true` bi 403 ke ca nhap URL truc tiep; menu Financial cung khong hien.
+- Khi Admin gan mot account voi View, user tu dong thay menu va vao trang Financial; chi query/nhin thay account duoc gan.
+- Trang user co Add/Edit/Delete transaction dung theo `can_add`, `can_edit`, `can_delete`; backend kiem tra lai permission o tung action.
+- Admin van co trang Admin Financial rieng va co the tao account khong share cho bat ky user nao.
+
+**Validation:**
+- `FinancialAccessTest` va `FinancialAccessServiceTest` pass: 3 tests, 8 assertions.
+- `php artisan view:cache` pass.
+
+**Deploy impact:**
+- Khong migration/queue moi. Push code, `php artisan optimize:clear`; neu da deploy truoc Financial migration thi khong can migrate them.
+## 2026-08-19 - Dashboard Financial Management theo mau tham chieu
+
+**Root cause:**
+- Trang Admin Financial cu thien ve bang du lieu, chua co dashboard tong quan nhu mau user cung cap.
+
+**Files changed:**
+- `app/Livewire/Pages/Admin/FinancialManagement.php`
+- `resources/views/livewire/pages/admin/financial-management.blade.php`
+
+**Changes:**
+- Them loc platform, nhieu account, khoang ngay va nut reset.
+- Them KPI Received, Fulfillment, Expenses, Balance; bieu do balance theo thang; bang summary thang; recent transactions.
+- Giu lai thao tac Admin add/edit/delete account va transaction, cung audit log da co.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue. Deploy code va chay `php artisan optimize:clear`.
+
+**Validation:**
+- PHP lint va `php artisan view:cache` pass.
+
+**Follow-up:**
+- Co the doi bieu do CSS sang chart JS neu can tuong tac tooltip/line chart chinh xac hon.
+## 2026-08-19 - Dropdown checkbox chon Financial Accounts
+
+**Root cause:**
+- Native multi-select bat buoc giu Ctrl, khong dung theo mau dashboard user yeu cau.
+
+**Files changed:**
+- `app/Livewire/Pages/Admin/FinancialManagement.php`
+- `resources/views/livewire/pages/admin/financial-management.blade.php`
+
+**Changes:**
+- Doi Accounts thanh dropdown checkbox co search, nhom platform, Select All, Clear va dem so account da chon.
+- Dashboard tiep tuc chi tong hop account da tich; neu Clear thi hien tat ca account.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue. Deploy code va chay `php artisan optimize:clear`.
+
+**Validation:**
+- PHP lint va `php artisan view:cache` pass.
+## 2026-08-20 - Expand Monthly Financial Summary theo ngay
+
+**Root cause:**
+- User muon bam vao thang co du lieu de mo chi tiet cac ngay co giao dich.
+
+**Files changed:**
+- `app/Livewire/Pages/Admin/FinancialManagement.php`
+- `resources/views/livewire/pages/admin/financial-management.blade.php`
+
+**Changes:**
+- Moi dong period trong Monthly Financial Summary co the open/close.
+- Khi mo, hien tong hop theo ngay: so giao dich, Received, Fulfillment, Expenses, Balance.
+- Chi period co du lieu moi co trong summary; chi tiet ngay ap dung cac filter hien tai.
+
+**Deploy/queue impact:**
+- Khong migration, khong queue. Deploy code va chay `php artisan optimize:clear`.
+
+**Validation:**
+- PHP lint, Blade cache va FinancialAccess tests pass.
+## 2026-08-20 - Them Note cho Financial Transaction
+
+**Root cause:**
+- Form Add Transaction thieu truong Note theo logic tai chinh; Description va Note can duoc luu rieng.
+
+**Files changed:**
+- `database/migrations/2026_08_20_000300_add_note_to_financial_transactions.php`
+- `app/Models/FinancialTransaction.php`
+- `app/Livewire/Modals/Admin/FinancialTransactionForm.php`
+- `app/Livewire/Pages/Financial/FinancialManagement.php`
+- `resources/views/livewire/modals/admin/financial-transaction-form.blade.php`
+- `resources/views/livewire/pages/financial/financial-management.blade.php`
+
+**Changes:**
+- Them cot note nullable, validation, save/load/reset form Admin/User va before/after audit log.
+
+**Deploy/queue impact:**
+- Co migration moi; deploy chay `php artisan migrate --force`, sau do `php artisan optimize:clear`. Khong queue.
+
+**Validation:**
+- PHP lint, Blade cache va FinancialAccess tests pass.
+## 2026-08-20 - Chan do Graphiti dung sai OpenAI credential
+
+**Root cause:**
+- Graphiti container nhan key noi bo cua 9Router nhung config mac dinh goi api.openai.com, gay 401. Khi route embeddings qua 9Router, 9Router khong co provider embedding dang hoat dong, gay 400 No credentials for provider openai.
+
+**Files changed:**
+- `D:\CODER\Knowledge\_setup\graphiti\mcp_server\docker\docker-compose.9router.override.yml`
+
+**Changes:**
+- Them `OPENAI_API_URL`, `OPENAI_BASE_URL` tro vao `http://host.docker.internal:20128/v1` va dat model `cx/gpt-5.6-terra`.
+- Recreate graphiti container thanh cong va health status healthy.
+
+**Affected modules:**
+- Graphiti MCP LLM/embedding transport, khong phai XLAP application.
+
+**Deploy/queue impact:**
+- Khong anh huong deploy/queue XLAP. Can giu 9Router + Graphiti Docker containers chay.
+
+**Follow-up/blocker:**
+- Graphiti search/add van chua hoan toan hoat dong vi 9Router hien khong expose provider embedding co credential; can cau hinh mot custom embedding provider trong 9Router hoac cap OpenAI API key that cho Graphiti.
+## 2026-08-24 - Idea Etsy/Amazon approval, keyword import va Amazon history
+
+**Muc tieu:**
+- Bo sung thong tin bat buoc khi duyet idea: SKU, link anh, trang dich; Suncatcher va Ornament Amazon 2 can them link product.
+- Cho import keyword tu Excel/CSV va mo keyword Amazon History sang trang Amazon moi.
+
+**Root cause:**
+- Approval chi truyen keyword/imageLink, chua co SKU/product link.
+- Hai trang idea chua co luong import keyword rieng.
+- Amazon History chi hien text, khong co link tim kiem.
+
+**Files changed:**
+- `app/Services/Idea/KeywordSpreadsheetReader.php`
+- `app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `app/Livewire/Pages/IdeaEtsy/IdeaEtsy.php`
+- `resources/views/livewire/modals/idea-amazon/duye-idea-modal.blade.php`
+- `resources/views/livewire/modals/idea-etsy/duye-idea-modal.blade.php`
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `resources/views/livewire/pages/idea-test/idea-etsy.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Backend approval validate SKU + image URL; product link URL bat buoc cho `suncatcher` va `ornament-amazon-2`.
+- Truyen SKU vao existing asset services; product link luu vao `data_item_add.product_link`.
+- Them reader CSV/XLSX first worksheet, nhan dien cot Keyword/Keyword Phrase va dispatch danh sach keyword ve Alpine.
+- Them upload control tren ca Idea Amazon va Idea Etsy; keyword dau tien duoc nap vao o search.
+- Amazon History keyword tro thanh link `https://www.amazon.com/s?k=...`, target blank.
+
+**Affected modules:**
+- Idea crawler pages, product asset creation, idea history UI.
+
+**Deploy/queue impact:**
+- Khong migration moi, khong queue. Chay `php artisan optimize:clear` sau deploy; `php artisan view:cache` da pass.
+
+**Validation:**
+- PHP lint ba file changed backend pass.
+- `php artisan view:cache` pass.
+
+**Follow-up:**
+- Neu can import nhieu keyword tu mot file thanh nhieu lan crawl tu dong, them nut `Search all` va queue rieng; hien tai import nap keyword dau tien de user kiem tra truoc khi search.
+- Graphiti search/add van chua dung duoc do embedding provider thieu credential; local memory da ghi nhan.
+## 2026-08-24 - Centralize database backups in Laravel storage
+
+**Root cause:**
+- Backup command allowed `--path`, so manual usage could put SQL backups outside Laravel storage.
+- Scheduler could additionally upload every backup to Google Drive, creating another backup location.
+
+**Files changed:**
+- `app/Console/Commands/BackupDatabase.php`
+- `routes/console.php`
+- `.env.example`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Database backup path is now fixed at `storage/app/backups/database`.
+- Removed the custom `--path` command option.
+- Scheduled backup no longer passes `--drive`; normal automatic backups remain only in Laravel storage.
+- `.env.example` documents Drive backup as disabled by default.
+
+**Affected modules:**
+- `offorest:backup-database` command and Laravel scheduler.
+
+**Deploy/queue impact:**
+- No migration and no queue change. Deploy code then run `php artisan optimize:clear`; scheduler uses the new command on its next run.
+
+**Validation:**
+- PHP lint for command and `routes/console.php` pass.
+- `php artisan optimize:clear` pass.
+
+**Follow-up:**
+- Existing local backup files were already under `storage/app/backups/database`; no files were deleted or moved.
+- The command can still be run manually with `--drive` only when an explicit Drive copy is needed.
+## 2026-08-24 - Keep database backup upload to Drive
+
+**Change:**
+- User clarified that scheduled database backups must remain in `storage/app/backups/database` and continue uploading to Google Drive.
+- Restored scheduler behavior that adds `--drive` when `OFFOREST_DATABASE_BACKUP_TO_DRIVE=true`.
+- Local path remains fixed in Laravel storage; custom `--path` remains removed.
+
+**Files changed:**
+- `routes/console.php`
+- `.env.example`
+- `AI_MEMORY.md`
+
+**Deploy/queue impact:**
+- No migration/queue change. Run `php artisan optimize:clear`; the next scheduled backup writes local storage then uploads that same `.sql.gz` file to Drive.
+
+**Validation:**
+- `php -l routes/console.php` and `php artisan optimize:clear` pass.
+## 2026-08-24 - Approve and delete Amazon History items
+
+**Root cause:**
+- Amazon History only allowed opening an Amazon search; users could not approve or remove individual history records.
+
+**Files changed:**
+- `app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added `Action` column with green check button to load a history item into the existing approval modal and red X button to remove it.
+- History deletion is scoped to current user, Amazon role, and item ID.
+- On a successful approval from History, the matching user-history record is removed automatically.
+
+**Affected modules:**
+- Amazon Idea History and approval flow.
+
+**Deploy/queue impact:**
+- No migration and no queue change. Deploy then run `php artisan optimize:clear`.
+
+**Validation:**
+- PHP lint for IdeaAmazon component and `php artisan view:cache` pass.
+## 2026-08-24 - Idea approval modal follows Add Sticker image flow
+
+**Root cause:**
+- Idea approval still treated keyword as a product-matching value and could append a custom product keyword.
+- Approval image was only accepted as an existing URL, not upload/paste like Add Sticker.
+
+**Files changed:**
+- `app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `app/Livewire/Pages/IdeaEtsy/IdeaEtsy.php`
+- `resources/views/livewire/modals/idea-amazon/duye-idea-modal.blade.php`
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `resources/views/livewire/pages/idea-test/idea-etsy.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Approval keyword is kept read-only from the selected/history item; backend no longer appends or confirms product words.
+- SKU remains required.
+- Image is required and can come from uploaded/pasted file or a validated URL; uploaded files are stored on the public disk under `generated/idea/uploads`.
+- Modal now presents database keyword, SKU, image upload/paste area, URL fallback, target page, and conditional product link.
+- Removed frontend keyword mismatch confirmation from the approval save flow.
+
+**Deploy/queue impact:**
+- No migration or queue change. Run `php artisan optimize:clear` after deploy.
+
+**Validation:**
+- PHP lint for both Idea components and `php artisan view:cache` pass.
+## 2026-08-24 - Fix paste image in Amazon Idea approval
+
+**Root cause:**
+- Approval paste handler only inspected `clipboardData.files`; Chrome commonly exposes pasted image data through `clipboardData.items`, so Ctrl+V did not upload an image.
+
+**Files changed:**
+- `resources/views/livewire/modals/idea-amazon/duye-idea-modal.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Reused Add Sticker pattern: select image from clipboard items, call `getAsFile()`, validate image MIME type, then upload through Livewire.
+- Drop and file picker use the same upload function.
+- Shows `Dang nhan anh...` while upload is running.
+
+**Deploy/queue impact:**
+- No migration or queue changes. Deploy and run `php artisan optimize:clear`.
+
+**Validation:**
+- `php artisan view:cache` and PHP lint pass.
+## 2026-08-24 - Require manual SKU and product link in Idea approval
+
+**Root cause:**
+- Approval modal prefilled SKU and product link from crawler data, despite user needing manual input.
+- Suncatcher/Ornament Amazon 2 workflow readers use `data_item_add.link`; only `product_link` was initially stored.
+
+**Files changed:**
+- `app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `app/Livewire/Pages/IdeaEtsy/IdeaEtsy.php`
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `resources/views/livewire/pages/idea-test/idea-etsy.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- SKU and product link begin empty; user must type them.
+- Product link is only shown and backend-required for `suncatcher` and `ornament-amazon-2`.
+- Both `link` and `product_link` receive the user-entered URL in `data_item_add`, matching existing Suncatcher and Ornament Amazon 2 workflows.
+
+**Deploy/queue impact:**
+- No migration/queue change. Run `php artisan optimize:clear` after deploy.
+
+**Validation:**
+- PHP lint for both Idea components and `php artisan view:cache` pass.
+## 2026-08-24 - Show pasted/uploaded image preview in Idea approval
+
+**Root cause:**
+- Livewire received the approval image but the modal had no preview bound to the temporary upload, so the user saw only the uploading message.
+
+**Files changed:**
+- `app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `resources/views/livewire/modals/idea-amazon/duye-idea-modal.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added a computed temporary preview URL from `approvalImageUpload`.
+- Modal now displays `Anh da nhan` with the temporary image after paste/upload.
+- Existing MIME validation and upload storage flow remain unchanged.
+
+**Validation:**
+- PHP lint and `php artisan view:cache` pass.
+
+**Deploy/queue impact:**
+- No migration or queue change; clear application cache after deploy if needed.
+## 2026-08-24 - Temporary Cloudflare tunnel for remote XLAP testing
+
+**Changes:**
+- Downloaded `cloudflared.exe` to `storage/app/tools/cloudflared.exe`.
+- Started dedicated local Laravel server at `http://127.0.0.1:8001`.
+- Started a Cloudflare Quick Tunnel to that port.
+
+**Runtime impact:**
+- Temporary background processes: PHP server port 8001 and cloudflared Quick Tunnel.
+- No application code, migration, database, or queue changes.
+
+**Follow-up:**
+- Tunnel URL changes whenever cloudflared stops/restarts. Stop the PHP/cloudflared processes after remote testing is finished.
+## 2026-08-24 - Cloudflare named tunnel 502 diagnosis after Apache rollback
+
+**Root cause:**
+- `offorest.nhxlap.id.vn` reaches Cloudflare and the named `Cloudflared` connector is running, but its remote Public Hostname origin is not targeting the Laravel server.
+- Laravel responds successfully at `http://127.0.0.1:8001/login`; therefore the 502 is not an application failure or a DNS/domain-expiry issue.
+
+**Changed files:**
+- No application files changed. The temporary Apache `ServerAlias offorest.nhxlap.id.vn` addition was removed; Apache configuration is back to its prior wildcard alias only.
+- `AI_MEMORY.md`
+
+**Affected modules:**
+- Cloudflare Tunnel Public Hostname routing only.
+
+**Required dashboard setting:**
+- Cloudflare Zero Trust -> Networks -> Tunnels -> selected tunnel -> Public Hostnames -> `offorest.nhxlap.id.vn`: configure service type `HTTP` and URL `http://127.0.0.1:8001`, then save.
+
+**Deploy/queue impact:**
+- No migration, deployment, or queue change.
+- PHP Artisan server remains a temporary process and will not automatically return after reboot; configure Apache/service only when persistent hosting is requested.
+
+**Follow-up notes:**
+- Cloudflare dashboard in the in-app browser requires login, so its remote setting could not be edited automatically.
+- Graphiti lookup attempted with group `xlap` and failed because the configured OpenAI provider has no credentials.
+## 2026-08-25 - Add full Glass workspace cloned from Sticker
+
+**Root cause:**
+- User requested a complete independent Glass page that behaves like Sticker.
+
+**Files changed:**
+- Added `app/Livewire/Pages/Glass`, `app/Livewire/Modals/Glass`, `app/Services/Glass`, `resources/views/livewire/pages/glass`, and `resources/views/livewire/modals/glass`.
+- Added `database/migrations/2026_08_25_000010_add_glass_product.php` and `public/templates/glass-import-template.xlsx`.
+- Updated product registry, navigation, shared delete/review-image actions, Idea Amazon/Etsy approval targets, and the admin import-template list.
+
+**Affected modules:**
+- Glass has its own CRUD, source image upload/paste, master generation, PSD mockups, approval, Excel/CSV import, logging, Drive queue folders, and AI function keys.
+
+**Deploy/queue impact:**
+- Migration creates the active `glass` product and gives access to existing admins. Route: `/offorest/glass`.
+- Glass uses the existing AI and Drive queues with separate `glass` function keys and generated-storage paths.
+
+**Validation:**
+- PHP lint passed for all Glass and integration files; `php artisan route:list --name=offorest.products.glass` passed; product was created and 2 admins have access; Blade cache rebuilt successfully.
+
+**Follow-up notes:**
+- Ordinary users must receive Glass through the existing product-access UI; admins automatically have access.
+- Running migrations also applied pre-existing `2026_08_20_000300_add_note_to_financial_transactions`; it is unrelated to Glass.
+- Graphiti search failed due missing OpenAI provider credentials.
+## 2026-08-26 - Add Glass To Image Master option
+
+**Root cause:**
+- User needs the selected source image to be immediately reused as Create Master in the Add Glass flow.
+
+**Files changed:**
+- `app/Livewire/Modals/Glass/AddProductDesign.php`
+- `resources/views/livewire/modals/glass/add-product-design.blade.php`
+
+**Changes:**
+- Added unchecked-by-default `To Image Master` checkbox below the image input.
+- When checked, the saved source image is also selected as `redesign`, so Source Image and Create Master display the same exact image without an AI generation call.
+
+**Deploy/queue impact:**
+- No migration/configuration change and no queue job is added for this shortcut.
+
+**Validation:**
+- PHP lint and `php artisan view:cache` passed.
+
+**Follow-up notes:**
+- Graphiti lookup was attempted but unavailable because the OpenAI provider has no credentials.
+## 2026-08-26 - Split Sticker master before and after background removal
+
+**Root cause:**
+- `redesign` held only a single final master image, so a separate image before background removal could not be displayed.
+
+**Files changed:**
+- `database/migrations/2026_08_26_000020_add_master_before_background_removal_to_product_design_assets.php`
+- `app/Models/ProductDesignAsset.php`
+- `app/Services/Sticker/StickerService.php`
+- `app/Livewire/Pages/Sticker/ProductDesignCard.php`
+- `resources/views/livewire/pages/sticker/product-design-card.blade.php`
+- `app/Services/Product/ProductDesignAssetFileCleanupService.php`
+
+**Changes:**
+- Sticker now shows Source Image, Create Master (chua tach nen), Create Master (da tach nen), then Mockup.
+- New master generation saves the raw Create Master separately. When removal is enabled for Sticker, it saves a second PNG after `BackgroundRemovalService` processing as the active master.
+- Backfilled 307 older Sticker items: their current master also appears in the new before-removal slot, since historical raw images were not retained.
+
+**Deploy/queue impact:**
+- Migration has run locally. No new queue; background removal adds a local read/write during master creation only when enabled.
+
+**Validation:**
+- PHP lint, migration, Blade cache, and `BackgroundRemovalServiceTest` (7 tests / 38 assertions) passed.
+
+**Follow-up notes:**
+- Actual tách nền stays disabled until global configuration and Sticker auto-remove-background are enabled. `.env` was not edited.
+- Graphiti lookup attempted but unavailable due missing OpenAI provider credentials.
+## 2026-08-26 - Rollback accidental Sticker background-removal workflow change
+
+**Root cause:**
+- A request for an in-chat visual demo was incorrectly treated as authorization to alter the Sticker workflow.
+
+**Changes reverted:**
+- Removed the temporary before/after background-removal logic from Sticker service/card/model.
+- Rolled back and deleted migration `2026_08_26_000020_add_master_before_background_removal_to_product_design_assets.php`.
+- Sticker is restored to `Source Image -> Create Master -> Mockup`.
+
+**Affected modules:**
+- Sticker only; Glass and other user changes were not touched.
+
+**Deploy/queue impact:**
+- Migration is rolled back locally; no queue change.
+
+**Validation:**
+- PHP lint and Blade cache passed. `https://xlap.tech/offorest/sticker?sticker_all_page=2` returned HTTP 200 during diagnosis.
+
+**Follow-up notes:**
+- Screenshot’s 502 is Nginx failing to reach its upstream at that moment, not a direct Sticker UI response. The issue is intermittent or server-side; remote Nginx/PHP logs are needed if it recurs.
+- Graphiti lookup was attempted but unavailable due missing OpenAI provider credentials.
+## 2026-08-26 - Add local CPU rembg engine selection for Sticker
+
+**Root cause:**
+- Sticker used `magic_eraser`, a GD alpha/color cleanup algorithm that can cut soft edges and leave jagged results.
+
+**Files changed:**
+- `app/Services/Image/BackgroundRemovalService.php`
+- `app/Services/Sticker/StickerService.php`
+- `app/Services/Product/ProductBackgroundRemovalService.php`
+- `app/Services/Ai/ApiKeyImageGenerator.php`
+- `app/Services/Ai/CheapKeyAiImageGenerator.php`
+- `app/Services/Vertex/VertexImageGenerator.php`
+- `app/Livewire/Modals/Admin/EditProductBackgroundRemoval.php`
+- `resources/views/livewire/modals/admin/edit-product-background-removal.blade.php`
+- `app/Models/Product.php`
+- `database/migrations/2026_08_26_000030_add_background_removal_engine_to_products_table.php`
+- `config/services.php`, `.env.example`
+- `services/background-removal/app.py`, `services/background-removal/requirements.txt`
+- `docs/background-removal-rembg-vps.md`
+- `tests/Unit/BackgroundRemovalServiceTest.php`, `tests/Feature/OfforestProductSchemaTest.php`
+
+**Changes:**
+- Admin product background-removal modal can select `magic_eraser` or `local_rembg`.
+- Sticker master generation/customization passes the selected engine through Vertex, API-key, and CheapKeyAI generators.
+- `local_rembg` calls a private local Python FastAPI service using CPU model `isnet-general-use`, preserves returned soft-alpha PNG edges, and falls back to `magic_eraser` on service failure.
+- Added a Supervisor/VPS install guide. The service listens only on `127.0.0.1:8091`.
+
+**Deploy/queue impact:**
+- Run the migration, install/start the Python service, set the global background-removal switch, and run `php artisan optimize:clear`.
+- No Laravel queue added. CPU inference stays synchronous with an HTTP timeout; use one Uvicorn worker to avoid exhausting a lightweight VPS.
+
+**Validation:**
+- PHP lint, Python compile, Blade cache, migration dry run, and `BackgroundRemovalServiceTest` passed (9 tests, 43 assertions).
+- The narrowed product-modal feature test cannot seed the product because the existing dirty worktree has unrelated test fixture/route failures; this is unrelated to the new rembg unit path.
+
+**Follow-up notes:**
+- Do not enable `local_rembg` before the local Python service health endpoint responds.
+- Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.

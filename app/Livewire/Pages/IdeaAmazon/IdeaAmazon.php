@@ -8,6 +8,8 @@ use App\Services\Suncatcher\SuncatcherService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
+use App\Services\Glass\GlassService;
+use App\Models\UserIdeaHistory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
@@ -22,6 +24,13 @@ class IdeaAmazon extends Component
 {
     use WithFileUploads;
     public ?TemporaryUploadedFile $bridgeZip = null;
+
+    public ?TemporaryUploadedFile $approvalImageUpload = null;
+
+    public function getApprovalImagePreviewUrlProperty(): ?string
+    {
+        return $this->approvalImageUpload?->temporaryUrl();
+    }
 
     public ?string $bridgeUploadMessage = null;
 
@@ -71,23 +80,56 @@ class IdeaAmazon extends Component
         abort_unless($user, 403);
 
         return app(SharedIdeaHistoryService::class)->storeCrawl($user, 'amazon', $items, $searchKeyword);
-    }    /**
-     * Save one selected Amazon idea into a product workspace the current user can access.
-     *
-     * @return array{ok: bool, message: string, requiresConfirmation?: bool}
-     */
-    public function saveIdeaAmazonItem(string $productSlug, string $keyword, string $imageLink, bool $forceKeyword = false): array
+    }
+
+    public function removeAmazonHistoryItem(int $ideaId): void
+    {
+        $user = auth()->user();
+        abort_unless($user, 403);
+
+        UserIdeaHistory::query()
+            ->where('user_id', $user->id)
+            ->where('role', 'amazon')
+            ->where('idea_item_id', $ideaId)
+            ->delete();
+    }
+
+    public function prepareAmazonHistoryApproval(int $ideaId): void
+    {
+        $user = auth()->user();
+        abort_unless($user, 403);
+
+        $history = UserIdeaHistory::query()
+            ->with('idea')
+            ->where('user_id', $user->id)
+            ->where('role', 'amazon')
+            ->where('idea_item_id', $ideaId)
+            ->firstOrFail();
+
+        $this->dispatch('amazon-history-approval', item: [
+            ...((array) ($history->idea?->data_idea ?? [])),
+            '_ideaId' => $history->idea_item_id,
+        ]);
+    }
+
+    public function saveIdeaAmazonItem(string $productSlug, string $keyword, string $imageLink, bool $forceKeyword = false, string $sku = '', string $productLink = ''): array
     {
         $validated = Validator::make([
             'productSlug' => $productSlug,
             'keyword' => $keyword,
             'imageLink' => $imageLink,
             'forceKeyword' => $forceKeyword,
+            'sku' => $sku,
+            'productLink' => $productLink,
+            'approvalImageUpload' => $this->approvalImageUpload,
         ], [
-            'productSlug' => ['required', 'string', Rule::in(['sticker', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'])],
+            'productSlug' => ['required', 'string', Rule::in(['sticker', 'glass', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'])],
             'keyword' => ['required', 'string', 'max:255'],
-            'imageLink' => ['required', 'string', 'max:1000'],
+            'imageLink' => ['nullable', 'string', 'max:1000'],
             'forceKeyword' => ['boolean'],
+            'sku' => ['required', 'string', 'max:100'],
+            'productLink' => ['nullable', 'string', 'max:1000'],
+            'approvalImageUpload' => ['nullable', 'image', 'max:10240'],
         ])->validate();
 
         $user = auth()->user();
@@ -96,44 +138,37 @@ class IdeaAmazon extends Component
             throw new InvalidArgumentException('Ban khong co quyen them vao trang nay.');
         }
 
-        if (! app(ImageLinkPreviewService::class)->looksLikeImageUrl($validated['imageLink'])) {
+        if (! $this->approvalImageUpload && ! filled($validated['imageLink'])) {
+            throw new InvalidArgumentException('Vui long paste/upload anh hoac nhap link anh.');
+        }
+
+        if (! $this->approvalImageUpload && ! app(ImageLinkPreviewService::class)->looksLikeImageUrl($validated['imageLink'])) {
             throw new InvalidArgumentException('Link anh khong hop le.');
         }
 
-        $keyword = trim($validated['keyword']);
-        $slug = $validated['productSlug'];
-        $requiredKeyword = in_array($slug, ['ornament-etsy', 'ornament-amazon-2'], true) ? 'ornament' : $slug;
-
-        if (! Str::contains(Str::lower($keyword), $requiredKeyword)) {
-            if (! $validated['forceKeyword']) {
-                return [
-                    'ok' => false,
-                    'requiresConfirmation' => true,
-                    'message' => "Keyword khong chua tu '{$requiredKeyword}'. Ban co muon van luu va tu them '{$requiredKeyword}' vao keyword khong?",
-                ];
-            }
-
-            $keyword = trim($keyword.' '.$requiredKeyword);
+        if (in_array($validated['productSlug'], ['suncatcher', 'ornament-amazon-2'], true) && ! filter_var($validated['productLink'], FILTER_VALIDATE_URL)) {
+            throw new InvalidArgumentException('Suncatcher va Ornament Amazon 2 bat buoc nhap link product hop le.');
         }
+
+        // The approval keyword is read-only data from Idea History; never modify it here.
+        $keyword = trim($validated['keyword']);
+        $imageSource = $this->approvalImageUpload
+            ? '/storage/'.$this->approvalImageUpload->storePublicly('generated/idea/uploads', 'public')
+            : trim((string) $validated['imageLink']);
 
         try {
             match ($validated['productSlug']) {
-                'sticker' => app(StickerService::class)->createAsset($user, $keyword, $validated['imageLink']),
-                'suncatcher' => app(SuncatcherService::class)->createAsset($user, $keyword, $validated['imageLink']),
-                'ornament-etsy' => app(OrnamentEtsyService::class)->createAsset($user, $keyword, $validated['imageLink']),
-                'ornament-amazon-2' => app(OrnamentAmazonTwoService::class)->createAsset($user, $keyword, $validated['imageLink']),
+                'sticker' => app(StickerService::class)->createAsset($user, $keyword, $imageSource, $validated['sku']),
+                'glass' => app(GlassService::class)->createAsset($user, $keyword, $imageSource, $validated['sku']),
+                'suncatcher' => app(SuncatcherService::class)->createAsset($user, $keyword, $imageSource, [], ['link' => $validated['productLink'], 'product_link' => $validated['productLink']], $validated['sku']),
+                'ornament-etsy' => app(OrnamentEtsyService::class)->createAsset($user, $keyword, $imageSource, $validated['sku']),
+                'ornament-amazon-2' => app(OrnamentAmazonTwoService::class)->createAsset($user, $keyword, $imageSource, [], ['link' => $validated['productLink'], 'product_link' => $validated['productLink']], $validated['sku']),
             };
         } catch (InvalidArgumentException $exception) {
-            if (! $validated['forceKeyword'] && Str::contains($exception->getMessage(), 'Keyword phai chua tu')) {
-                return [
-                    'ok' => false,
-                    'requiresConfirmation' => true,
-                    'message' => "Keyword khong dung voi trang {$slug}. Ban co muon van luu va tu them '{$requiredKeyword}' vao keyword khong?",
-                ];
-            }
-
             throw $exception;
         }
+
+        $this->approvalImageUpload = null;
 
         return [
             'ok' => true,
@@ -149,7 +184,7 @@ class IdeaAmazon extends Component
         $targetProducts = auth()->user()
             ? auth()->user()
                 ->products()
-                ->whereIn('slug', ['sticker', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'])
+                ->whereIn('slug', ['sticker', 'glass', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'])
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(['products.name', 'products.slug'])

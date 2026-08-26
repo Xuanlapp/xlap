@@ -604,6 +604,10 @@
             }
 
             this.approvalTargetSlug = this.targetProducts[0].slug;
+            this.selectedProducts().forEach((product) => {
+                product.approvalSku = product.approvalSku || '';
+                product.approvalProductLink = product.approvalProductLink || '';
+            });
             this.approvalOpen = true;
             this.approvalConfirmOpen = false;
             this.approvalConfirmMessage = '';
@@ -674,6 +678,7 @@
                 product.title || this.keyword,
                 product.imageUrl,
                 forceKeyword,
+                product.approvalSku || '',
             );
 
             if (response?.requiresConfirmation) {
@@ -691,25 +696,6 @@
 
             if (selectedProducts.length === 0 || !this.approvalTargetSlug) {
                 return;
-            }
-
-            if (!forceKeyword) {
-                const needConfirmationCount = selectedProducts.filter((product) => this.keywordNeedsConfirmation(product)).length;
-                const mismatchNames = Array.from(new Set(selectedProducts
-                    .map((product) => this.productMismatchLabel(product))
-                    .filter(Boolean)));
-
-                if (needConfirmationCount > 0) {
-                    const mismatchText = mismatchNames.length > 0
-                        ? ` Mot so item co ve thuoc ${mismatchNames.join(', ')}.`
-                        : '';
-                    const requiredKeyword = this.requiredKeywordForSlug(this.approvalTargetSlug);
-                    const targetName = this.targetProductName(this.approvalTargetSlug);
-
-                    this.approvalConfirmMessage = `${needConfirmationCount} item khong dung voi trang dang chon (${targetName}).${mismatchText} Bam Yes de van luu toan bo ${selectedProducts.length} item da chon va tu them '${requiredKeyword}' vao keyword khi can.`;
-                    this.approvalConfirmOpen = true;
-                    return;
-                }
             }
 
             this.approvalSaving = true;
@@ -733,15 +719,6 @@
                 this.toast('success', 'Da luu', `Da them ${savedCount} item moi.`);
             } catch (error) {
                 const message = error.message || 'Co loi khi them item.';
-
-                if (!forceKeyword && message.toLowerCase().includes('keyword')) {
-                    const requiredKeyword = this.requiredKeywordForSlug(this.approvalTargetSlug);
-
-                    this.approvalConfirmMessage = `${message} Bam Yes de van luu toan bo ${selectedProducts.length} item da chon va tu them '${requiredKeyword}' vao keyword khi can.`;
-                    this.approvalConfirmOpen = true;
-                    this.approvalSaving = false;
-                    return;
-                }
 
                 this.toast('error', 'Khong luu duoc', message);
                 this.approvalSaving = false;

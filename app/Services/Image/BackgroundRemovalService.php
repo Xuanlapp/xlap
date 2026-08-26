@@ -3,6 +3,7 @@
 namespace App\Services\Image;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class BackgroundRemovalService
@@ -15,13 +16,13 @@ class BackgroundRemovalService
     /**
      * Remove the image background inside PHP with TransformersPHP when enabled.
      */
-    public function remove(string $imageBytes): string
+    public function remove(string $imageBytes, ?string $engineOverride = null): string
     {
         if (! (bool) config('services.background_removal.enabled', false)) {
             return $imageBytes;
         }
 
-        $engine = (string) config('services.background_removal.engine', 'transformersphp');
+        $engine = $engineOverride ?: (string) config('services.background_removal.engine', 'transformersphp');
 
         if ($engine === 'magic_eraser') {
             return $this->removeWithMagicEraser($imageBytes);
@@ -31,12 +32,56 @@ class BackgroundRemovalService
             return $this->removeWithTransformersPhp($imageBytes);
         }
 
+        if ($engine === 'local_rembg') {
+            return $this->removeWithLocalRembg($imageBytes);
+        }
+
         throw new RuntimeException("Background removal engine [{$engine}] khong duoc ho tro.");
     }
 
     private function removeWithMagicEraser(string $imageBytes): string
     {
         return $this->cleanAlphaNoise($this->encodePng($imageBytes));
+    }
+
+    /**
+     * Call the CPU-only rembg service. Its soft alpha is deliberately left untouched.
+     */
+    private function removeWithLocalRembg(string $imageBytes): string
+    {
+        $settings = (array) config('services.background_removal.local_rembg', []);
+        $url = trim((string) ($settings['url'] ?? ''));
+
+        if ($url === '') {
+            throw new RuntimeException('Chua cau hinh URL cho local rembg.');
+        }
+
+        try {
+            $response = Http::timeout(max(1, (int) ($settings['timeout'] ?? 90)))
+                ->accept('image/png')
+                ->attach('image', $imageBytes, 'sticker.png')
+                ->post($url);
+
+            if (! $response->successful() || $response->body() === '') {
+                throw new RuntimeException('Local rembg khong tra ve PNG hop le.');
+            }
+
+            $output = $response->body();
+
+            if (! str_starts_with($output, "\x89PNG\r\n\x1a\n")) {
+                throw new RuntimeException('Local rembg tra ve dinh dang anh khong hop le.');
+            }
+
+            return $output;
+        } catch (\Throwable $exception) {
+            $fallbackEngine = (string) ($settings['fallback_engine'] ?? '');
+
+            if ($fallbackEngine !== '' && $fallbackEngine !== 'local_rembg') {
+                return $this->remove($imageBytes, $fallbackEngine);
+            }
+
+            throw new RuntimeException('Khong the ket noi local rembg: '.$exception->getMessage(), previous: $exception);
+        }
     }
 
     private function removeWithTransformersPhp(string $imageBytes): string

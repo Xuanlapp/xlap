@@ -1,0 +1,15 @@
+<div>
+@if ($isOpen)
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" wire:click.self="close">
+    <div class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-5 shadow-2xl">
+        <div class="mb-4 flex items-center justify-between"><div><h2 class="text-lg font-bold">{{ $accountId ? 'Edit financial account' : 'Add financial account' }}</h2><p class="text-sm text-slate-500">Admin luon co full access. User chi co 3 muc quyen.</p></div><button type="button" wire:click="close" class="text-slate-400 hover:text-slate-700">X</button></div>
+        <form wire:submit="save" class="space-y-4">
+            <div class="grid gap-3 md:grid-cols-2"><label class="text-sm font-semibold">Account name<input wire:model="name" class="mt-1 block w-full rounded-md border-slate-300"></label><label class="text-sm font-semibold">Account code<input wire:model="code" class="mt-1 block w-full rounded-md border-slate-300"></label><label class="text-sm font-semibold">Platform<input wire:model="platform" list="financial-platforms" class="mt-1 block w-full rounded-md border-slate-300"><datalist id="financial-platforms"><option value="etsy"><option value="amazon"></datalist></label><label class="text-sm font-semibold">Currency<input wire:model="currency" maxlength="3" class="mt-1 block w-full rounded-md border-slate-300 uppercase"></label><label class="text-sm font-semibold">Status<select wire:model="status" class="mt-1 block w-full rounded-md border-slate-300"><option value="active">Active</option><option value="disabled">Disabled</option></select></label></div>
+            <label class="block text-sm font-semibold">Description<textarea wire:model="description" rows="2" class="mt-1 block w-full rounded-md border-slate-300"></textarea></label>
+            <div class="overflow-hidden rounded-lg border border-slate-200"><div class="bg-slate-50 px-3 py-2"><p class="text-sm font-bold">User permissions</p><p class="mt-1 text-xs text-slate-500">No access: khong thay trang/account. Read Only: chi xem. Read/Write: xem, them, sua va xoa.</p></div><div class="overflow-x-auto"><table class="min-w-full text-sm"><thead class="text-left text-xs text-slate-500"><tr><th class="px-3 py-2">User</th><th class="px-3 py-2">Access</th></tr></thead><tbody class="divide-y divide-slate-100">@foreach ($users as $user)<tr><td class="px-3 py-2"><p class="font-semibold">{{ $user->name }}</p><p class="text-xs text-slate-400">{{ $user->email }}</p></td><td class="px-3 py-2"><select wire:model="userAccessLevels.{{ $user->id }}" class="w-full max-w-xs rounded-md border-slate-300 text-sm"><option value="no_access">No access</option><option value="read_only">Read Only</option><option value="read_write">Read/Write</option></select></td></tr>@endforeach</tbody></table></div></div>
+            <div class="flex justify-end gap-2"><button type="button" wire:click="close" class="rounded-md border px-4 py-2 text-sm font-semibold">Cancel</button><button type="submit" class="rounded-md bg-cyan-500 px-4 py-2 text-sm font-bold text-white">Save account</button></div>
+        </form>
+    </div>
+</div>
+@endif
+</div>

@@ -137,6 +137,10 @@ class EditImportTemplate extends Component
                 'label' => 'Sticker template',
                 'filename' => 'sticker-import-template.xlsx',
             ],
+            'glass' => [
+                'label' => 'Glass template',
+                'filename' => 'glass-import-template.xlsx',
+            ],
             'camp_keyword' => [
                 'label' => 'Camp Keyword template',
                 'filename' => 'camp-keyword-template.xlsx',

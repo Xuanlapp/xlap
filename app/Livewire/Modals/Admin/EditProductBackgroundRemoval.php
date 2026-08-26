@@ -21,6 +21,8 @@ class EditProductBackgroundRemoval extends Component
 
     public string $autoRemoveBackground = '0';
 
+    public string $backgroundRemovalEngine = 'magic_eraser';
+
     /**
      * Open this modal through the shared openModal event pattern.
      *
@@ -47,14 +49,16 @@ class EditProductBackgroundRemoval extends Component
         $this->productName = $product->name;
         $this->productSlug = $product->slug;
         $this->autoRemoveBackground = $product->auto_remove_background ? '1' : '0';
+        $this->backgroundRemovalEngine = $product->background_removal_engine ?: 'magic_eraser';
         $this->isOpen = true;
     }
 
     public function close(): void
     {
         $this->resetValidation();
-        $this->reset(['isOpen', 'productId', 'productName', 'productSlug', 'autoRemoveBackground']);
+        $this->reset(['isOpen', 'productId', 'productName', 'productSlug', 'autoRemoveBackground', 'backgroundRemovalEngine']);
         $this->autoRemoveBackground = '0';
+        $this->backgroundRemovalEngine = 'magic_eraser';
     }
 
     /**
@@ -68,6 +72,7 @@ class EditProductBackgroundRemoval extends Component
 
         $validated = $this->validate([
             'autoRemoveBackground' => ['required', Rule::in(['0', '1'])],
+            'backgroundRemovalEngine' => ['required', Rule::in(['magic_eraser', 'local_rembg'])],
         ]);
 
         $product = Product::query()
@@ -78,6 +83,7 @@ class EditProductBackgroundRemoval extends Component
 
         $product->update([
             'auto_remove_background' => $enabled,
+            'background_removal_engine' => $validated['backgroundRemovalEngine'],
         ]);
 
         app(ActivityLogService::class)->record(
@@ -88,6 +94,7 @@ class EditProductBackgroundRemoval extends Component
                 'product_id' => $product->id,
                 'product_slug' => $product->slug,
                 'auto_remove_background' => $enabled,
+                'background_removal_engine' => $validated['backgroundRemovalEngine'],
             ],
             actor: auth()->user(),
             actorType: 'admin',

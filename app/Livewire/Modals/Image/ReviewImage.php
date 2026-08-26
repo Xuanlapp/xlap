@@ -9,6 +9,8 @@ use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\OrnamentEtsy\OrnamentEtsyStatusPanel;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
+use App\Livewire\Pages\Glass\ListGlass;
+use App\Livewire\Pages\Glass\GlassStatusPanel;
 use App\Models\DataOrnamentAmazon;
 use App\Models\ProductDesignAsset;
 use App\Services\Image\ImageLinkPreviewService;
@@ -16,6 +18,7 @@ use App\Services\Logging\ActivityLogService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
+use App\Services\Glass\GlassService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -383,6 +386,26 @@ class ReviewImage extends Component
         $this->close();
     }
 
+    public function selectAsGlassRedesign(): void
+    {
+        if ($this->action !== 'glass-redesign' || ! $this->assetId || ! $this->original) {
+            return;
+        }
+
+        try {
+            app(GlassService::class)->selectRedesign(auth()->user(), $this->assetId, $this->original);
+        } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'glass.select_redesign', ['asset_id' => $this->assetId, 'original' => $this->original]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+            return;
+        }
+
+        $this->dispatch('glass-product-design-workflow-updated')->to(ListGlass::class);
+        $this->dispatch('glass-product-design-workflow-updated')->to(GlassStatusPanel::class);
+        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da chon lai anh Create Master Glass.');
+        $this->close();
+    }
+
     public function selectAsOrnamentEtsyRedesign(): void
     {
         if ($this->action !== 'ornament-etsy-redesign' || ! $this->assetId || ! $this->original) {
@@ -477,6 +500,21 @@ class ReviewImage extends Component
         $this->close();
     }
 
+    public function createGlassItemFromImage(): void
+    {
+        if ($this->action !== 'glass-redesign' || ! $this->original) {
+            return;
+        }
+
+        $this->dispatch('openModal', component: 'modals.glass.add-product-design', arguments: [
+            'keyword' => $this->keyword ?: '',
+            'imageLink' => $this->original,
+            'sourceAssetId' => $this->assetId,
+            'sourceRedesignCandidate' => $this->original,
+        ]);
+        $this->close();
+    }
+
     public function customizeStickerRedesign(): void
     {
         if ($this->action !== 'sticker-redesign' || ! $this->assetId || ! $this->original) {
@@ -535,6 +573,36 @@ class ReviewImage extends Component
         $this->dispatch('sticker-product-design-workflow-updated')->to(ListSticker::class);
         $this->dispatch('sticker-product-design-workflow-updated')->to(StickerStatusPanel::class);
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da custom anh so 2.');
+    }
+
+    public function customizeGlassRedesign(): void
+    {
+        if ($this->action !== 'glass-redesign' || ! $this->assetId || ! $this->original) {
+            return;
+        }
+
+        try {
+            $asset = app(GlassService::class)->customizeRedesign(auth()->user(), $this->assetId, $this->original, $this->customPrompt);
+            app(ActivityLogService::class)->record(event: 'glass.master_customized', description: 'User customized Glass master image from preview.', subject: $asset, properties: ['item_number' => $asset->item_number, 'redesign' => $asset->redesign]);
+        } catch (InvalidArgumentException|RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'glass.customize_redesign', ['asset_id' => $this->assetId, 'original' => $this->original]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+            return;
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'glass.customize_redesign', ['asset_id' => $this->assetId]);
+            Log::error('Glass master customization failed unexpectedly.', ['asset_id' => $this->assetId, 'message' => $exception->getMessage()]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi custom anh Glass.');
+            return;
+        }
+
+        $previewUrl = app(ImageLinkPreviewService::class)->previewUrl($asset->redesign);
+        $this->gallery[] = ['src' => $previewUrl, 'original' => $asset->redesign, 'title' => 'Create Master '.(count($this->gallery) + 1)];
+        $this->currentIndex = count($this->gallery) - 1;
+        $this->customPrompt = '';
+        $this->setCurrentFromGallery();
+        $this->dispatch('glass-product-design-workflow-updated')->to(ListGlass::class);
+        $this->dispatch('glass-product-design-workflow-updated')->to(GlassStatusPanel::class);
+        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da custom anh Glass.');
     }
 
     public function close(): void

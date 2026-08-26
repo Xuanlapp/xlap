@@ -7,6 +7,7 @@ use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\Proxy\Index as ProxyPage;
 use App\Livewire\Pages\Sticker\ListSticker;
+use App\Livewire\Pages\Glass\ListGlass;
 use App\Livewire\Pages\YTrends\Index as YTrendsPage;
 use App\Livewire\Pages\IdeaEtsy\IdeaEtsy as IdeaEtsyPage;
 use App\Livewire\Pages\IdeaAmazon\IdeaAmazon as IdeaAmazonPage;
@@ -29,6 +30,16 @@ class ProductRegistry
                 'path' => 'sticker',
                 'component' => ListSticker::class,
                 'sort_order' => 30,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Glass',
+                'slug' => 'glass',
+                'description' => 'Create glass-ready artwork.',
+                'route_name' => 'offorest.products.glass',
+                'path' => 'glass',
+                'component' => ListGlass::class,
+                'sort_order' => 31,
                 'is_active' => true,
             ],
             [

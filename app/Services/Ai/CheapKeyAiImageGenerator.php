@@ -16,6 +16,7 @@ class CheapKeyAiImageGenerator
         string $prompt,
         string $folder,
         bool $removeBackground = false,
+        ?string $backgroundRemovalEngine = null,
         ?string $model = null,
         ?string $functionKey = null,
     ): string {
@@ -26,6 +27,7 @@ class CheapKeyAiImageGenerator
             prompt: $prompt,
             folder: $folder,
             removeBackground: $removeBackground,
+            backgroundRemovalEngine: $backgroundRemovalEngine,
             model: $model,
             functionKey: $functionKey,
         );

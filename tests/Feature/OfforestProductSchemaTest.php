@@ -464,10 +464,12 @@ class OfforestProductSchemaTest extends TestCase
             ->assertSet('isOpen', true)
             ->assertSet('autoRemoveBackground', '1')
             ->set('autoRemoveBackground', '0')
+            ->set('backgroundRemovalEngine', 'local_rembg')
             ->call('save')
             ->assertDispatched('toast');
 
         $this->assertFalse($product->refresh()->auto_remove_background);
+        $this->assertSame('local_rembg', $product->refresh()->background_removal_engine);
         $this->assertDatabaseHas('activity_logs', [
             'event' => 'admin.product_background_removal_updated',
         ]);
@@ -488,6 +490,14 @@ class OfforestProductSchemaTest extends TestCase
         config(['services.background_removal.enabled' => false]);
         $product->update(['auto_remove_background' => true]);
         $this->assertFalse($service->enabledFor($product->refresh()));
+    }
+
+    public function test_product_background_removal_uses_the_product_selected_engine(): void
+    {
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+        $product->update(['background_removal_engine' => 'local_rembg']);
+
+        $this->assertSame('local_rembg', app(ProductBackgroundRemovalService::class)->engineFor($product->refresh()));
     }
 
     public function test_admin_can_create_user_by_copying_vertex_credential_from_another_user(): void

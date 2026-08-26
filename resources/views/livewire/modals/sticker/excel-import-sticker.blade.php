@@ -18,7 +18,7 @@
                 <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 md:px-6">
                     <div>
                         <h2 class="text-lg font-semibold tracking-tight text-slate-900">Import Sticker Excel</h2>
-                        <p class="mt-1 text-sm text-slate-500">Cot ho tro: Source Image (optional, empty = Create Master when importing), Create Master (required), Mockup 1 -> Mockup 6 (optional), Keyword (required).</p>
+                        <p class="mt-1 text-sm text-slate-500">Cot ho tro: Source Image (bat buoc neu khong co Create Master), Create Master (tuy chon), Mockup 1 -> Mockup 6 (tuy chon), Keyword (bat buoc).</p>
                         <p class="mt-2 text-sm text-slate-600">
                             Template:
                             <a href="{{ asset('templates/sticker-import-template.xlsx') }}" download="sticker-import-template.xlsx" class="font-semibold text-emerald-600 underline decoration-emerald-200 underline-offset-4 transition hover:text-emerald-700">

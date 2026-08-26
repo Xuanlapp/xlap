@@ -256,16 +256,16 @@ class StickerService
 
 
     /**
-     * Import one Sticker row with optional source image, required master image, and optional mockups.
+     * Import one Sticker row with a source image, optional master image, and optional mockups.
      *
      * @param array<int, string> $mockups
      */
-    public function importAsset(User $user, string $sku, string $keyword, ?string $sourceImage, string $masterImage, array $mockups = []): ProductDesignAsset
+    public function importAsset(User $user, string $sku, string $keyword, ?string $sourceImage, ?string $masterImage = null, array $mockups = []): ProductDesignAsset
     {
         $sku = $this->normalizeSku($sku);
         $keyword = $this->normalizeKeyword($keyword);
         $sourceImage = trim((string) $sourceImage);
-        $masterImage = $this->normalizeImageLink($masterImage);
+        $masterImage = trim((string) $masterImage);
         $mockups = collect($mockups)
             ->map(fn (string $mockup): string => $this->normalizeImageLink($mockup))
             ->take(6)
@@ -278,7 +278,7 @@ class StickerService
             $sku,
             $keyword,
             $sourceImage === '' ? null : $this->normalizeImageLink($sourceImage),
-            $masterImage,
+            $masterImage === '' ? null : $this->normalizeImageLink($masterImage),
             $mockups,
         );
 
@@ -359,6 +359,7 @@ class StickerService
                 prompt: $this->promptContent($user, 1),
                 folder: 'generated/sticker/redesign',
                 removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
+                backgroundRemovalEngine: $this->backgroundRemoval->engineFor($this->product()),
                 imageModel: $imageModel,
             ),
             $providerKey,
@@ -394,6 +395,7 @@ class StickerService
                 prompt: $this->normalizeCustomPrompt($prompt),
                 folder: 'generated/sticker/redesign',
                 removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
+                backgroundRemovalEngine: $this->backgroundRemoval->engineFor($this->product()),
                 lockWaitSeconds: (int) config('services.vertex.priority_lock_wait_seconds', 600),
                 priority: true,
             ),
@@ -514,6 +516,7 @@ class StickerService
         string $prompt,
         string $folder,
         bool $removeBackground = false,
+        ?string $backgroundRemovalEngine = null,
         ?string $imageModel = null,
     ): string {
         $providerKey = $this->normalizeProviderKey($user, $providerKey);
@@ -525,6 +528,7 @@ class StickerService
                 prompt: $prompt,
                 folder: $folder,
                 removeBackground: $removeBackground,
+                backgroundRemovalEngine: $backgroundRemovalEngine,
             );
         }
 
@@ -535,6 +539,7 @@ class StickerService
                 prompt: $prompt,
                 folder: $folder,
                 removeBackground: $removeBackground,
+                backgroundRemovalEngine: $backgroundRemovalEngine,
                 model: $imageModel,
                 functionKey: 'sticker',
             );
@@ -547,6 +552,7 @@ class StickerService
             prompt: $prompt,
             folder: $folder,
             removeBackground: $removeBackground,
+            backgroundRemovalEngine: $backgroundRemovalEngine,
             model: $imageModel,
             functionKey: 'sticker',
         );

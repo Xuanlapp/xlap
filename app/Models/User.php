@@ -62,6 +62,13 @@ class User extends Authenticatable
         return $this->belongsToMany(DataHubProxy::class, 'data_hub_proxy_user')->withTimestamps();
     }
 
+    public function financialAccounts(): BelongsToMany
+    {
+        return $this->belongsToMany(FinancialAccount::class, 'financial_account_user')
+            ->withPivot(['access_level', 'can_view', 'can_add', 'can_edit', 'can_delete'])
+            ->withTimestamps();
+    }
+
     /**
      * Determine whether the user can access a product page.
      */
@@ -182,3 +189,4 @@ class User extends Authenticatable
         return $this->hasMany(PsdMockupTemplate::class);
     }
 }
+

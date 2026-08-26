@@ -30,6 +30,7 @@ class ApiKeyImageGenerator
         string $prompt,
         string $folder,
         bool $removeBackground = false,
+        ?string $backgroundRemovalEngine = null,
         ?string $model = null,
         ?string $functionKey = null,
     ): string {
@@ -81,7 +82,7 @@ class ApiKeyImageGenerator
         $imageBytes = $this->extractImageBytes($response);
 
         if ($removeBackground) {
-            $imageBytes = $this->backgroundRemoval->remove($imageBytes);
+            $imageBytes = $this->backgroundRemoval->remove($imageBytes, $backgroundRemovalEngine);
         }
 
         return $this->storeGeneratedImage($imageBytes, $folder);
@@ -99,6 +100,7 @@ class ApiKeyImageGenerator
         string $prompt,
         string $folder,
         bool $removeBackground = false,
+        ?string $backgroundRemovalEngine = null,
         ?string $model = null,
         ?string $functionKey = null,
     ): string {
@@ -140,7 +142,7 @@ class ApiKeyImageGenerator
         $imageBytes = $this->extractImageBytes($response);
 
         if ($removeBackground) {
-            $imageBytes = $this->backgroundRemoval->remove($imageBytes);
+            $imageBytes = $this->backgroundRemoval->remove($imageBytes, $backgroundRemovalEngine);
         }
 
         return $this->storeGeneratedImage($imageBytes, $folder);

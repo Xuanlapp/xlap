@@ -187,11 +187,11 @@ class ProductDesignAssetRepository
 
 
     /**
-     * Create one imported Sticker asset with optional source image, master image, and mockup slots.
+     * Create one imported Sticker asset with a source image, optional master image, and mockup slots.
      *
      * @param array<int, string> $mockups
      */
-    public function createImportedSticker(int $userId, int $productId, string $sku, string $keyword, ?string $sourceImage, string $masterImage, array $mockups = []): ProductDesignAsset
+    public function createImportedSticker(int $userId, int $productId, string $sku, string $keyword, ?string $sourceImage, ?string $masterImage = null, array $mockups = []): ProductDesignAsset
     {
         return DB::transaction(function () use ($userId, $productId, $sku, $keyword, $sourceImage, $masterImage, $mockups): ProductDesignAsset {
             $this->ensureSkuUniqueForUserAndProduct($userId, $productId, $sku);

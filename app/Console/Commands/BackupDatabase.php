@@ -13,7 +13,6 @@ class BackupDatabase extends Command
 {
     protected $signature = 'offorest:backup-database
         {--drive : Upload the compressed backup to configured Google Drive}
-        {--path= : Local backup directory, defaults to storage/app/backups/database}
         {--keep-days=14 : Delete local database backups older than this many days. Use 0 to keep all}
         {--keep-count=10 : Keep only this many newest local database backups. Use 0 to keep all}';
 
@@ -90,12 +89,7 @@ class BackupDatabase extends Command
 
     private function backupDirectory(): string
     {
-        $path = $this->option('path');
-
-        if (is_string($path) && trim($path) !== '') {
-            return trim($path);
-        }
-
+        // Database backups have one fixed, private Laravel storage location.
         return storage_path('app/backups/database');
     }
 

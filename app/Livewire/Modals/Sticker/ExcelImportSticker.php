@@ -195,8 +195,8 @@ class ExcelImportSticker extends Component
                 auth()->user(),
                 (string) $row['sku'],
                 (string) $row['keyword'],
-                $row['source_image'] ?: (string) $row['create_master'],
-                (string) $row['create_master'],
+                $row['source_image'] ?: ($row['create_master'] ?: null),
+                $row['create_master'] ?: null,
                 array_values(array_filter([
                     $row['mockup1'] ?? '',
                     $row['mockup2'] ?? '',
@@ -263,8 +263,8 @@ class ExcelImportSticker extends Component
         $this->setProgress('checking', 65, 'Checking rows...');
         $headerIndexes = $this->headerIndexes($rows[0] ?? []);
 
-        if (! isset($headerIndexes['sku'], $headerIndexes['create_master'])) {
-            throw new RuntimeException('Required columns missing: SKU and Create Master.');
+        if (! isset($headerIndexes['sku'])) {
+            throw new RuntimeException('Required column missing: SKU.');
         }
 
         $parsedRows = [];
@@ -300,8 +300,8 @@ class ExcelImportSticker extends Component
                 continue;
             }
 
-            if ($createMaster === '') {
-                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Create Master.'];
+            if ($sourceImage === '' && $createMaster === '') {
+                $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Missing Source Image or Create Master.'];
                 continue;
             }
 
@@ -317,7 +317,7 @@ class ExcelImportSticker extends Component
                 continue;
             }
 
-            if (! $this->isImageUrl($createMaster)) {
+            if ($createMaster !== '' && ! $this->isImageUrl($createMaster)) {
                 $this->rowErrors[] = ['row' => $rowNumber, 'message' => 'Create Master is invalid.'];
                 continue;
             }

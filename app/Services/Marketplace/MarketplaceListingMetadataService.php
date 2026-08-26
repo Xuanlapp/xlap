@@ -271,7 +271,7 @@ PROMPT;
             return null;
         }
 
-        if ($asset->product?->slug === 'ornament-amazon-2') {
+        if (in_array($asset->product?->slug, ['ornament-amazon-2', 'sticker'], true)) {
             return $this->assets->markListingCompleted($this->generateAmazonMetadata($asset), 'amazon');
         }
 
@@ -437,7 +437,7 @@ PROMPT;
                     })
                     ->orWhere(function (Builder $query): void {
                         $query
-                            ->whereDoesntHave('product', fn (Builder $query): Builder => $query->where('slug', 'ornament-amazon-2'))
+                            ->whereDoesntHave('product', fn (Builder $query): Builder => $query->whereIn('slug', ['ornament-amazon-2', 'sticker']))
                             ->whereHas('user', function (Builder $query): void {
                                 $query
                                     ->where('can_generate_amazon_listing', true)
@@ -727,7 +727,7 @@ PROMPT;
 
     private function marketplaceForAsset(ProductDesignAsset $asset): string
     {
-        return $asset->product?->slug === 'ornament-amazon-2'
+        return in_array($asset->product?->slug, ['ornament-amazon-2', 'sticker'], true)
             ? 'amazon'
             : ($asset->user->can_generate_amazon_listing ? 'amazon' : 'etsy');
     }

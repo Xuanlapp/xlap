@@ -218,6 +218,12 @@ class ListUser extends Component
                 'path' => Storage::disk('public')->path('import-templates/sticker-import-template.xlsx'),
             ],
             [
+                'key' => 'glass',
+                'label' => 'Glass',
+                'filename' => 'glass-import-template.xlsx',
+                'path' => Storage::disk('public')->path('import-templates/glass-import-template.xlsx'),
+            ],
+            [
                 'key' => 'camp_keyword',
                 'label' => 'Camp Keyword',
                 'filename' => 'camp-keyword-template.xlsx',

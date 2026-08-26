@@ -11,10 +11,12 @@ use App\Http\Controllers\Webhook\TelegramWebhookController;
 use App\Livewire\Pages\Admin\ActivityLogs;
 use App\Livewire\Pages\Admin\AiModels;
 use App\Livewire\Pages\Admin\ApiCredits;
+use App\Livewire\Pages\Admin\FinancialManagement;
 use App\Livewire\Pages\Admin\ListUser;
 use App\Livewire\Pages\Admin\MailTest;
 use App\Livewire\Pages\Dashboard\Index as DashboardIndex;
 use App\Livewire\Pages\Drive\DriveUploads;
+use App\Livewire\Pages\Financial\FinancialManagement as UserFinancialManagement;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
 use App\Livewire\Pages\Suncatcher\AutomationCatalog;
@@ -62,6 +64,9 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     }
     Route::redirect('ornament-ornament', 'suncatcher');
 
+    Route::get('financial-management', UserFinancialManagement::class)
+        ->middleware('financial')
+        ->name('offorest.financial-management');
     Route::get('admin/users', ListUser::class)
         ->middleware('admin')
         ->name('offorest.admin.users');
@@ -73,6 +78,10 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('admin/api-credits', ApiCredits::class)
         ->middleware('admin')
         ->name('offorest.admin.api-credits');
+
+    Route::get('admin/financial-management', FinancialManagement::class)
+        ->middleware('admin')
+        ->name('offorest.admin.financial-management');
 
     Route::get('admin/ai-models', AiModels::class)
         ->middleware('admin')
@@ -228,4 +237,5 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
 });
 
 require __DIR__.'/auth.php';
+
 

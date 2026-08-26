@@ -15,6 +15,7 @@ class Product extends Model
         'description',
         'is_active',
         'auto_remove_background',
+        'background_removal_engine',
     ];
 
     public function getDisplayNameAttribute(): string

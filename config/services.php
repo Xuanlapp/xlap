@@ -91,6 +91,11 @@ return [
         'edge_flood_min_opacity' => env('OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_MIN_OPACITY', 12),
         'edge_color_samples' => env('OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_SAMPLES', 3),
         'edge_color_bucket_size' => env('OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_BUCKET_SIZE', 24),
+        'local_rembg' => [
+            'url' => env('OFFOREST_LOCAL_REMBG_URL', 'http://127.0.0.1:8091/remove-background'),
+            'timeout' => env('OFFOREST_LOCAL_REMBG_TIMEOUT', 90),
+            'fallback_engine' => env('OFFOREST_LOCAL_REMBG_FALLBACK_ENGINE', 'magic_eraser'),
+        ],
     ],
     'psd_mockup_renderer' => [
         'command' => env('PSD_MOCKUP_RENDERER_COMMAND'),

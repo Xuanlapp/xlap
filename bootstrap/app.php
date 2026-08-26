@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureUserHasFinancialAccess;
 use App\Http\Middleware\EnsureUserHasProductAccess;
 use App\Http\Middleware\EnsureUserHasWaliAccess;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified' => EnsureEmailIsVerified::class,
             'admin' => EnsureUserIsAdmin::class,
             'product' => EnsureUserHasProductAccess::class,
+            'financial' => EnsureUserHasFinancialAccess::class,
             'wali' => EnsureUserHasWaliAccess::class,
         ]);
 

@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\Image\BackgroundRemovalService;
+use Illuminate\Support\Facades\Http;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -58,6 +59,45 @@ class BackgroundRemovalServiceTest extends TestCase
         $this->assertSame(127, $this->opacityAt($image, 8, 8));
 
         imagedestroy($image);
+    }
+
+    public function test_local_rembg_returns_its_soft_alpha_png_without_gd_cleanup(): void
+    {
+        $output = "\x89PNG\r\n\x1a\nsoft-alpha";
+
+        config([
+            'services.background_removal.enabled' => true,
+            'services.background_removal.engine' => 'local_rembg',
+            'services.background_removal.local_rembg' => [
+                'url' => 'http://127.0.0.1:8091/remove-background',
+                'timeout' => 10,
+                'fallback_engine' => '',
+            ],
+        ]);
+        Http::fake([
+            'http://127.0.0.1:8091/remove-background' => Http::response($output, 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        $this->assertSame($output, app(BackgroundRemovalService::class)->remove('source-image'));
+        Http::assertSentCount(1);
+    }
+
+    public function test_local_rembg_falls_back_to_magic_eraser_when_service_is_unavailable(): void
+    {
+        config([
+            'services.background_removal.enabled' => true,
+            'services.background_removal.engine' => 'local_rembg',
+            'services.background_removal.local_rembg' => [
+                'url' => 'http://127.0.0.1:8091/remove-background',
+                'timeout' => 10,
+                'fallback_engine' => 'magic_eraser',
+            ],
+        ]);
+        Http::fake(['http://127.0.0.1:8091/remove-background' => Http::response('', 503)]);
+
+        $output = app(BackgroundRemovalService::class)->remove($this->edgeBackgroundPng());
+
+        $this->assertStringStartsWith("\x89PNG\r\n\x1a\n", $output);
     }
 
     public function test_it_uses_a_scaled_mask_for_large_images(): void

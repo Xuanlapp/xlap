@@ -32,7 +32,7 @@
                     </span>
                     <div>
                         <h2 class="text-base font-bold text-slate-950">Duyet item Etsy</h2>
-                        <p class="mt-0.5 text-sm text-slate-500">Chi luu keyword va link anh cua item da tich.</p>
+                        <p class="mt-0.5 text-sm text-slate-500">Nhap SKU va link anh cho tung item truoc khi luu.</p>
                     </div>
                 </div>
             </div>
@@ -52,7 +52,7 @@
                                 <tr>
                                     <th class="w-20 px-4 py-3">Image</th>
                                     <th class="w-[44%] px-4 py-3">Product</th>
-                                    <th class="px-4 py-3">Link anh</th>
+                                    <th class="px-4 py-3">SKU va link anh</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 bg-white">
@@ -65,8 +65,10 @@
                                             <p class="truncate font-bold text-slate-900" x-text="product.title || keyword"></p>
                                             <p class="mt-1 font-mono text-xs text-slate-400" x-text="product.listingId || '-'"></p>
                                         </td>
-                                        <td class="px-4 py-2">
-                                            <p class="truncate font-mono text-xs text-slate-500" x-text="product.imageUrl"></p>
+                                        <td class="space-y-2 px-4 py-2">
+                                            <input type="text" x-model="product.approvalSku" class="w-full rounded-lg border-slate-300 text-xs" placeholder="SKU (bat buoc)">
+                                            <input type="url" x-model="product.imageUrl" class="w-full rounded-lg border-slate-300 text-xs" placeholder="Link anh (bat buoc)">
+                                            <input x-show="['suncatcher', 'ornament-amazon-2'].includes(approvalTargetSlug)" type="url" x-model="product.approvalProductLink" class="w-full rounded-lg border-amber-300 text-xs" placeholder="Link product (bat buoc)">
                                         </td>
                                     </tr>
                                 </template>

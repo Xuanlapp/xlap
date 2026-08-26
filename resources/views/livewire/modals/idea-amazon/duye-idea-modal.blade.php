@@ -32,7 +32,7 @@
                     </span>
                     <div>
                         <h2 class="text-base font-bold text-slate-950">Duyet item Amazon</h2>
-                        <p class="mt-0.5 text-sm text-slate-500">Chi luu keyword va link anh cua item da tich.</p>
+                        <p class="mt-0.5 text-sm text-slate-500">SKU, keyword va anh la bat buoc. Keyword lay tu Idea History.</p>
                     </div>
                 </div>
             </div>
@@ -40,7 +40,7 @@
             <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
                 <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-                        <h3 class="text-sm font-bold text-slate-950">Item da chon</h3>
+                        <h3 class="text-sm font-bold text-slate-950">Thong tin item</h3>
                         <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
                             <span x-text="selectedProducts().length"></span> item
                         </span>
@@ -50,28 +50,48 @@
                         <table class="min-w-full table-fixed divide-y divide-slate-200 text-sm">
                             <thead class="sticky top-0 z-10 bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
                                 <tr>
-                                    <th class="w-20 px-4 py-3">Image</th>
-                                    <th class="w-[44%] px-4 py-3">Product</th>
-                                    <th class="px-4 py-3">Link anh</th>
+                                    <th class="px-4 py-3">Keyword</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 bg-white">
                                 <template x-for="product in selectedProducts()" :key="productKey(product)">
                                     <tr class="align-top">
                                         <td class="px-4 py-2">
-                                            <img x-bind:src="product.imageUrl" alt="" class="h-10 w-10 rounded-lg object-cover">
-                                        </td>
-                                        <td class="px-4 py-2">
-                                            <p class="truncate font-bold text-slate-900" x-text="product.title || keyword"></p>
-                                            <p class="mt-1 font-mono text-xs text-slate-400" x-text="product.listingId || '-'"></p>
-                                        </td>
-                                        <td class="px-4 py-2">
-                                            <p class="truncate font-mono text-xs text-slate-500" x-text="product.imageUrl"></p>
+                                            <p class="font-bold text-slate-900" x-text="product.title || '-'" readonly></p>
                                         </td>
                                     </tr>
                                 </template>
                             </tbody>
                         </table>
+                    </div>
+                </section>
+
+                <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="mb-5 grid gap-4 lg:grid-cols-2">
+                        <div><label class="mb-2 block text-sm font-bold text-slate-950">SKU <span class="text-red-600">*</span></label><template x-for="product in selectedProducts()" :key="productKey(product)"><input type="text" x-model="product.approvalSku" class="block w-full rounded-lg border-slate-300 text-sm" placeholder="Nhap SKU"></template></div>
+                        <div x-show="['suncatcher', 'ornament-amazon-2'].includes(approvalTargetSlug)"><label class="mb-2 block text-sm font-bold text-slate-950">Link product <span class="text-red-600">*</span></label><template x-for="product in selectedProducts()" :key="productKey(product)"><input type="url" x-model="product.approvalProductLink" class="block w-full rounded-lg border-amber-300 text-sm" placeholder="https://..."></template></div>
+                    </div>
+                    <div class="grid gap-5 lg:grid-cols-2">
+                        <div>
+                            <label class="mb-2 block text-sm font-bold text-slate-950">Anh tu may / keo tha / copy-paste <span class="text-red-600">*</span></label>
+                            <div x-data="{ isUploading: false, upload(file) { if (!file || !file.type || !file.type.startsWith('image/')) return false; this.isUploading = true; this.$wire.upload('approvalImageUpload', file, () => this.isUploading = false, () => this.isUploading = false); return true; }, paste(event) { const item = Array.from(event.clipboardData?.items || []).find((entry) => entry.type && entry.type.startsWith('image/')); if (this.upload(item?.getAsFile())) event.preventDefault(); }, drop(event) { this.$el.classList.remove('ring-2', 'ring-cyan-300'); this.upload(Array.from(event.dataTransfer?.files || []).find((file) => file.type && file.type.startsWith('image/'))); } }" x-on:dragover.prevent="$el.classList.add('ring-2','ring-cyan-300')" x-on:dragleave.prevent="$el.classList.remove('ring-2','ring-cyan-300')" x-on:drop.prevent="drop($event)" x-on:paste.window="paste($event)" class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 transition">
+                                <input type="file" accept="image/*" x-on:change="upload($event.target.files[0])" class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-md file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:font-semibold file:text-white">
+                                <p x-show="isUploading" class="mt-2 text-sm font-medium text-cyan-700">Dang nhan anh...</p>
+                                <p class="mt-2 text-sm text-slate-500">Click vao vung nay roi Ctrl+V anh, keo file anh vao day, hoac chon file.</p>
+                                @error('approvalImageUpload') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                                @if ($this->approvalImagePreviewUrl)
+                                    <div class="mt-3 overflow-hidden rounded-lg border border-emerald-200 bg-white p-2">
+                                        <p class="mb-2 text-xs font-bold text-emerald-700">Anh da nhan</p>
+                                        <img src="{{ $this->approvalImagePreviewUrl }}" alt="Anh da paste/upload" class="max-h-52 w-full rounded-md object-contain">
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-bold text-slate-950">Hoac nhap URL link anh <span class="text-red-600">*</span></label>
+                            <template x-for="product in selectedProducts()" :key="productKey(product)"><input type="url" x-model="product.imageUrl" class="block w-full rounded-lg border-slate-300 text-sm" placeholder="https://...png"></template>
+                            <p class="mt-2 text-sm text-slate-500">Neu khong dung file thi co the dan link anh truc tiep vao day.</p>
+                        </div>
                     </div>
                 </section>
 

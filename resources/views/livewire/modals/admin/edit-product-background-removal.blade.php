@@ -48,6 +48,16 @@
                         </p>
                         @error('autoRemoveBackground') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
+
+                    <label class="block">
+                        <span class="text-sm font-semibold text-slate-700">Engine tach nen</span>
+                        <select wire:model="backgroundRemovalEngine" class="mt-2 w-full rounded-lg border-slate-300 text-sm focus:border-cyan-500 focus:ring-cyan-500">
+                            <option value="magic_eraser">Magic Eraser - nhanh, theo mau nen</option>
+                            <option value="local_rembg">rembg local (AI CPU) - vien mem, chat luong tot hon</option>
+                        </select>
+                        <p class="mt-2 text-xs text-slate-500">rembg local can service Python dang chay tren VPS. Neu service loi, he thong tu fallback sang Magic Eraser.</p>
+                        @error('backgroundRemovalEngine') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </label>
                 </div>
 
                 <div class="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
