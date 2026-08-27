@@ -4,6 +4,8 @@ namespace App\Services\Glass;
 
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
+use App\Models\GlassLocalMockupJob;
+use App\Models\PsdMockupTemplate;
 use App\Models\User;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use App\Repositories\Product\ProductRepository;
@@ -455,9 +457,7 @@ class GlassService
         return $this->assets->updateLifestyleImages($asset, $lifestyle1, $lifestyle2, $lifestyle3);
     }
 
-    /**
-     * Render custom PSD mockups by replacing the PSD layer named Design with the master image.
-     */
+    /** Queue custom PSD mockups for the synced local workstation. */
     public function generatePsdMockups(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
@@ -473,10 +473,65 @@ class GlassService
             throw new RuntimeException('Chua chon PSD mockup cho chuc nang nay.');
         }
 
-        return $this->assets->updatePsdMockups(
-            $asset,
-            $this->psdRenderer->render($template, $asset->redesign, $asset->id),
-        );
+        $existing = GlassLocalMockupJob::query()
+            ->where('product_design_asset_id', $asset->id)
+            ->whereIn('status', ['waiting', 'processing'])
+            ->first();
+
+        if ($existing) {
+            throw new RuntimeException('Mockup nay dang cho may local xu ly.');
+        }
+
+        GlassLocalMockupJob::create([
+            'job_uuid' => (string) Str::uuid(),
+            'product_id' => $asset->product_id,
+            'product_slug' => $this->product()->slug,
+            'product_design_asset_id' => $asset->id,
+            'psd_mockup_template_id' => $template->id,
+            'master_image_uri' => $asset->redesign,
+            'status' => 'waiting',
+        ]);
+
+        return $asset;
+    }
+
+    public function latestLocalMockupJob(ProductDesignAsset $asset): ?GlassLocalMockupJob
+    {
+        return GlassLocalMockupJob::query()
+            ->where('product_design_asset_id', $asset->id)
+            ->latest('id')
+            ->first();
+    }
+
+    /** Render a claimed job on the local synced workstation and publish its image links to the shared database. */
+    public function completeLocalMockupJob(GlassLocalMockupJob $job): ProductDesignAsset
+    {
+        if ($job->status !== 'processing') {
+            throw new RuntimeException('Glass mockup job chua duoc worker nhan.');
+        }
+
+        $asset = ProductDesignAsset::query()->findOrFail($job->product_design_asset_id);
+
+        if ($job->product_slug !== 'glass' || $job->product_id !== $asset->product_id || $asset->product_id !== $this->product()->id) {
+            throw new RuntimeException('Glass mockup job khong khop san pham.');
+        }
+
+        $template = PsdMockupTemplate::query()->findOrFail($job->psd_mockup_template_id);
+
+        if ($template->product_id !== $asset->product_id || $template->user_id !== $asset->user_id) {
+            throw new RuntimeException('PSD template khong thuoc dung item Glass.');
+        }
+        $outputs = $this->psdRenderer->render($template, $job->master_image_uri, $asset->id);
+        $asset = $this->assets->updatePsdMockups($asset, $outputs);
+
+        $job->update([
+            'status' => 'completed',
+            'output_urls' => $outputs,
+            'completed_at' => now(),
+            'error_message' => null,
+        ]);
+
+        return $asset;
     }
 
     /**

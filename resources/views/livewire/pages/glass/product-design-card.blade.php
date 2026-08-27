@@ -1,4 +1,4 @@
-<article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+<article @if(in_array($localMockupJob?->status, ['waiting', 'processing'], true)) wire:poll.3s @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
             <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
@@ -149,7 +149,7 @@
         <div class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-orange-600">3. Mockup Tu Chon</x-label>
-                @if ($asset->redesign && ! $asset->is_approved)
+                @if ($asset->redesign && ! $asset->is_approved && ! in_array($localMockupJob?->status, ['waiting', 'processing'], true))
                     <button
                         type="button"
                         x-on:click="window.dispatchEvent(new CustomEvent('glass-generation-started'))"
@@ -161,6 +161,11 @@
                         <span wire:loading.remove wire:target="generatePsdMockups">Generate</span>
                         <span wire:loading wire:target="generatePsdMockups">Generating...</span>
                     </button>
+                @elseif (in_array($localMockupJob?->status, ['waiting', 'processing'], true))
+                    <span class="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-amber-600">
+                        <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" /><path class="opacity-75" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3z" /></svg>
+                        {{ $localMockupJob->status === 'waiting' ? 'Waiting local...' : 'Local rendering...' }}
+                    </span>
                 @endif
             </div>
 
@@ -189,6 +194,15 @@
                 </div>
 
                 <div wire:loading.class="invisible" wire:target="generatePsdMockups" class="flex h-full min-h-0 flex-col">
+                    @if (in_array($localMockupJob?->status, ['waiting', 'processing'], true))
+                        <div class="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                            {{ $localMockupJob->status === 'waiting' ? 'Waiting: dang cho may local nhan job.' : 'May local dang render PSD...' }}
+                        </div>
+                    @elseif ($localMockupJob?->status === 'failed')
+                        <div class="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" title="{{ $localMockupJob->error_message }}">
+                            Local render loi. Bam Generate de tao job moi.
+                        </div>
+                    @endif
                     <div class="mb-2 flex items-center justify-between gap-2 px-1">
                         <span class="text-xs font-bold uppercase text-slate-600">
                             {{ $psdMockups->count() }} MOCKUP
