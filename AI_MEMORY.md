@@ -7189,3 +7189,56 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 **Follow-up notes:**
 - Do not enable `local_rembg` before the local Python service health endpoint responds.
 - Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.
+## 2026-08-27 - Glass local mockup timeout fallback to VPS
+
+**Root cause:**
+- Glass Custom Mockup jobs only waited for the local worker. If the desktop app was offline or disconnected, a job could stay `waiting` forever.
+
+**Files changed:**
+- `app/Console/Commands/RunGlassLocalMockupFallback.php`
+- `config/services.php`
+- `routes/console.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `.env.example`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added `glass:local-mockup-fallback`, which claims only `glass` jobs that remain `waiting` longer than `GLASS_LOCAL_MOCKUP_FALLBACK_SECONDS` (default 120 seconds).
+- The fallback claims the row inside a database transaction before rendering, so the desktop worker and VPS cannot render the same job.
+- It reuses `GlassService::completeLocalMockupJob()` and writes the normal `mockup1` through `mockup11`, `output_urls`, and final job state.
+- Scheduler invokes the fallback every minute in a background Artisan process; existing scheduler enablement remains respected.
+- Glass UI explains that it waits for local first and VPS automatically takes over after two minutes.
+
+**Affected modules:**
+- Glass custom PSD mockup jobs, Laravel scheduler, VPS PSD renderer.
+
+**Deploy/queue impact:**
+- No migration and no Laravel queue change. Deploy code, run `php artisan optimize:clear`, and keep the existing `php artisan schedule:run` cron active on VPS.
+- Local worker gets a two-minute priority window; VPS fallback is CLI-rendered, not a browser request, which avoids a Livewire/Nginx request timeout.
+
+**Validation:**
+- PHP lint passed for new command, `config/services.php`, and `routes/console.php`.
+- `php artisan list --raw`, `php artisan schedule:list`, `php artisan glass:local-mockup-fallback --limit=1`, and `php artisan view:cache` passed.
+
+**Follow-up:**
+- Change `GLASS_LOCAL_MOCKUP_FALLBACK_SECONDS` on VPS if a window other than two minutes is preferred.
+- Graphiti lookup was attempted with group `xlap` and failed because the configured provider has no OpenAI credentials.
+## 2026-08-27 - Correct Glass fallback timing to global Generate idle window
+
+**Change:**
+- Updated the Glass VPS fallback rule: it does not use each job's individual age.
+- VPS starts fallback only when no new Glass Generate has been created for `GLASS_LOCAL_MOCKUP_FALLBACK_SECONDS` (default 120 seconds).
+- A new Generate by any user resets the shared local-worker priority window for the whole Glass batch.
+
+**Files changed:**
+- `app/Console/Commands/RunGlassLocalMockupFallback.php`
+- `config/services.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `.env.example`
+- `AI_MEMORY.md`
+
+**Deploy/queue impact:**
+- No migration/queue change. Existing scheduler checks this once each minute.
+
+**Validation:**
+- PHP lint, one fallback command run with no eligible job, and Blade cache pass.

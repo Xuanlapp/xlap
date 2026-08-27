@@ -103,6 +103,12 @@ return [
         'wait_seconds' => env('PSD_MOCKUP_RENDERER_WAIT_SECONDS', 1800),
     ],
 
+    'glass' => [
+        // VPS fallback starts only after no Glass Generate has happened during this idle period.
+        'local_mockup_fallback_enabled' => env('GLASS_LOCAL_MOCKUP_FALLBACK_ENABLED', true),
+        'local_mockup_fallback_seconds' => env('GLASS_LOCAL_MOCKUP_FALLBACK_SECONDS', 120),
+    ],
+
     'api_key_providers' => [
         'defaults' => [
             'image_min_interval_ms' => env('API_KEY_PROVIDER_IMAGE_MIN_INTERVAL_MS', 2500),

@@ -196,7 +196,7 @@
                 <div wire:loading.class="invisible" wire:target="generatePsdMockups" class="flex h-full min-h-0 flex-col">
                     @if (in_array($localMockupJob?->status, ['waiting', 'processing'], true))
                         <div class="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
-                            {{ $localMockupJob->status === 'waiting' ? 'Waiting: dang cho may local nhan job.' : 'May local dang render PSD...' }}
+                            {{ $localMockupJob->status === 'waiting' ? 'Waiting: dang cho may local nhan job. VPS se xu ly sau 2 phut ke tu lan Generate Glass cuoi cung.' : 'May local hoac VPS dang render PSD...' }}
                         </div>
                     @elseif ($localMockupJob?->status === 'failed')
                         <div class="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" title="{{ $localMockupJob->error_message }}">
