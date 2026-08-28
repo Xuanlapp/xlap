@@ -7367,3 +7367,58 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Follow-up notes:**
 - Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.
+## 2026-08-28 - Add quick Add Item tile for Sticker and Glass
+
+**Root cause:**
+- Adding an item was available only from the toolbar, while the user requested an obvious plus tile alongside the item list.
+
+**Files changed:**
+- `resources/views/livewire/pages/sticker/sticker-status-panel.blade.php`
+- `resources/views/livewire/pages/glass/glass-status-panel.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added a dashed card with a centered `+` after each Sticker and Glass item list, including empty lists.
+- Selecting the tile opens the existing product-specific Add Items modal and does not save/create an item until the modal form is submitted.
+
+**Affected modules:**
+- Sticker and Glass item-list status panels.
+
+**Deploy/queue impact:**
+- No migration, queue, or database change. Clear view cache after deployment if necessary.
+
+**Validation:**
+- `php artisan view:cache`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.
+## 2026-08-28 - Match Add Item button to floating back-to-top style
+
+**Root cause:**
+- The first quick-add implementation used a large dashed card, but the requested design was a small circular floating button like the existing back-to-top control.
+
+**Files changed:**
+- `resources/views/livewire/pages/sticker/sticker-status-panel.blade.php`
+- `resources/views/livewire/pages/glass/glass-status-panel.blade.php`
+- `resources/views/livewire/pages/sticker/list-sticker.blade.php`
+- `resources/views/livewire/pages/glass/list-glass.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Removed the large plus cards from the status panels.
+- Added circular fixed plus buttons at the bottom-right, positioned beside the global back-to-top button.
+- Buttons open the existing Sticker/Glass Add Items modal.
+
+**Affected modules:**
+- Sticker and Glass list pages.
+
+**Deploy/queue impact:**
+- No migration, queue, or database change.
+
+**Validation:**
+- `php artisan view:cache`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.

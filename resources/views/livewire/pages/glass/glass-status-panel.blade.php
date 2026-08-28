@@ -48,6 +48,7 @@
                 <p class="text-base font-bold text-slate-800">Khong co item trong tab nay</p>
             </div>
         @endforelse
+
     </div>
 
     <x-offorest.pagination :paginator="$assets" :page-name="$pageName" class="mt-6 rounded-lg border border-slate-200 shadow-sm" />

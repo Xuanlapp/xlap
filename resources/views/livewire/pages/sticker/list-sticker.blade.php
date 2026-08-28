@@ -217,6 +217,18 @@
         </div>
     </div>
 
+    <button
+        type="button"
+        x-on:click="openAddModal()"
+        class="fixed bottom-5 right-20 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full border border-cyan-200 bg-white text-cyan-600 shadow-lg shadow-slate-400/30 transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
+        aria-label="Them sticker item"
+        title="Them sticker item"
+    >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+        </svg>
+    </button>
+
     <livewire:modals.sticker.add-product-design />
     <livewire:modals.sticker.edit-product-detail />
     <livewire:modals.sticker.psd-mockup-template />
@@ -227,4 +239,3 @@
     <livewire:modals.ai.change-cheap-key-ai-key function-key="sticker" />
 
 </div>
-
