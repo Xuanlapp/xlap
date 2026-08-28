@@ -28,6 +28,13 @@ if ((bool) env('OFFOREST_SCHEDULER_ENABLED', true)) {
             ->runInBackground();
     }
 
+    if ((bool) config('services.sticker.local_mockup_fallback_enabled', true)) {
+        Schedule::command('sticker:local-mockup-fallback')
+            ->everyMinute()
+            ->withoutOverlapping(30)
+            ->runInBackground();
+    }
+
     if ((bool) env('OFFOREST_DATABASE_BACKUP_ENABLED', true)) {
         $backupCommand = 'offorest:backup-database --keep-days='.(int) env('OFFOREST_DATABASE_BACKUP_KEEP_DAYS', 14);
         $backupCommand .= ' --keep-count='.(int) env('OFFOREST_DATABASE_BACKUP_KEEP_COUNT', 10);

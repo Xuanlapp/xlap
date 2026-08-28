@@ -17,6 +17,9 @@ class PromptService
 
     public const ORNAMENT_AMAZON_TWO_MAX_PROMPTS = 1;
 
+    /** Sticker and Glass use only the Create Master prompt slot. */
+    public const SINGLE_CREATE_MASTER_PROMPT_PRODUCTS = ['sticker', 'glass'];
+
     public function __construct(
         private readonly ProductRepository $products,
         private readonly PromptRepository $prompts,
@@ -58,7 +61,7 @@ class PromptService
             $user->id,
             $product->id,
             $promptNumber,
-            $this->defaultPromptName($promptNumber),
+            $this->defaultPromptNameForProduct($productSlug, $promptNumber),
         );
     }
 
@@ -92,11 +95,28 @@ class PromptService
         };
     }
 
+    public function defaultPromptNameForProduct(string $productSlug, int $promptNumber): string
+    {
+        return in_array(strtolower($productSlug), self::SINGLE_CREATE_MASTER_PROMPT_PRODUCTS, true)
+            && $promptNumber === 1
+            ? 'Create Master'
+            : $this->defaultPromptName($promptNumber);
+    }
+
+    public function usesSingleCreateMasterPrompt(string $productSlug): bool
+    {
+        return in_array(strtolower($productSlug), self::SINGLE_CREATE_MASTER_PROMPT_PRODUCTS, true);
+    }
+
     public function maxPromptsForProduct(string $productSlug): int
     {
-        return $productSlug === 'ornament-amazon-2'
+        $productSlug = strtolower($productSlug);
+
+        return in_array($productSlug, self::SINGLE_CREATE_MASTER_PROMPT_PRODUCTS, true)
+            ? 1
+            : ($productSlug === 'ornament-amazon-2'
             ? self::ORNAMENT_AMAZON_TWO_MAX_PROMPTS
-            : self::MAX_PROMPTS_PER_PRODUCT;
+            : self::MAX_PROMPTS_PER_PRODUCT);
     }
 
     /**

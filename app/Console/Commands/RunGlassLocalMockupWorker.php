@@ -31,6 +31,7 @@ class RunGlassLocalMockupWorker extends Command
 
                 $job->update([
                     'status' => 'processing',
+                    'executed_by' => 'local',
                     'attempts' => $job->attempts + 1,
                     'claimed_at' => now(),
                     'error_message' => null,

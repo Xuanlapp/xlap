@@ -3,27 +3,27 @@
 namespace App\Console\Commands;
 
 use App\Models\GlassLocalMockupJob;
-use App\Services\Glass\GlassService;
+use App\Services\Sticker\StickerService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-class RunGlassLocalMockupFallback extends Command
+class RunStickerLocalMockupFallback extends Command
 {
-    protected $signature = 'glass:local-mockup-fallback {--limit=1 : Maximum expired jobs to render on the VPS}';
+    protected $signature = 'sticker:local-mockup-fallback {--limit=1 : Maximum idle Sticker jobs to render on the VPS}';
 
-    protected $description = 'Render waiting Glass mockups on VPS after Glass generation has been idle long enough.';
+    protected $description = 'Render waiting Sticker mockups on VPS after Sticker generation has been idle long enough.';
 
-    public function handle(GlassService $glass): int
+    public function handle(StickerService $sticker): int
     {
-        $idleSeconds = max(1, (int) config('services.glass.local_mockup_fallback_seconds', 120));
+        $idleSeconds = max(1, (int) config('services.sticker.local_mockup_fallback_seconds', 120));
         $limit = max(1, (int) $this->option('limit'));
 
         for ($count = 0; $count < $limit; $count++) {
             $job = DB::transaction(function () use ($idleSeconds): ?GlassLocalMockupJob {
-                // A new Generate restarts the local-worker priority window for the whole Glass batch.
+                // A new Sticker Generate restarts local-worker priority for the whole Sticker batch.
                 $latestGenerateJob = GlassLocalMockupJob::query()
-                    ->where('product_slug', 'glass')
+                    ->where('product_slug', 'sticker')
                     ->latest('created_at')
                     ->first(['created_at']);
 
@@ -32,7 +32,7 @@ class RunGlassLocalMockupFallback extends Command
                 }
 
                 $job = GlassLocalMockupJob::query()
-                    ->where('product_slug', 'glass')
+                    ->where('product_slug', 'sticker')
                     ->where('status', 'waiting')
                     ->oldest('id')
                     ->lockForUpdate()
@@ -42,7 +42,6 @@ class RunGlassLocalMockupFallback extends Command
                     return null;
                 }
 
-                // Claim before rendering so the local worker cannot process the same job.
                 $job->update([
                     'status' => 'processing',
                     'executed_by' => 'server',
@@ -58,18 +57,18 @@ class RunGlassLocalMockupFallback extends Command
                 return self::SUCCESS;
             }
 
-            $this->line("Local wait expired; rendering Glass job #{$job->id} on the VPS...");
+            $this->line("Local wait expired; rendering Sticker job #{$job->id} on the VPS...");
 
             try {
-                $glass->completeLocalMockupJob($job);
-                $this->info("Completed Glass fallback job #{$job->id}.");
+                $sticker->completeLocalMockupJob($job);
+                $this->info("Completed Sticker fallback job #{$job->id}.");
             } catch (Throwable $exception) {
                 $job->update([
                     'status' => 'failed',
                     'error_message' => mb_substr($exception->getMessage(), 0, 4000),
                     'completed_at' => now(),
                 ]);
-                $this->error("Glass fallback job #{$job->id} failed: {$exception->getMessage()}");
+                $this->error("Sticker fallback job #{$job->id} failed: {$exception->getMessage()}");
             }
         }
 

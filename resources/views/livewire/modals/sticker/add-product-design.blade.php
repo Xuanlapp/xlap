@@ -67,7 +67,7 @@
 
                     <div class="space-y-5 p-4 md:p-5">
                         <div>
-                            <label for="sticker-sku" class="mb-2 block text-sm font-medium text-gray-900">SKU</label>
+                            <label for="sticker-sku" class="mb-2 block text-sm font-medium text-gray-900">SKU <span class="text-red-600" aria-hidden="true">*</span></label>
                             <x-input
                                 id="sticker-sku"
                                 wire:model.live.debounce.300ms="sku"
@@ -80,7 +80,7 @@
                         </div>
 
 <div>
-                            <label for="sticker-keyword" class="mb-2 block text-sm font-medium text-gray-900">Keyword</label>
+                            <label for="sticker-keyword" class="mb-2 block text-sm font-medium text-gray-900">Keyword <span class="text-red-600" aria-hidden="true">*</span></label>
                             <x-input
                                 id="sticker-keyword"
                                 wire:model="keyword"
@@ -93,7 +93,7 @@
 
                         <div class="grid gap-5 lg:grid-cols-2">
                             <div>
-                                <label for="sticker-image-upload" class="mb-2 block text-sm font-medium text-gray-900">Anh tu may / keo tha / copy-paste</label>
+                                <label for="sticker-image-upload" class="mb-2 block text-sm font-medium text-gray-900">Anh <span class="text-red-600" aria-hidden="true">*</span> <span class="font-normal text-gray-600">(tu may / keo tha / copy-paste)</span></label>
                                 <div
                                     x-on:dragover.prevent="$el.classList.add('ring-2','ring-cyan-300','ring-offset-2')"
                                     x-on:dragleave.prevent="$el.classList.remove('ring-2','ring-cyan-300','ring-offset-2')"

@@ -7242,3 +7242,128 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Validation:**
 - PHP lint, one fallback command run with no eligible job, and Blade cache pass.
+## 2026-08-28 - Move Sticker custom mockup Generate to local job worker
+
+**Root cause:**
+- Sticker `3. Mockup Tu Chon -> Generate` rendered PSD synchronously in the Livewire request, unlike Glass. This could keep the browser request open and cause VPS timeout/502 under concurrent use.
+
+**Files changed:**
+- `app/Services/Sticker/StickerService.php`
+- `app/Livewire/Pages/Sticker/ProductDesignCard.php`
+- `resources/views/livewire/pages/sticker/product-design-card.blade.php`
+- `app/Console/Commands/RunStickerLocalMockupFallback.php`
+- `config/services.php`
+- `routes/console.php`
+- `.env.example`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Sticker Generate now creates a `psd_local_mockup_jobs` row with `product_slug=sticker`, master URI, template foreign key, UUID, and `waiting` status.
+- Sticker card polls while waiting/processing and displays local/VPS progress; completed output is read from `product_design_assets`.
+- Added Sticker completion logic for local worker/VPS fallback, including product/owner/template validation and job completion metadata.
+- Added a Sticker-specific VPS fallback command. It waits until no Sticker Generate has happened for 120 seconds, then claims waiting jobs transactionally and uses the normal Sticker PSD renderer.
+- Offorest Electron's existing generic local worker can process the Sticker jobs by product slug; no desktop code change was made in this task.
+
+**Affected modules:**
+- Sticker PSD mockup generation, shared local mockup job table, Laravel scheduler.
+
+**Deploy/queue impact:**
+- No migration or Laravel queue change; the existing `psd_local_mockup_jobs` table is reused.
+- Deploy code, run `php artisan optimize:clear`, and keep the existing `schedule:run` cron active. Local user `local_xlap` already has the required SELECT/UPDATE permissions.
+
+**Validation:**
+- PHP lint passed for Sticker service/card, fallback command, config, and scheduler.
+- `php artisan list --raw`, `php artisan schedule:list`, `php artisan sticker:local-mockup-fallback --limit=1`, `php artisan view:cache`, and `git diff --check` passed.
+
+**Follow-up:**
+- Restart/rebuild the Offorest desktop app if it is not using the current generic local worker.
+- Graphiti search was attempted with group `xlap` and failed because the configured provider has no OpenAI credentials.
+## 2026-08-28 - Track local versus VPS mockup execution source
+
+**Root cause:**
+- `psd_local_mockup_jobs` recorded status and timestamps but did not show whether a desktop local worker or the VPS fallback claimed/rendered a job.
+
+**Files changed:**
+- `database/migrations/2026_08_28_000010_add_executed_by_to_psd_local_mockup_jobs_table.php`
+- `app/Models/GlassLocalMockupJob.php`
+- `app/Console/Commands/RunGlassLocalMockupWorker.php`
+- `app/Console/Commands/RunGlassLocalMockupFallback.php`
+- `app/Console/Commands/RunStickerLocalMockupFallback.php`
+- `D:\FFACTORY\API\Offorest-app\main.js`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added nullable indexed `executed_by` to `psd_local_mockup_jobs`.
+- Offorest Electron local worker and local Laravel worker write `local` while atomically claiming a job.
+- Glass/Sticker VPS fallback commands write `server` while atomically claiming a job.
+- Existing old job records remain NULL because their execution source was not recorded historically.
+
+**Affected modules:**
+- Shared local PSD mockup jobs, Offorest desktop worker, Glass/Sticker VPS fallback workers.
+
+**Deploy/queue impact:**
+- Migration has run on the local DB. Run `php artisan migrate --force` on VPS before the updated workers are deployed; otherwise their UPDATE query will fail for the missing column.
+- No new queue; existing local user permissions already include UPDATE on the job table.
+
+**Validation:**
+- Migration completed successfully; schema listing contains `executed_by`.
+- PHP lint passed for model, migration, and all worker commands. `node --check D:\FFACTORY\API\Offorest-app\main.js` passed.
+
+**Follow-up:**
+- Restart/rebuild the Offorest desktop application after deploying its `main.js` update.
+- Graphiti lookup was attempted with group `xlap` and failed because the configured provider has no OpenAI credentials.
+## 2026-08-28 - Limit Sticker and Glass Detail Prompt to Create Master
+
+**Root cause:**
+- The shared Detail Prompt modal used the default four prompt slots for every product, which exposed Mockup prompts on Sticker and Glass even though their active master-generation flows consume prompt slot 1 only.
+
+**Files changed:**
+- `app/Services/Prompt/PromptService.php`
+- `app/Livewire/Modals/Prompt/DetailPrompt.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Sticker and Glass now have one allowed prompt slot only.
+- The sole slot is created and displayed as `Create Master`; Mockup1, Mockup2, and Mockup3 cannot be added or displayed in their Detail Prompt modal.
+- Existing higher-number prompt records are intentionally retained in the database and filtered out, avoiding destructive data changes.
+
+**Affected modules:**
+- Shared Detail Prompt modal, Sticker master generation, and Glass master generation.
+
+**Deploy/queue impact:**
+- No migration or queue change. Deploy code and run `php artisan optimize:clear` if Laravel caches are active.
+
+**Validation:**
+- `php -l app/Services/Prompt/PromptService.php`
+- `php -l app/Livewire/Modals/Prompt/DetailPrompt.php`
+- `php artisan view:cache`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.
+## 2026-08-28 - Mark Sticker and Glass Add Items required fields
+
+**Root cause:**
+- Sticker and Glass Add Items already validated SKU, keyword, and at least one image source in the backend, but the modal labels did not clearly tell users which fields were mandatory.
+
+**Files changed:**
+- `resources/views/livewire/modals/sticker/add-product-design.blade.php`
+- `resources/views/livewire/modals/glass/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added red required asterisks to SKU, Keyword, and Image labels in both modals.
+- Existing backend validation remains active: SKU and keyword are required, and the image must be uploaded/pasted or supplied as a valid image URL.
+
+**Affected modules:**
+- Sticker and Glass Add Items modals.
+
+**Deploy/queue impact:**
+- No migration, queue, or database change. Clear Laravel view cache after deployment if needed.
+
+**Validation:**
+- `php artisan view:cache`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.

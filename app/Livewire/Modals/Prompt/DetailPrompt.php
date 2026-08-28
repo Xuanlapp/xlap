@@ -95,7 +95,10 @@ class DetailPrompt extends Component
 
         $this->resetValidation();
         $this->selectedPromptId = $prompt->id;
-        $this->name = (string) ($prompt->name ?: app(PromptService::class)->defaultPromptName((int) $prompt->prompt_number));
+        $service = app(PromptService::class);
+        $this->name = $service->usesSingleCreateMasterPrompt($this->productSlug)
+            ? 'Create Master'
+            : (string) ($prompt->name ?: $service->defaultPromptNameForProduct($this->productSlug, (int) $prompt->prompt_number));
         $this->content = (string) $prompt->content;
     }
 
@@ -178,7 +181,9 @@ class DetailPrompt extends Component
 
         return $prompts
             ->mapWithKeys(fn (Prompt $prompt): array => [
-                $prompt->id => $prompt->name ?: $service->defaultPromptName((int) $prompt->prompt_number),
+                $prompt->id => $service->usesSingleCreateMasterPrompt($this->productSlug)
+                    ? 'Create Master'
+                    : ($prompt->name ?: $service->defaultPromptNameForProduct($this->productSlug, (int) $prompt->prompt_number)),
             ])
             ->all();
     }

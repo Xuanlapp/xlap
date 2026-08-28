@@ -86,7 +86,7 @@ class ProductDesignCard extends Component
                 properties: ['item_number' => $asset->item_number],
             );
 
-            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da render PSD mockup.');
+            $this->dispatch('toast', type: 'success', title: 'Da vao hang doi!', message: 'May local se render mockup va tu dong cap nhat khi xong.');
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'sticker.generate_psd_mockups', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
@@ -137,9 +137,11 @@ class ProductDesignCard extends Component
     {
         $asset = app(StickerService::class)->assetForUser(auth()->user(), $this->assetId);
         $this->appendPreviewUrls($asset);
+        $localMockupJob = app(StickerService::class)->latestLocalMockupJob($asset);
 
         return view('livewire.pages.sticker.product-design-card', [
             'asset' => $asset,
+            'localMockupJob' => $localMockupJob,
         ]);
     }
 

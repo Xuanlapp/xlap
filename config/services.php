@@ -109,6 +109,12 @@ return [
         'local_mockup_fallback_seconds' => env('GLASS_LOCAL_MOCKUP_FALLBACK_SECONDS', 120),
     ],
 
+    'sticker' => [
+        // VPS fallback starts only after no Sticker Generate has happened during this idle period.
+        'local_mockup_fallback_enabled' => env('STICKER_LOCAL_MOCKUP_FALLBACK_ENABLED', true),
+        'local_mockup_fallback_seconds' => env('STICKER_LOCAL_MOCKUP_FALLBACK_SECONDS', 120),
+    ],
+
     'api_key_providers' => [
         'defaults' => [
             'image_min_interval_ms' => env('API_KEY_PROVIDER_IMAGE_MIN_INTERVAL_MS', 2500),

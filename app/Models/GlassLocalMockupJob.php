@@ -17,6 +17,7 @@ class GlassLocalMockupJob extends Model
         'psd_mockup_template_id',
         'master_image_uri',
         'status',
+        'executed_by',
         'attempts',
         'output_urls',
         'error_message',
