@@ -7422,3 +7422,84 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Follow-up notes:**
 - Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.
+## 2026-08-28 - Fix Idea Amazon approval with pasted/uploaded image
+
+**Root cause:**
+- The approval flow correctly accepts an uploaded/pasted image through `approvalImageUpload`, but its JavaScript call passed `product.imageUrl` as NULL when no URL was supplied. PHP rejected the nullable URL before the later validation could recognize the uploaded file.
+
+**Files changed:**
+- `app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- `saveIdeaAmazonItem()` now accepts a nullable image-link argument.
+- The Livewire caller sends an empty string when its optional URL is absent.
+- Upload, Ctrl+V paste, and drag-drop remain valid image sources and the uploaded temporary image is still preferred over a URL.
+
+**Affected modules:**
+- Idea Amazon approval to Sticker, Glass, Suncatcher, Ornament Etsy, and Ornament Amazon 2.
+
+**Deploy/queue impact:**
+- No migration or queue change. Deploy code and clear Laravel cache if active.
+
+**Validation:**
+- `php -l app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `php artisan view:cache`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.
+## 2026-08-28 - Remove approved Amazon History item server-side
+
+**Root cause:**
+- Amazon History removal after approval depended only on a follow-up JavaScript call. When modal/client state did not retain the history identifier or the follow-up was interrupted, the destination item could be created while the source history row remained.
+
+**Files changed:**
+- `app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Approval now passes the optional Amazon History idea ID into `saveIdeaAmazonItem()`.
+- Backend deletes that history row for the current user and Amazon role only after the target product item has been saved successfully.
+- The existing client-side removal remains harmless as a second no-op safeguard.
+
+**Affected modules:**
+- Idea Amazon approval and per-user Amazon History.
+
+**Deploy/queue impact:**
+- No migration or queue change. Deploy code and clear Laravel cache if active.
+
+**Validation:**
+- `php -l app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php`
+- `php artisan view:cache`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.
+## 2026-08-28 - Enforce whole-word keyword suffix matching in Amazon FBA rule
+
+**Root cause:**
+- `Keyword Phrase ends with` used plain JavaScript `endsWith()`, which considered a character suffix match. With `sticker`, it incorrectly accepted `lap stickers` because `stickers` ends with the characters `sticker`.
+
+**Files changed:**
+- `resources/views/livewire/pages/idea-amazon/idea-amazon.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Normalized whitespace and changed the suffix rule to require either an exact phrase or a preceding space before the configured suffix.
+- With suffix `sticker`, accepted examples are `sticker` and `lap sticker`; rejected examples are `sticker lap` and `lap stickers`.
+
+**Affected modules:**
+- Idea Amazon spreadsheet/crawl FBA classification filter.
+
+**Deploy/queue impact:**
+- No migration, queue, or database change. Existing rows retain their prior classification; re-import/re-run the source data to apply the new filter to them.
+
+**Validation:**
+- `php artisan view:cache`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.

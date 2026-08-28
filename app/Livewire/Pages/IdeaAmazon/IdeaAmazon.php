@@ -112,7 +112,7 @@ class IdeaAmazon extends Component
         ]);
     }
 
-    public function saveIdeaAmazonItem(string $productSlug, string $keyword, string $imageLink, bool $forceKeyword = false, string $sku = '', string $productLink = ''): array
+    public function saveIdeaAmazonItem(string $productSlug, string $keyword, ?string $imageLink = null, bool $forceKeyword = false, string $sku = '', string $productLink = '', ?int $historyIdeaId = null): array
     {
         $validated = Validator::make([
             'productSlug' => $productSlug,
@@ -166,6 +166,15 @@ class IdeaAmazon extends Component
             };
         } catch (InvalidArgumentException $exception) {
             throw $exception;
+        }
+
+        // Remove the source history row only after the destination item was saved successfully.
+        if ($historyIdeaId) {
+            UserIdeaHistory::query()
+                ->where('user_id', $user->id)
+                ->where('role', 'amazon')
+                ->where('idea_item_id', $historyIdeaId)
+                ->delete();
         }
 
         $this->approvalImageUpload = null;

@@ -632,8 +632,12 @@
         isFbaRow(keywordPhrase, keywordSales, searchVolume, titleDensity) {
             const rule = this.activeFbaRule();
 
-            const keywordSuffix = String(rule.keywordPhraseEndsWith || '').trim().toLowerCase();
-            const matchesKeywordSuffix = !keywordSuffix || String(keywordPhrase || '').trim().toLowerCase().endsWith(keywordSuffix);
+            const keywordSuffix = String(rule.keywordPhraseEndsWith || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            const normalizedPhrase = String(keywordPhrase || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            // Require an exact trailing word/phrase, not merely matching its characters.
+            const matchesKeywordSuffix = !keywordSuffix
+                || normalizedPhrase === keywordSuffix
+                || normalizedPhrase.endsWith(` ${keywordSuffix}`);
 
             return matchesKeywordSuffix
                 && keywordSales > Number(rule.keywordSales)
@@ -941,10 +945,11 @@
             const response = await $wire.saveIdeaAmazonItem(
                 this.approvalTargetSlug,
                 product.title || this.keyword,
-                product.imageUrl,
+                product.imageUrl || '',
                 forceKeyword,
                 product.approvalSku || '',
                 product.approvalProductLink || '',
+                product.historyIdeaId || null,
             );
 
             if (response?.requiresConfirmation) {
