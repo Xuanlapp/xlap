@@ -7558,3 +7558,30 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Follow-up notes:**
 - Graphiti lookup was attempted with group `xlap` but failed because the configured OpenAI provider has no credentials.
+
+## 2026-08-29 - Listing Metadata provider fallback
+
+**Root cause:**
+- Listing Metadata used Vertex as the default for assets with an empty `ai_provider_key`, even when the image workflow used CheapKeyAI.
+
+**Files changed:**
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- A non-empty `ai_provider_key` is honored as the explicit Listing Metadata provider.
+- When `ai_provider_key` is empty, Listing Metadata now tries CheapKeyAI first and falls back to Vertex if CheapKeyAI fails.
+- The fallback collects provider errors and reports them together if both providers fail.
+
+**Affected modules:**
+- Scheduled/manual Amazon and Etsy Listing Metadata generation.
+
+**Deploy/queue impact:**
+- No migration or schema change. Existing scheduler/queue behavior is unchanged; deploy code and clear Laravel cache if needed.
+
+**Validation:**
+- `php -l app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but failed because the configured OpenAI provider has no credentials.

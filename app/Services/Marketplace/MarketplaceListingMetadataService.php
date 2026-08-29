@@ -508,21 +508,36 @@ PROMPT;
             return $providerKey;
         }
 
-        return in_array($asset->product?->slug, ['suncatcher', 'ornament-amazon-2'], true)
-            ? 'cheapkeyai'
-            : 'vertex';
+        return 'cheapkeyai';
     }
 
     private function generateListingText(ProductDesignAsset $asset, string $prompt): string
     {
-        $providerKey = $this->listingProviderKey($asset);
+        $configuredProvider = trim((string) $asset->ai_provider_key);
+        $providers = $configuredProvider !== ''
+            ? [$configuredProvider]
+            : ['cheapkeyai', 'vertex'];
+        $errors = [];
 
-        if ($this->isProviderPausedForAsset($asset)) {
-            throw new RuntimeException(
-                $this->providerLabel($providerKey).' cua user nay dang tam dung do het tien/het quota. Hay nap tien va Retry/Continue.',
-            );
+        foreach ($providers as $providerKey) {
+            try {
+                if ($this->isProviderPausedForAsset($asset) && $providerKey !== 'vertex') {
+                    throw new RuntimeException(
+                        $this->providerLabel($providerKey).' cua user nay dang tam dung do het tien/het quota.',
+                    );
+                }
+
+                return $this->generateListingTextWithProvider($asset, $prompt, $providerKey);
+            } catch (Throwable $exception) {
+                $errors[] = $this->providerLabel($providerKey).': '.$exception->getMessage();
+            }
         }
 
+        throw new RuntimeException(implode(' | ', $errors));
+    }
+
+    private function generateListingTextWithProvider(ProductDesignAsset $asset, string $prompt, string $providerKey): string
+    {
         if ($providerKey === 'vertex') {
             return $this->generator->generateText($asset->user, $prompt, true);
         }
