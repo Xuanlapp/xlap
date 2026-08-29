@@ -123,6 +123,14 @@
                             </div>
                         </div>
 
+                        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm text-slate-700 transition hover:border-cyan-300">
+                            <input type="checkbox" wire:model="useSourceImageAsMaster" class="mt-0.5 h-4 w-4 rounded border-cyan-300 text-cyan-600 focus:ring-cyan-500">
+                            <span>
+                                <span class="block font-semibold text-cyan-900">To Image Master</span>
+                                <span class="mt-0.5 block text-xs text-cyan-800">Dùng chính ảnh này cho cả Source Image và Create Master.</span>
+                            </span>
+                        </label>
+
                         @if ($uploadedImagePreviewUrl)
                             <div>
                                 <p class="mb-2 text-sm font-medium text-gray-900">Preview anh da chon</p>

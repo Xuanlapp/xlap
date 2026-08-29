@@ -7503,3 +7503,58 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Follow-up notes:**
 - Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.
+## 2026-08-29 - Enable Sticker Listing Metadata worker processing
+
+**Root cause:**
+- Sticker rows were shown as Waiting in Listing Metadata logs but were excluded from the worker query, so the scheduled command ran successfully while claiming zero Sticker items.
+
+**Files changed:**
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Removed Sticker from the worker exclusion list.
+- Sticker now follows its existing Amazon-specific metadata path and can be claimed when approved, title-less, and its owner has Amazon Listing permission.
+- Ornament Amazon 2 keeps its separate v98store credential requirement.
+
+**Affected modules:**
+- Scheduled Amazon/Etsy Listing Metadata processing for Sticker.
+
+**Deploy/queue impact:**
+- No migration or new queue. Deploy code and run `php artisan optimize:clear`; the existing five-minute scheduler will process eligible Sticker Waiting rows.
+
+**Validation:**
+- `php -l app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- Focused PHPUnit filter completed successfully but found no Marketplace-named tests.
+- `git diff --check`
+
+**Follow-up notes:**
+- VPS cron/scheduler was confirmed healthy on 2026-08-29. Graphiti lookup was attempted with group `xlap` but is unavailable because its OpenAI provider has no credentials.
+## 2026-08-29 - Add Sticker To Image Master option
+
+**Root cause:**
+- Sticker Add Items had no equivalent of the existing Glass option to reuse the uploaded/source image as the master image.
+
+**Files changed:**
+- `app/Livewire/Modals/Sticker/AddProductDesign.php`
+- `resources/views/livewire/modals/sticker/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added the `To Image Master` checkbox to the Sticker modal.
+- When checked, Sticker creates the asset and immediately selects the exact source path as its redesign/master, so no AI generation call is needed.
+- Reset and boolean validation include the new option.
+
+**Affected modules:**
+- Sticker Add Items modal and Sticker master-image selection.
+
+**Deploy/queue impact:**
+- No migration, queue, or database schema change. Deploy code and clear Laravel/view cache if needed.
+
+**Validation:**
+- `php -l app/Livewire/Modals/Sticker/AddProductDesign.php`
+- `php artisan view:cache`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but failed because the configured OpenAI provider has no credentials.

@@ -437,7 +437,7 @@ PROMPT;
                     })
                     ->orWhere(function (Builder $query): void {
                         $query
-                            ->whereDoesntHave('product', fn (Builder $query): Builder => $query->whereIn('slug', ['ornament-amazon-2', 'sticker']))
+                            ->whereDoesntHave('product', fn (Builder $query): Builder => $query->where('slug', 'ornament-amazon-2'))
                             ->whereHas('user', function (Builder $query): void {
                                 $query
                                     ->where('can_generate_amazon_listing', true)

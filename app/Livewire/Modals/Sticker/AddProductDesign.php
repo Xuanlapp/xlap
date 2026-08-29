@@ -32,6 +32,8 @@ class AddProductDesign extends Component
 
     public ?string $uploadedImagePreviewUrl = null;
 
+    public bool $useSourceImageAsMaster = false;
+
     public ?int $sourceAssetId = null;
 
     public ?string $sourceRedesignCandidate = null;
@@ -63,7 +65,7 @@ class AddProductDesign extends Component
     ): void
     {
         $this->resetValidation();
-        $this->reset(['sku', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'imageUpload', 'uploadedImagePreviewUrl', 'sourceAssetId', 'sourceRedesignCandidate']);
+        $this->reset(['sku', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'imageUpload', 'uploadedImagePreviewUrl', 'useSourceImageAsMaster', 'sourceAssetId', 'sourceRedesignCandidate']);
         $this->keyword = $keyword;
         $this->imageLink = $imageLink;
         $this->sourceAssetId = $sourceAssetId && $sourceAssetId > 0 ? $sourceAssetId : null;
@@ -75,7 +77,7 @@ class AddProductDesign extends Component
     public function close(): void
     {
         $this->resetValidation();
-        $this->reset(['isOpen', 'sku', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'imageUpload', 'uploadedImagePreviewUrl', 'sourceAssetId', 'sourceRedesignCandidate']);
+        $this->reset(['isOpen', 'sku', 'keyword', 'imageLink', 'isImageLink', 'imagePreviewUrl', 'imageUpload', 'uploadedImagePreviewUrl', 'useSourceImageAsMaster', 'sourceAssetId', 'sourceRedesignCandidate']);
     }
 
     public function updatedSku(): void
@@ -134,6 +136,7 @@ class AddProductDesign extends Component
                 }
             }],
             'imageUpload' => ['nullable', 'image', 'max:10240'],
+            'useSourceImageAsMaster' => ['boolean'],
         ]);
 
         if (empty($validated['imageLink']) && ! $this->imageUpload) {
@@ -146,7 +149,12 @@ class AddProductDesign extends Component
 
         $service = app(StickerService::class);
 
-        $service->createAsset(auth()->user(), $validated['keyword'], $imageSource, $validated['sku']);
+        $asset = $service->createAsset(auth()->user(), $validated['keyword'], $imageSource, $validated['sku']);
+
+        if ($validated['useSourceImageAsMaster']) {
+            // Reuse the exact source path so Source Image and Create Master display the same image.
+            $service->selectRedesign(auth()->user(), $asset->id, $imageSource);
+        }
 
         if ($this->sourceAssetId && $this->sourceRedesignCandidate) {
             $service->removeRedesignCandidate(auth()->user(), $this->sourceAssetId, $this->sourceRedesignCandidate);
