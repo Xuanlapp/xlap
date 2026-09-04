@@ -54,12 +54,14 @@ new class extends Component
             }
         }
         $canAccessFinancial = (bool) ($user && app(\App\Services\Financial\FinancialAccessService::class)->visibleAccountsQuery($user)->exists());
+        $canAccessAccountFinancial = (bool) ($user && ($user->is_admin || $user->role === 'admin' || $user->accountFinancialViews()->exists()));
         $canAccessWali = (bool) ($user && ((bool) $user->can_access_wali));
         $isWaliOnly = (bool) ($user && (bool) $user->can_access_wali && ! ((bool) $user->is_admin || $user->role === 'admin') && $products->isEmpty());
 
         return [
             'products' => $products,
             'canAccessFinancial' => $canAccessFinancial,
+            'canAccessAccountFinancial' => $canAccessAccountFinancial,
             'canAccessWali' => $canAccessWali,
             'isWaliOnly' => $isWaliOnly,
             'userInitials' => $user ? mb_strtoupper(mb_substr($user->name, 0, 1)) : '?',
@@ -351,6 +353,12 @@ new class extends Component
                         </div>
                     </div>
                 @endif
+                @if ($canAccessAccountFinancial && ! $isAdminUser)
+                    <div class="mt-6">
+                        <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Account</p>
+                        <div class="mt-2 space-y-1"><a href="{{ route('offorest.account-manager.notes') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.account-manager.*') ? $activeClass : $inactiveClass }}"><svg class="{{ $iconClass }} {{ request()->routeIs('offorest.account-manager.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v5h5"/><path d="M8 14h8"/></svg><span>Financial Management</span></a></div>
+                    </div>
+                @endif
                 @if ($canAccessWali)
                 <div class="mt-6">
                     <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Salary</p>
@@ -381,6 +389,15 @@ new class extends Component
                                     <path d="M22 11h-6" />
                                 </svg>
                                 <span>Users</span>
+                            </a>
+                            <a href="{{ route('offorest.account-manager.notes') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.account-manager.*') ? $activeClass : $inactiveClass }}">
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.account-manager.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                    <path d="M5 4h10l4 4v12H5z" />
+                                    <path d="M15 4v5h5" />
+                                    <path d="M8 13h8" />
+                                    <path d="M8 17h5" />
+                                </svg>
+                                <span>Account Notes</span>
                             </a>
                             <a href="{{ route('offorest.admin.logs') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.logs') ? $activeClass : $inactiveClass }}">
                                 <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.logs') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
@@ -513,6 +530,9 @@ new class extends Component
                         </div>
                     </div>
                 @endif
+                @if ($canAccessAccountFinancial && ! $isAdminUser)
+                    <div class="mt-6 border-t border-slate-200 pt-3"><p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Account</p><div class="mt-3 space-y-3"><a href="{{ route('offorest.account-manager.notes') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Financial Management</a></div></div>
+                @endif
                 @if ($canAccessWali)
                     <div class="mt-6 border-t border-slate-200 pt-3">
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Salary</p>
@@ -526,6 +546,7 @@ new class extends Component
                             <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Admin</p>
                             <div class="mt-3 space-y-3">
                                 <a href="{{ route('offorest.admin.users') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Users</a>
+                                <a href="{{ route('offorest.account-manager.notes') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Account Notes</a>
                                 <a href="{{ route('offorest.admin.logs') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Logs</a>
                                 <a href="{{ route('offorest.admin.api-credits') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">API Credits</a>
                                 <a href="{{ route('offorest.admin.financial-management') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Financial Management</a>

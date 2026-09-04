@@ -7585,3 +7585,1132 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Follow-up notes:**
 - Graphiti lookup was attempted with group `xlap` but failed because the configured OpenAI provider has no credentials.
+
+## 2026-08-29 - Drain Listing Metadata without repeat attempts
+
+**Root cause:**
+- A full `--limit=0` Listing Metadata run could immediately select an asset again after it failed, preventing the same run from moving on to later Waiting assets.
+
+**Files changed:**
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Tracks asset IDs claimed during one `generatePendingApprovedAssets()` invocation.
+- Excludes already-attempted IDs when claiming the next item, so a drain run tries every eligible asset at most once and continues after failures.
+
+**Affected modules:**
+- Manual and scheduled Listing Metadata batch processing.
+
+**Deploy/queue impact:**
+- No migration or queue schema change. A `--limit=0` invocation now drains eligible assets sequentially without same-run failure loops.
+
+**Validation:**
+- `php -l app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but failed because the configured OpenAI provider has no credentials.
+
+## 2026-09-03 - Account Manager Notes page
+
+**Root cause:**
+- Account Manager had a defined note workflow but no implementation in the application, so teams had no structured per-account timeline for context, warnings, and follow-up actions.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `app/Models/Account.php`
+- `app/Models/AccountNote.php`
+- `app/Models/AccountNoteAttachment.php`
+- `app/Models/Tag.php`
+- `database/migrations/2026_09_03_000100_create_accounts_table.php`
+- `database/migrations/2026_09_03_000200_create_account_notes_tables.php`
+- `routes/web.php`
+- `resources/views/livewire/layout/navigation.blade.php`
+
+**Changes:**
+- Added the Account Notes page with account switcher, note type/search filters, a readable timeline, tag chips, guidance panel, create/edit form, and private attachments.
+- Added minimal Account, AccountNote, Tag, and attachment storage schema. Each note is scoped to `account_id`; account deletion is restricted by database foreign keys.
+- Tags are created/reused from the comma-separated form input and synchronized through `account_note_tags`.
+
+**Affected modules:**
+- New admin Account Manager Notes route: `offorest/account-manager/notes`.
+
+**Deploy/queue impact:**
+- Run `php artisan migrate` before deploying the page. No queue worker change. Uploaded note files use the private local disk at `storage/app/private/account-notes/{account_id}`.
+
+**Validation:**
+- `php -l` passed for new PHP files and routes.
+- `php artisan route:list --name=account-manager` passed.
+- `php artisan view:cache` passed.
+
+**Follow-up notes:**
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+- The full Account Manager overview, account permissions, activity logs, and document references remain future modules; this task implements the Note slice and its required storage.
+## 2026-09-03 - Apply Account Manager Notes migrations
+
+**Root cause:**
+- The Account Notes route was active while its two schema migrations were still pending, so the initial render called `Account::exists()` and MySQL raised `Table 'xlap.tech.accounts' doesn't exist`.
+
+**Files changed:**
+- `AI_MEMORY.md`
+
+**Changes:**
+- Applied `2026_09_03_000100_create_accounts_table` and `2026_09_03_000200_create_account_notes_tables` to the local `xlap.tech` database in migration batch 88.
+- Cleared Laravel config, application, event, route, and view caches.
+
+**Affected modules:**
+- Admin Account Manager Notes route and its account/note/tag/attachment persistence.
+
+**Deploy/queue impact:**
+- No queue impact. The same migrations must be run in every deployment environment before enabling the page.
+
+**Follow-up notes:**
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-03 - Create test Account Manager account
+
+**Root cause:**
+- The new Account Notes page had an empty account selector after its schema migration because no account records existed yet.
+
+**Files changed:**
+- `AI_MEMORY.md`
+
+**Changes:**
+- Created one non-sensitive test account record: `STORE DEMO` (Etsy, US, active, low risk), id `1`, for account-note UI testing.
+
+**Affected modules:**
+- Account Manager Notes selector and note creation flow.
+
+**Deploy/queue impact:**
+- No deploy or queue impact. This is test database data only.
+
+**Follow-up notes:**
+- Delete or archive the test account after visual/functional testing if it is no longer needed.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-03 - Align Account Notes UI with Account Manager reference
+
+**Root cause:**
+- The initial Notes page used a standalone dark timeline layout and did not follow the approved Account Manager dashboard reference supplied by the user.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Rebuilt the page visual hierarchy to match the reference: compact white dashboard, account header/status badges, account switcher/actions, horizontal tabs, summary cards, quick-note panel, and quick actions.
+- Retained existing note filter, timeline, create/edit modal, tag, and attachment functionality within the reference-style layout.
+
+**Affected modules:**
+- Admin Account Manager Notes presentation only; note persistence and migrations are unchanged.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Clear view cache after deployment.
+
+**Follow-up notes:**
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-03 - Make Account Manager tabs interactive and add demo details
+
+**Root cause:**
+- The Account Manager reference tabs and several action buttons were displayed as static visual placeholders, and the test account had no notes or representative data to review.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added clickable tabs with detail panels for Login, Email, IP/Device, Identity, both Bank sections, Card, Documents, and History. These panels intentionally display non-sensitive mock data for the test account layout review.
+- Connected Edit and Export buttons to clear informational feedback instead of silent no-ops.
+- Created four persisted example notes for `STORE DEMO`: verification, payout change, IP/device change, and a warning; each has relevant tags.
+
+**Affected modules:**
+- Account Manager Notes UI and the test account note timeline.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Demo account detail panels are presentation data until the corresponding Account Manager tables are implemented.
+
+**Follow-up notes:**
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-03 - Add Account Documents image upload
+
+**Root cause:**
+- The Documents tab displayed static mock rows, but the user needs to upload and retain actual account images.
+
+**Files changed:**
+- `database/migrations/2026_09_03_000300_create_account_documents_table.php`
+- `app/Models/AccountDocument.php`
+- `app/Models/Account.php`
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `routes/web.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Replaced Documents mock data with a per-account private image library.
+- Added title plus JPG, PNG, or WEBP image upload (10 MB per image), thumbnail grid, and authenticated full-image view route.
+- Applied the `account_documents` migration locally.
+
+**Affected modules:**
+- Account Manager Documents tab and private local storage at `storage/app/private/account-documents/{account_id}`.
+
+**Deploy/queue impact:**
+- Run the new migration during deployment. No queue impact.
+
+**Follow-up notes:**
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-03 - Raise Account Documents image limit
+
+**Root cause:**
+- A user-selected PNG exceeded the 10 MB server-side Documents validation limit, despite PHP accepting large uploads.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Increased Account Documents image validation from 10 MB to 50 MB for JPG, PNG, and WEBP.
+- Updated upload guidance in the modal to show the actual 50 MB limit.
+
+**Affected modules:**
+- Account Manager Documents upload.
+
+**Deploy/queue impact:**
+- No migration or queue impact. PHP `upload_max_filesize` and `post_max_size` were confirmed at 2 GB locally, so they do not limit the new setting.
+
+**Follow-up notes:**
+- Large original images are retained as uploaded; image resizing/compression is not currently performed.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-03 - Preview Account Document images in modal
+
+**Root cause:**
+- Clicking a Documents thumbnail opened a separate browser tab, while the user requested an in-page preview modal.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Document thumbnails now open a responsive full-image modal with the document title, Escape/backdrop close, and an optional original-image link.
+- Image access remains through the existing authenticated private route.
+
+**Affected modules:**
+- Account Manager Documents tab.
+
+**Deploy/queue impact:**
+- No migration or queue impact.
+
+**Follow-up notes:**
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-03 - Add Account Manager money in and money out tabs
+
+**Root cause:**
+- Account Manager lacked a per-account view for incoming payouts and outgoing payments/expenses.
+
+**Files changed:**
+- `database/migrations/2026_09_03_000400_create_account_cashflows_table.php`
+- `app/Models/AccountCashflow.php`
+- `app/Models/Account.php`
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added `Tiền về` and `Tiền ra` tabs with independent totals, transaction lists, references, and add-transaction modals.
+- Applied the new `account_cashflows` table migration locally.
+- Added four non-sensitive `STORE DEMO` transactions: two Etsy payouts and two outgoing fees.
+
+**Affected modules:**
+- Account Manager cashflow tracking for account-specific incoming and outgoing money.
+
+**Deploy/queue impact:**
+- Run the new migration in deployment. No queue impact.
+
+**Follow-up notes:**
+- Current totals are grouped visually as USD demo data; a multi-currency totals breakdown can be added when accounts use more than one currency.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-03 - Add Account Manager create-account flow
+
+**Root cause:**
+- Account Manager exposed an account switcher but no UI flow to create an account, forcing account creation through test data or the database.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added a header `+ Thêm account` button and creation modal.
+- The form validates account name, Etsy/Amazon platform, marketplace, country code, account type, status, risk level, and internal note.
+- A successful save selects the new account and returns to its overview, ready for notes, documents, and cashflows.
+
+**Affected modules:**
+- Account Manager account creation and account switcher.
+
+**Deploy/queue impact:**
+- No migration or queue impact; it uses the existing `accounts` table.
+
+**Follow-up notes:**
+- The existing `Chỉnh sửa` action still needs a full account edit form; this change implements creation only.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-03 - Consolidate account cashflows into Financial Management
+
+**Root cause:**
+- Incoming and outgoing money were split into two Account Manager tabs, while the requested design is one `Financial Management` area with a monthly view.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Replaced `Tiền về` and `Tiền ra` tabs with one `Financial Management` tab.
+- Added month selection, monthly income, expense, and net summary cards, plus one combined transaction table with type badges.
+- Kept two explicit actions within the same page for adding incoming or outgoing money.
+
+**Affected modules:**
+- Account Manager cashflow navigation and monthly reporting UI.
+
+**Deploy/queue impact:**
+- No migration or queue impact; existing `account_cashflows` data is reused.
+
+**Follow-up notes:**
+- The initial selected month is the latest cashflow month; changing the month updates the summary and transaction list.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Add Account Manager data-entry modal module
+
+**Root cause:**
+- Account Manager had page-local forms and static detail tabs rather than dedicated, consistently located modal components for the requested account data groups.
+
+**Files changed:**
+- `app/Livewire/Modals/AccountManager/DataForm.php`
+- `resources/views/livewire/modals/account-manager/data-form.blade.php`
+- `app/Models/AccountDetail.php`
+- `database/migrations/2026_09_04_000100_create_account_details_table.php`
+- `app/Models/Account.php`
+- `resources/views/layouts/app.blade.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added the AccountManager modal module in the established `app/Livewire/Modals` and `resources/views/livewire/modals` hierarchy.
+- Login, Email, IP/Device, Identity, Payment Bank, Payout Bank, and Card tabs now provide a `Thêm dữ liệu` action that opens the appropriate form.
+- Added encrypted-at-rest `account_details.payload` storage for the sensitive modal fields and applied its migration locally.
+- Card form deliberately stores only the last four digits field; CVV is not collected or stored.
+
+**Affected modules:**
+- Account Manager account detail data capture and the global application modal mount.
+
+**Deploy/queue impact:**
+- Run `2026_09_04_000100_create_account_details_table` during deployment. No queue impact.
+
+**Follow-up notes:**
+- Note and image-document modals currently retain their existing page-local implementations; their behavior is already functional and they can be moved into the same AccountManager module in the next refactor.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Restrict bank account number capture to first and last four digits
+
+**Root cause:**
+- Payment and payout bank modals accepted a full account number, which is unnecessary sensitive data for Account Manager use.
+
+**Files changed:**
+- `app/Livewire/Modals/AccountManager/DataForm.php`
+- `resources/views/livewire/modals/account-manager/data-form.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Replaced full bank account number fields with required `4 số đầu tài khoản` and `4 số cuối tài khoản` fields for payment and payout banks.
+- Inputs limit to four numeric digits and server-side validation enforces exactly four digits per part.
+- Payout keeps a separate optional payout email field when that identifier is used.
+
+**Affected modules:**
+- Account Manager Payment Bank and Payout Bank modals.
+
+**Deploy/queue impact:**
+- No migration or queue impact.
+
+**Follow-up notes:**
+- Existing encrypted detail payloads are unaffected; future bank records save only the 8 displayed digits, never a full account number.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Review Amazon and Etsy August CSV statements
+
+**Root cause:**
+- User requested an explanation of two supplied marketplace CSV exports before defining Financial Management import logic.
+
+**Files changed:**
+- `AI_MEMORY.md`
+
+**Changes:**
+- Read-only review of the two files; no database or code change.
+- Amazon file: 600 rows dated 21-31 August 2026, with net total USD 968.96. Main categories were Order Payment, Liquidations, reimbursements, refunds, shipping purchases, and service fees.
+- Etsy file: 2,057 rows dated 1-31 August 2026 in VND. Sales netted VND 83,994,618; fees, tax, marketing, VAT, refunds and buyer fees resulted in total net VND 59,014,080 before reconciling deposits.
+
+**Affected modules:**
+- Future Account Manager Financial Management marketplace-statement import design.
+
+**Deploy/queue impact:**
+- No deploy, queue, database, or code impact.
+
+**Follow-up notes:**
+- Amazon CSV period is only 21-31 August despite the filename claiming 1-31 August; confirm whether an earlier export is missing before monthly reconciliation.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Define grouped Etsy and Amazon statement aggregation
+
+**Root cause:**
+- User clarified the intended future Financial Management statement logic: aggregate source rows by Etsy `Type` or Amazon `Transaction type`, with a special Etsy Deposit payout extraction from the Title text.
+
+**Files changed:**
+- `AI_MEMORY.md`
+
+**Changes:**
+- Read-only calculation verified the requested grouping on supplied August CSVs.
+- Etsy: sum `Net` per selected Type; separately parse each Deposit Title matching `VND amount sent to your bank account` and sum its amount as payout received.
+- Amazon: sum `Total (USD)` per `Transaction type`.
+
+**Affected modules:**
+- Future Account Manager Financial Management CSV import and monthly summary display.
+
+**Deploy/queue impact:**
+- No code, database, deploy, or queue change yet.
+
+**Follow-up notes:**
+- The supplied Amazon file totals Inventory Reimbursement to USD 8.52, not USD 633.69; the latter likely refers to a different/full-period export and should be checked when imports are implemented.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Restrict shared Account Manager access to Financial Management
+
+**Root cause:**
+- Account Manager was admin-only and had no account-level sharing model, while the requested policy is admin-only management with user read-only access to Financial Management alone.
+
+**Files changed:**
+- `database/migrations/2026_09_04_000200_create_account_user_table.php`
+- `app/Models/Account.php`
+- `app/Models/User.php`
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `app/Livewire/Modals/AccountManager/DataForm.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `routes/web.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added `account_user` share pivot and applied its migration locally.
+- Admin can use `Chia sẻ financial` to select viewers for an individual account.
+- Shared users can access only their assigned accounts and see only the `Financial Management` tab; every other tab and admin action is hidden and server-side blocked.
+- Account creation, account details, notes, documents, cashflow creation, and account-data modals are now enforced admin-only on the server, not merely hidden in the UI.
+
+**Affected modules:**
+- Account Manager access control, account sharing, and Financial Management read-only audience.
+
+**Deploy/queue impact:**
+- Run `2026_09_04_000200_create_account_user_table` during deployment. No queue impact.
+
+**Follow-up notes:**
+- CSV imports should be added as admin-only actions inside Financial Management; shared users will remain read-only when that work is implemented.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Add Financial Management CSV import and Amazon payment action
+
+**Root cause:**
+- Financial Management had separate add-income and add-expense buttons instead of the requested two actions: platform statement import and manually entered Amazon payment.
+
+**Files changed:**
+- `database/migrations/2026_09_04_000300_add_source_key_to_account_cashflows_table.php`
+- `app/Models/AccountCashflow.php`
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Replaced the Financial Management actions with admin-only `Import Excel` and `+ Tiền về AMZ`.
+- Import accepts Etsy Statement and Amazon Transactions CSV files. Etsy groups monthly `Net` by Type and parses Deposit payout amounts from Title; Amazon groups monthly `Total (USD)` by Transaction type.
+- Imported rows use an account-scoped source key and update on repeat import, preventing duplicate totals from the same aggregate source group.
+- Amazon manual income defaults its description to `Payment Amazon`.
+- Applied the source-key migration locally.
+
+**Affected modules:**
+- Account Manager Financial Management statement import, monthly aggregation, and Amazon payout entry.
+
+**Deploy/queue impact:**
+- Run `2026_09_04_000300_add_source_key_to_account_cashflows_table` during deployment. No queue impact. CSV imports execute synchronously in the Livewire request.
+
+**Follow-up notes:**
+- Current importer accepts CSV; if exports arrive as true XLSX files, add an XLSX reader in the next iteration.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Add monthly financial reset and shared-user sidebar access
+
+**Root cause:**
+- Admin needed a recovery path after importing a wrong month, and users shared to Account Financial Management needed a discoverable sidebar entry comparable to Proxy access.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `resources/views/livewire/layout/navigation.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added admin-only `Xóa dữ liệu tháng` action with a browser confirmation. It deletes all cashflow rows for the selected account and selected month.
+- Added Account Financial visibility computation in navigation.
+- Users who are shared to at least one account automatically receive `Account > Financial Management` in both desktop and mobile sidebar navigation; page access remains financial-tab-only and read-only.
+
+**Affected modules:**
+- Account Manager Financial Management monthly recovery and account-share navigation.
+
+**Deploy/queue impact:**
+- No migration or queue impact.
+
+**Follow-up notes:**
+- The monthly delete is intentionally a destructive, account-scoped action and requires explicit browser confirmation. It does not affect other accounts or months.
+- Graphiti lookup was requested with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Fix Amazon CSV import header parsing
+
+**Root cause:**
+- Amazon CSV exports can start with a UTF-8 BOM. PHP `fgetcsv()` then treated the first quoted header as the literal key `"Date"`, while the importer expected `Date`, causing `Undefined array key "Date"` during Livewire import.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Normalize imported header names by stripping the BOM, whitespace, and accidental retained wrapping quotes.
+- Validate the mandatory `Date` header before processing rows, returning a clear import error rather than an internal server error.
+
+**Affected modules:**
+- Account Manager Financial Management Amazon/Etsy CSV importer.
+
+**Deploy/queue impact:**
+- No database migration or queue impact. Clear Laravel caches after deploying the code change.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Import full Etsy financial categories
+
+**Root cause:**
+- The Etsy CSV header contains 11 columns, but 2,041 transaction rows contain only the first 9 fields because `Status` and `Availability Date` are omitted. The importer previously discarded every row whose count did not exactly match the header, leaving only the 16 full-width Sale rows.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Pad missing trailing Etsy fields before combining a row with the headers, preserving valid transaction data.
+- Limit Etsy financial aggregation to Buyer Fee, Fee, Marketing, Refund, Sale, Tax, VAT, and Deposit; Deposit is normalized to `Deposit to bank` and parsed from `Title`.
+
+**Affected modules:**
+- Account Manager Financial Management Etsy CSV importer.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Laravel caches have been cleared locally.
+
+**Follow-up notes:**
+- Re-importing the same Etsy report will retain/update the existing Sale aggregate and add the missing categories. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Reconcile previous Etsy imports by monthly category
+
+**Root cause:**
+- The earlier import source key included the aggregate amount. A corrected Etsy import could therefore add another record instead of replacing the original partial aggregate.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Source identity now uses platform, month, currency, and category, not amount.
+- The importer migrates a matching previous `ETSY-IMPORT`/`AMZ-IMPORT` monthly row to the stable identity before saving, so re-importing the Etsy file updates the old Sale entry and adds the newly parsed categories without duplicating Sale.
+
+**Affected modules:**
+- Account Manager Financial Management monthly statement reconciliation.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Compiled views pass locally.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Persist selected Account Manager tab
+
+**Root cause:**
+- The selected tab was held only in Livewire component state, so a browser reload reconstructed the component with its default `Tong quan` tab.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Bound `activeTab` to the URL query parameter `tab` with browser history support.
+- Validate an incoming tab value for admins and retain the existing Financial Management-only enforcement for shared users.
+
+**Affected modules:**
+- Account Manager navigation and reload/deep-link behavior.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Reloading a link such as `/offorest/account-manager/notes?account=1&tab=Financial%20Management` now restores the selected account and tab. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Separate Amazon USD and Etsy VND financial tables
+
+**Root cause:**
+- Financial Management rendered all monthly cashflows in one table and summed their amounts together, even though Amazon imports use USD and Etsy imports use VND.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Replaced the combined monthly summary/table with two independent currency sections: Amazon (USD) and Etsy (VND).
+- Each section shows its own income, expense, balance, and transaction rows; values from the two currencies are never summed together.
+
+**Affected modules:**
+- Account Manager Financial Management display.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade templates cache successfully locally.
+
+**Follow-up notes:**
+- Imported Amazon records are shown in the USD table and imported Etsy records in the VND table based on the stored currency. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Enforce platform-specific financial imports and display
+
+**Root cause:**
+- Financial Management displayed both USD and VND tables for every account, even though each account is created as either Etsy or Amazon. The import action also accepted either export for either account.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- An Etsy account now displays only its Etsy/VND financial table and accepts only Etsy Statement CSV imports.
+- An Amazon account now displays only its Amazon/USD financial table, accepts only Amazon Transactions CSV imports, and is the only platform that shows or can invoke `+ Tien ve AMZ`.
+- Server-side platform checks prevent mismatched uploads and Amazon payment creation even when a Livewire action is manually called.
+
+**Affected modules:**
+- Account Manager account-platform financial separation and CSV importer authorization.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade templates cache successfully locally.
+
+**Follow-up notes:**
+- Existing wrongly imported cross-platform records are hidden from the account's platform-specific view; they can be removed with the account/month delete action if required. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Add Etsy revenue, payout, cost, profit, and manual balance logic
+
+**Root cause:**
+- Etsy imports were displayed using the generic money-in/money-out summary, which did not match the requested business accounting definition.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Etsy Sale is summarized as revenue; Deposit to bank is summarized as payout; all other imported Etsy categories are summarized as costs.
+- Etsy profit is calculated as revenue minus costs, independently from payout.
+- Added an admin-only Balance Etsy action that saves one editable VND balance record for the selected month; shared users can view it only.
+- Import maps Deposit to bank to outgoing flow while preserving the category rows in the Etsy table.
+
+**Affected modules:**
+- Account Manager Financial Management Etsy monthly accounting.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- The `+ Balance Etsy` action defaults to the currently selected financial month. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Validate statement templates without Livewire error pages
+
+**Root cause:**
+- The platform/template mismatch used `abort(422)`, causing Livewire to render a technical exception page instead of a form-level import message.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Import now checks exact required headers before processing: Amazon requires Date, Transaction type, Total (USD); Etsy requires Date, Type, Title, Currency, Net.
+- Invalid or cross-platform templates now attach a clear validation error to `statementFile` and leave the import modal open.
+- Import actions remain admin-only on the server; shared users neither see the import button nor can call the action successfully.
+
+**Affected modules:**
+- Account Manager Financial Management CSV import validation and access control.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Account #2 is Amazon in the reported request, and the attached upload is an Etsy Statement, so the expected result is the new friendly in-modal mismatch message rather than importing it. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Add Amazon revenue, payout, cost, profit, and manual balance logic
+
+**Root cause:**
+- Amazon financial data still used generic money-in/money-out cards, which did not reflect the requested accounting definition.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Order Payment is summarized as Amazon revenue; imported non-Order Payment transactions are categorized as costs.
+- Amazon payout is an admin-entered, separate payout record; Amazon profit is revenue minus imported costs, excluding payout.
+- Added manual monthly Amazon Balance using the existing admin Balance action; both Balance and Payout are excluded from imported-cost calculations.
+- Existing Amazon import groups now classify only Order Payment as incoming and the remaining transaction types as outgoing costs.
+
+**Affected modules:**
+- Account Manager Financial Management Amazon monthly accounting.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade views cache successfully locally.
+
+**Follow-up notes:**
+- Existing older Amazon imports should be imported again if their flow direction must be updated to the new Order Payment versus cost convention. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Reserve Etsy costs for separate FF import
+
+**Root cause:**
+- Etsy Statement fee categories were being used as `Chi phi`, but the requested source for this metric is a separate future FF import file.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Etsy cards now explicitly show: Doanh thu from Sale, Payout from Deposit to bank, Balance entered by admin, Chi phi (FF) from the reserved `ETSY-FF-IMPORT` source, and Loi nhuan = Doanh thu - Chi phi (FF).
+- Current Etsy Statement fee rows remain visible as imported statement data but do not affect the FF cost or profit card until the FF file format is supplied and its importer is implemented.
+
+**Affected modules:**
+- Account Manager Financial Management Etsy presentation and profit calculation.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Chi phi (FF) displays zero until the user supplies the FF export/template. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Reserve Amazon costs for separate FF import
+
+**Root cause:**
+- Amazon transaction types other than Order Payment were counted as cost before the requested FF import source was defined.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Amazon Chi phi (FF) now reads only the reserved `AMZ-FF-IMPORT` source and displays zero until the user supplies the FF file/template.
+- Amazon cards now state their sources: Order Payment revenue, manual payout, manual balance, FF costs, and formula-driven profit.
+
+**Affected modules:**
+- Account Manager Financial Management Amazon presentation and profit calculation.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Existing Amazon transaction rows remain visible for reference but do not affect FF cost/profit until the FF importer is implemented. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Consolidate Amazon payout and balance actions
+
+**Root cause:**
+- Amazon had separate Payout and Balance buttons, creating unnecessary UI clutter.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Replaced the two Amazon actions with one admin-only `+ Them tien AMZ` action.
+- The form opens with Payout selected and provides a `Loai tien` selector for Payout or Balance; server-side save logic continues to apply the correct storage and accounting rule.
+
+**Affected modules:**
+- Account Manager Financial Management Amazon manual entries.
+
+**Deploy/queue impact:**
+- No migration or queue impact. PHP syntax and Blade cache pass locally.
+
+**Follow-up notes:**
+- Shared users remain read-only and do not see the consolidated manual-entry action. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Include imported outgoing transactions in profit
+
+**Root cause:**
+- Profit previously subtracted only the future FF cost feed and did not account for outgoing rows already imported from platform statements.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Profit now calculates revenue minus FF costs minus imported outgoing transactions for both Etsy/VND and Amazon/USD.
+- Manual Payout and Balance remain excluded from profit.
+- Moved the profit card to the final rightmost grid position after Balance.
+
+**Affected modules:**
+- Account Manager Financial Management profit presentation and calculation.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Etsy Deposit to bank is an imported outgoing payout and is included in the new profit subtraction as requested; manually entered payout records are not. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Place profit after balance in financial cards
+
+**Root cause:**
+- The requested card order is Balance followed by the final rightmost Loi nhuan card, while the UI showed the reverse order.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Moved the grid ordering marker from Loi nhuan to Balance, placing Balance before the final Loi nhuan card for Etsy and Amazon.
+
+**Affected modules:**
+- Account Manager Financial Management card layout.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Physically reorder Balance and profit cards
+
+**Root cause:**
+- Tailwind ordering utility did not take effect in the currently served CSS bundle, leaving Loi nhuan before Balance.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Reordered the Balance and Loi nhuan card markup itself, so Balance precedes the final rightmost Loi nhuan card without relying on a CSS ordering class.
+
+**Affected modules:**
+- Account Manager Financial Management card layout.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Add Financial Management date range filtering
+
+**Root cause:**
+- Financial Management only exposed a month picker, so users could not inspect a custom start/end date period.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added `Tu ngay` and `Den ngay` date controls alongside the month selector.
+- All displayed financial cards and transaction rows now filter by the selected inclusive date range.
+- Changing month resets the two dates to that month’s first and last date. Monthly delete behavior remains correctly scoped to the chosen calendar month, not the custom display range.
+
+**Affected modules:**
+- Account Manager Financial Management date filtering and summary display.
+
+**Deploy/queue impact:**
+- No migration or queue impact. PHP syntax and Blade view cache pass locally.
+
+**Follow-up notes:**
+- Date picker min/max values prevent choosing an end date before the start date in the browser. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Add Account Financial Overview list before detail
+
+**Root cause:**
+- Account Manager opened directly into an individual account detail, making it difficult to review all accounts and compare financial status before drilling down.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Account Manager now opens on a full account overview table with platform and inclusive date-range filters.
+- The table provides the four requested financial metrics per account: Doanh thu, Payout, Balance, and Loi nhuan, with account identity as the leading row column.
+- Clicking a row opens the existing Financial Management detail for that account; admins receive a `Danh sach` back button.
+- Overview respects account visibility, so shared users see only accounts shared to them and remain Financial Management-only.
+
+**Affected modules:**
+- Account Manager landing flow, financial summary overview, and shared-user account access.
+
+**Deploy/queue impact:**
+- No migration or queue impact. PHP syntax and Blade view cache pass locally.
+
+**Follow-up notes:**
+- The overview uses the same date-range financial calculation as detail: revenue minus FF costs minus imported outgoing transactions, excluding manual payout and balance. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Hide detail tab navigation on Account overview
+
+**Root cause:**
+- The account detail tab bar remained visible on the account overview landing page, making the home table look like an account detail screen.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Detail tabs now render only after an account row is opened.
+- The overview remains a table-first landing page, and the return-to-list action is available to both admin and shared viewers after viewing a detail.
+
+**Affected modules:**
+- Account Manager overview/detail navigation.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Import Amazon FF costs from Excel
+
+**Root cause:**
+- Chi phi (FF) had no supplied source format, so it could not be populated from the user’s fulfillment export.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- `Import Excel` now accepts the Amazon FF XLSX template in addition to platform CSV statements.
+- The FF template requires Date and Total ($); Date is parsed in `dd-mm-yyyy` format and Total ($) is summed by date into `AMZ-FF-IMPORT` USD cost entries.
+- Re-importing updates each account/date FF aggregate rather than duplicating it.
+- Added a small native XLSX ZIP reader because the local PHP runtime has no ZipArchive extension; verified it reads the supplied file’s 23 headers and 4,890 data rows.
+
+**Affected modules:**
+- Account Manager Financial Management Amazon FF cost import and profit calculation.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Requires standard PHP zlib support, which is available locally; Blade cache and PHP syntax pass locally.
+
+**Follow-up notes:**
+- The supplied file spans 01-08-2026 through 31-08-2026 and has total Total ($) 17,087.857 before monthly/date filtering. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Split Amazon net order payment and product-charge revenue
+
+**Root cause:**
+- Amazon Financial Management exposed only Order Payment based on Total (USD), while the requested business view needs the gross Total product charges as a separate revenue metric.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Amazon Transactions validation now requires Total product charges.
+- Every imported Order Payment aggregates both its existing Total (USD) group and a new `Doanh thu (Product charges)` group.
+- Amazon detail now shows `TOTAL ORDER PAYMENT` from Total (USD) plus separate `DOANH THU` from Total product charges; profit and overview revenue use the gross Doanh thu metric.
+
+**Affected modules:**
+- Account Manager Amazon CSV import, overview summary, and Financial Management card display.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Existing Amazon reports should be re-imported once to create the new gross revenue aggregate. Blade cache and PHP syntax pass locally.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Correct Amazon profit formula
+
+**Root cause:**
+- Amazon profit was using gross product-charge revenue and subtracting imported outgoing rows, but the requested formula is Total Order Payment minus FF cost only.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Amazon detail profit now calculates `TOTAL ORDER PAYMENT - CHI PHI (FF)`.
+- The account overview applies the same Amazon-specific profit calculation. Etsy keeps its existing formula.
+
+**Affected modules:**
+- Account Manager Amazon Financial Management and overview profit summaries.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Include imported outgoing Amazon transactions in profit
+
+**Root cause:**
+- The revised Amazon formula omitted imported outgoing transactions after the user clarified that Tien ra must also reduce profit.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Amazon profit is now `Total Order Payment - Chi phi (FF) - Tien ra import` in both detail and overview.
+- Manually entered Payout and Balance remain excluded from the deduction.
+
+**Affected modules:**
+- Account Manager Amazon Financial Management and overview profit summaries.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Reorder Amazon financial summary cards
+
+**Root cause:**
+- Amazon summary cards were ordered Total Order Payment, Doanh thu, Payout, Chi phi, Balance, Loi nhuan, which did not match the requested business sequence.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Reordered Amazon cards to Doanh thu, Total Payment, Chi phi, Balance, Loi nhuan, Payout.
+- Values and profit calculation remain unchanged.
+
+**Affected modules:**
+- Account Manager Amazon Financial Management card layout.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Exclude Etsy Deposit from profit deductions
+
+**Root cause:**
+- Etsy profit included the imported Deposit to bank payout as a money-out deduction, contrary to the clarified formula.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Etsy profit now equals Doanh thu minus all outgoing transactions except Deposit to bank.
+- Etsy detail and account overview use the same formula; Deposit remains visible separately in Payout.
+
+**Affected modules:**
+- Account Manager Etsy Financial Management and overview profit summaries.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Consolidate Amazon FF detail rows monthly
+
+**Root cause:**
+- The FF XLSX importer created one `FF cost` cashflow row for every imported date, cluttering the Amazon transaction table.
+
+**Files changed:**
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- FF import now totals Total ($) by calendar month and creates one AMZ-FF-IMPORT row per month.
+- The consolidated row uses the final source date in that month.
+- Before saving each monthly aggregate, the importer deletes older FF rows for that account/month, so re-import removes daily FF rows and prevents duplication.
+
+**Affected modules:**
+- Account Manager Amazon FF Excel import and Financial Management transaction table.
+
+**Deploy/queue impact:**
+- No migration or queue impact. PHP syntax and Blade cache pass locally.
+
+**Follow-up notes:**
+- Re-import the FF spreadsheet once for existing daily FF rows to collapse them into one monthly row. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Show import time and user in Financial reference column
+
+**Root cause:**
+- Financial rows showed opaque technical references such as AMZ-FF-IMPORT instead of who imported the data and when.
+
+**Files changed:**
+- `app/Models/AccountCashflow.php`
+- `app/Livewire/Pages/AccountManager/Notes.php`
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added AccountCashflow creator relation and eager-load it for the financial detail table.
+- Imported rows now show the latest import/update date-time and the user name in the Reference column.
+- Manual rows retain their manually entered reference value.
+
+**Affected modules:**
+- Account Manager Financial Management audit display.
+
+**Deploy/queue impact:**
+- No migration or queue impact. PHP syntax and Blade view cache pass locally.
+
+**Follow-up notes:**
+- Existing imports created before a created_by user was saved show `Khong ro user` until re-imported. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Add platform-aware overview revenue totals
+
+**Root cause:**
+- The account overview table had platform filtering but no aggregate revenue view for the currently displayed accounts.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added Etsy VND and Amazon USD total revenue cards above the overview table, calculated using the current inclusive date range.
+- `Tat ca` shows both cards side-by-side; Etsy and Amazon filters show only their corresponding revenue card and account rows.
+- Etsy revenue totals Sale; Amazon totals Doanh thu from Total product charges.
+
+**Affected modules:**
+- Account Manager Financial Management overview filtering and totals.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- VND and USD remain separate and are not added into a misleading cross-currency total. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Use month picker on Account overview
+
+**Root cause:**
+- The account overview showed start and end date controls where the requested reporting unit is a calendar month.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Replaced the overview `Tu ngay` and `Den ngay` controls with a single `Thang` picker bound to the existing month state.
+- Changing month continues to set the underlying range to the first and final day of that calendar month for overview calculations.
+
+**Affected modules:**
+- Account Manager Financial Management overview filters.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Detail view retains its custom date range selector. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Show full Etsy and Amazon totals on overview
+
+**Root cause:**
+- The overview exposed only one revenue total per platform, while users need the same complete financial structure as the account detail cards and need total profit visible.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Replaced single revenue totals with full platform aggregate cards: Etsy shows Doanh thu, Payout, Chi phi (FF), Balance, Loi nhuan; Amazon shows Doanh thu, Total Payment, Chi phi (FF), Balance, Loi nhuan, Payout.
+- Cards respect the current month and all/Etsy/Amazon filter. All shows both platform sections; a platform filter shows only its matching section.
+
+**Affected modules:**
+- Account Manager Financial Management overview aggregate display.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Aggregate Balance is the sum of each account’s latest Balance within the selected month. Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Separate overview total cards from account table
+
+**Root cause:**
+- The Etsy/Amazon total card area was nested inside the account list container, visually making it part of the table rather than a top-level dashboard summary.
+
+**Files changed:**
+- `resources/views/livewire/pages/account-manager/notes.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Moved the full Etsy/Amazon aggregate card sections above and outside the account list container.
+- The list container now contains only its title/filter header and the account table.
+
+**Affected modules:**
+- Account Manager Financial Management overview layout.
+
+**Deploy/queue impact:**
+- No migration or queue impact. Blade view cache passes locally.
+
+**Follow-up notes:**
+- Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.

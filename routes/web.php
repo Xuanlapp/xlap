@@ -16,6 +16,10 @@ use App\Livewire\Pages\Admin\ListUser;
 use App\Livewire\Pages\Admin\MailTest;
 use App\Livewire\Pages\Dashboard\Index as DashboardIndex;
 use App\Livewire\Pages\Drive\DriveUploads;
+use App\Livewire\Pages\AccountManager\Notes as AccountNotes;
+use App\Models\AccountNoteAttachment;
+use App\Models\AccountDocument;
+use Illuminate\Support\Facades\Storage;
 use App\Livewire\Pages\Financial\FinancialManagement as UserFinancialManagement;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
@@ -70,6 +74,21 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('admin/users', ListUser::class)
         ->middleware('admin')
         ->name('offorest.admin.users');
+
+    Route::get('account-manager/notes', AccountNotes::class)
+        ->name('offorest.account-manager.notes');
+
+    Route::get('account-manager/note-attachments/{attachment}', function (AccountNoteAttachment $attachment) {
+        abort_unless(Storage::disk('local')->exists($attachment->storage_path), 404);
+
+        return Storage::disk('local')->download($attachment->storage_path, $attachment->original_filename);
+    })->middleware('admin')->name('offorest.account-manager.note-attachments.download');
+
+    Route::get('account-manager/documents/{document}', function (AccountDocument $document) {
+        abort_unless(Storage::disk('local')->exists($document->storage_path), 404);
+
+        return Storage::disk('local')->response($document->storage_path, $document->original_filename, ['Content-Disposition' => 'inline']);
+    })->middleware('admin')->name('offorest.account-manager.documents.show');
 
     Route::get('admin/logs', ActivityLogs::class)
         ->middleware('admin')

@@ -69,6 +69,11 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function accountFinancialViews(): BelongsToMany
+    {
+        return $this->belongsToMany(Account::class, 'account_user')->withTimestamps();
+    }
+
     /**
      * Determine whether the user can access a product page.
      */
