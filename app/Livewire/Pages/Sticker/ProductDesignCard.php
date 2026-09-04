@@ -136,8 +136,8 @@ class ProductDesignCard extends Component
     public function render(): View
     {
         $asset = app(StickerService::class)->assetForUser(auth()->user(), $this->assetId);
-        $this->appendPreviewUrls($asset);
         $localMockupJob = app(StickerService::class)->latestLocalMockupJob($asset);
+        $this->appendPreviewUrls($asset, $this->mockupPreviewVersion($localMockupJob));
 
         return view('livewire.pages.sticker.product-design-card', [
             'asset' => $asset,
@@ -145,7 +145,7 @@ class ProductDesignCard extends Component
         ]);
     }
 
-    private function appendPreviewUrls(ProductDesignAsset $asset): void
+    private function appendPreviewUrls(ProductDesignAsset $asset, ?string $mockupPreviewVersion = null): void
     {
         $imagePreview = app(ImageLinkPreviewService::class);
 
@@ -164,7 +164,27 @@ class ProductDesignCard extends Component
             ->all());
 
         for ($slot = 1; $slot <= 11; $slot++) {
-            $asset->setAttribute("mockup{$slot}_preview_url", $imagePreview->previewUrl($asset->{"mockup{$slot}"}));
+            $previewUrl = $imagePreview->previewUrl($asset->{"mockup{$slot}"});
+            $asset->setAttribute("mockup{$slot}_preview_url", $this->withPreviewVersion($previewUrl, $mockupPreviewVersion));
         }
+    }
+
+    private function mockupPreviewVersion(?\App\Models\GlassLocalMockupJob $job): ?string
+    {
+        if ($job?->status !== 'completed' || ! $job->completed_at || $job->completed_at->lt(now()->subMinute())) {
+            return null;
+        }
+
+        // Keep polling briefly after local completion so files that are still syncing become visible without a page reload.
+        return (string) now()->timestamp;
+    }
+
+    private function withPreviewVersion(?string $url, ?string $version): ?string
+    {
+        if (! $url || ! $version) {
+            return $url;
+        }
+
+        return $url.(str_contains($url, '?') ? '&' : '?').'local_mockup_refresh='.$version;
     }
 }

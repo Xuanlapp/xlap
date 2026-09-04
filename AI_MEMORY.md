@@ -8714,3 +8714,58 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Follow-up notes:**
 - Graphiti lookup was required with group `xlap`, but this runtime has no Graphiti memory tool/provider configured.
+## 2026-09-04 - Refresh Sticker local mockup previews after completion
+
+**Root cause:**
+- Sticker card stopped Livewire polling immediately when a local PSD mockup job became completed. Some output files were not yet available to the browser at that exact moment, leaving cached/unloaded image elements until a manual page reload.
+
+**Files changed:**
+- `app/Livewire/Pages/Sticker/ProductDesignCard.php`
+- `resources/views/livewire/pages/sticker/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Continue polling each Sticker card for one minute after a local mockup job completes.
+- Add a transient timestamp query parameter to local mockup preview URLs during that grace period, which makes the browser retry newly synced files instead of retaining a failed/cached request.
+- Key each mockup image by its effective preview URL so Livewire replaces it when the refresh version changes.
+
+**Affected modules:**
+- Sticker Custom PSD Mockup display after local worker completion.
+
+**Deploy/queue impact:**
+- No migration, queue, or database schema change. The local job worker remains unchanged.
+
+**Validation:**
+- `php -l app/Livewire/Pages/Sticker/ProductDesignCard.php`
+- `php artisan view:cache`
+- `git diff --check`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but failed because the configured OpenAI provider has no credentials.
+
+## 2026-09-04 - Refresh Glass local mockup previews after completion
+
+**Root cause:**
+- Glass had the same polling stop and browser cached-image failure risk as Sticker after a local PSD mockup job completed.
+
+**Files changed:**
+- `app/Livewire/Pages/Glass/ProductDesignCard.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Applied the Sticker post-completion polling and preview-version strategy to Glass.
+- Glass retries output images for one minute after local completion without a manual reload.
+
+**Affected modules:**
+- Glass Custom PSD Mockup display after local worker completion.
+
+**Deploy/queue impact:**
+- No migration, queue, or database schema change.
+
+**Validation:**
+- `php -l app/Livewire/Pages/Glass/ProductDesignCard.php`
+- `php artisan view:cache`
+
+**Follow-up notes:**
+- Graphiti lookup was attempted with group `xlap` but failed because the configured OpenAI provider has no credentials.
